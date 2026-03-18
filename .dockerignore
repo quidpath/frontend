@@ -1,0 +1,12 @@
+.git
+.github
+.next
+node_modules
+*.md
+.env.local
+.env*.local
+.idea
+.vscode
+Dockerfile*
+docker-compose*.yml
+.dockerignore

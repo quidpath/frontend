@@ -1,0 +1,18 @@
+services:
+  web:
+    image: ${IMAGE_TAG}
+    container_name: qpfrontend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+    networks:
+      - quidpath_network
+
+networks:
+  quidpath_network:
+    external: true
+    name: tmp_quidpath_network
