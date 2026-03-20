@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import projectsService from '@/services/projectsService';
 
 export const PROJECTS_KEYS = {
@@ -22,13 +22,15 @@ export function useProjects(params?: Record<string, unknown>) {
   });
 }
 
-export function useTasks(params?: Record<string, unknown>) {
+export function useTasks(projectId?: number, params?: Record<string, unknown>) {
   return useQuery({
     queryKey: PROJECTS_KEYS.tasks(params),
     queryFn: async () => {
-      const { data } = await projectsService.getTasks(params);
+      if (!projectId) return null;
+      const { data } = await projectsService.getTasks(projectId, params);
       return data;
     },
+    enabled: !!projectId,
     staleTime: 30_000,
   });
 }
@@ -44,13 +46,15 @@ export function useTimeLogs(params?: Record<string, unknown>) {
   });
 }
 
-export function useIssues(params?: Record<string, unknown>) {
+export function useIssues(projectId?: number, params?: Record<string, unknown>) {
   return useQuery({
     queryKey: PROJECTS_KEYS.issues(params),
     queryFn: async () => {
-      const { data } = await projectsService.getIssues(params);
+      if (!projectId) return null;
+      const { data } = await projectsService.getIssues(projectId, params);
       return data;
     },
+    enabled: !!projectId,
     staleTime: 30_000,
   });
 }
@@ -63,25 +67,5 @@ export function useProjectsSummary() {
       return data;
     },
     staleTime: 60_000,
-  });
-}
-
-export function useCreateProject() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: projectsService.createProject,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: PROJECTS_KEYS.all });
-    },
-  });
-}
-
-export function useDeleteProject() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: projectsService.deleteProject,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: PROJECTS_KEYS.all });
-    },
   });
 }

@@ -383,7 +383,7 @@ export default function AccountingDashboard() {
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <MetricCard
             label="Total Revenue"
-            value={summary ? formatCurrency(summary.total_revenue) : '—'}
+            value={summary ? formatCurrency(summary.total_revenue ?? 0) : '—'}
             change={12.4}
             changeLabel="vs last month"
             trend="up"
@@ -394,7 +394,7 @@ export default function AccountingDashboard() {
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <MetricCard
             label="Outstanding"
-            value={summary ? formatCurrency(summary.total_outstanding) : '—'}
+            value={summary ? formatCurrency(summary.total_outstanding ?? 0) : '—'}
             trend="neutral"
             color="#1565C0"
             loading={summaryLoading}
@@ -403,7 +403,7 @@ export default function AccountingDashboard() {
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <MetricCard
             label="Overdue"
-            value={summary ? formatCurrency(summary.total_overdue) : '—'}
+            value={summary ? formatCurrency(summary.total_overdue ?? 0) : '—'}
             change={-18}
             changeLabel="vs last week"
             trend="down"
@@ -414,7 +414,7 @@ export default function AccountingDashboard() {
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <MetricCard
             label="Paid This Month"
-            value={summary ? formatCurrency(summary.paid_this_month) : '—'}
+            value={summary ? formatCurrency(summary.paid_this_month ?? 0) : '—'}
             change={8.2}
             changeLabel="vs last month"
             trend="up"

@@ -114,32 +114,32 @@ export default function ContactModal({ open, onClose, contact, onSuccess }: Cont
       }
     >
       <Grid container spacing={2.5}>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField fullWidth label="Name" value={formData.name} onChange={(e) => handleChange('name', e.target.value)} error={!!errors.name} helperText={errors.name} required />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField fullWidth label="Email" type="email" value={formData.email} onChange={(e) => handleChange('email', e.target.value)} error={!!errors.email} helperText={errors.email} required />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField fullWidth label="Phone" value={formData.phone} onChange={(e) => handleChange('phone', e.target.value)} error={!!errors.phone} helperText={errors.phone} required />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField fullWidth label="Company" value={formData.company} onChange={(e) => handleChange('company', e.target.value)} />
         </Grid>
-        <Grid item xs={12} sm={4}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <TextField fullWidth select label="Type" value={formData.type} onChange={(e) => handleChange('type', e.target.value)}>
             {CONTACT_TYPES.map((type) => (
               <MenuItem key={type} value={type}>{type.charAt(0).toUpperCase() + type.slice(1)}</MenuItem>
             ))}
           </TextField>
         </Grid>
-        <Grid item xs={12} sm={4}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <TextField fullWidth select label="Status" value={formData.status} onChange={(e) => handleChange('status', e.target.value)}>
             <MenuItem value="active">Active</MenuItem>
             <MenuItem value="inactive">Inactive</MenuItem>
           </TextField>
         </Grid>
-        <Grid item xs={12} sm={4}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <TextField fullWidth select label="Source" value={formData.source} onChange={(e) => handleChange('source', e.target.value)}>
             <MenuItem value=""><em>Select source</em></MenuItem>
             {CONTACT_SOURCES.map((source) => (
@@ -147,11 +147,11 @@ export default function ContactModal({ open, onClose, contact, onSuccess }: Cont
             ))}
           </TextField>
         </Grid>
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <TextField fullWidth label="Notes" value={formData.notes} onChange={(e) => handleChange('notes', e.target.value)} multiline rows={3} />
         </Grid>
         {errors.submit && (
-          <Grid item xs={12}>
+          <Grid size={{ xs: 12 }}>
             <div style={{ color: '#d32f2f', fontSize: '0.875rem' }}>{errors.submit}</div>
           </Grid>
         )}

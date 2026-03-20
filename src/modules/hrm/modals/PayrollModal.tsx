@@ -66,14 +66,14 @@ export default function PayrollModal({ open, onClose, payrollRun, onSuccess }: P
       }
     >
       <Grid container spacing={2.5}>
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <TextField fullWidth select label="Month" value={formData.month} onChange={(e) => setFormData({ ...formData, month: e.target.value })} required>
             {MONTHS.map((month) => (
               <MenuItem key={month} value={month}>{month}</MenuItem>
             ))}
           </TextField>
         </Grid>
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <TextField fullWidth label="Year" type="number" value={formData.year} onChange={(e) => setFormData({ ...formData, year: Number(e.target.value) })} required />
         </Grid>
       </Grid>

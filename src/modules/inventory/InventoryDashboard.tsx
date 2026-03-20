@@ -156,7 +156,7 @@ export default function InventoryDashboard() {
           <MetricCard label="Total Products" value={summary?.total_products ?? 0} trend="up" color="#F57C00" loading={summaryLoading} />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <MetricCard label="Total Value" value={summary ? formatCurrency(summary.total_value) : '—'} trend="up" color="#2E7D32" loading={summaryLoading} />
+          <MetricCard label="Total Value" value={summary ? formatCurrency(summary.total_value ?? 0) : '—'} trend="up" color="#2E7D32" loading={summaryLoading} />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <MetricCard label="Low Stock Items" value={summary?.low_stock_items ?? 0} trend="down" color="#F2A40E" loading={summaryLoading} />

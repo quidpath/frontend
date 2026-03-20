@@ -172,7 +172,7 @@ export default function ExpenseModal({
       }
     >
       <Grid container spacing={2.5}>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             fullWidth
             label="Date"
@@ -186,7 +186,7 @@ export default function ExpenseModal({
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             fullWidth
             label="Vendor"
@@ -199,7 +199,7 @@ export default function ExpenseModal({
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             fullWidth
             select
@@ -218,7 +218,7 @@ export default function ExpenseModal({
           </TextField>
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             fullWidth
             label="Amount"
@@ -235,7 +235,7 @@ export default function ExpenseModal({
           />
         </Grid>
 
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <TextField
             fullWidth
             label="Description"
@@ -250,7 +250,7 @@ export default function ExpenseModal({
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             fullWidth
             select
@@ -269,7 +269,7 @@ export default function ExpenseModal({
           </TextField>
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             fullWidth
             label="Reference Number"
@@ -280,7 +280,7 @@ export default function ExpenseModal({
         </Grid>
 
         {errors.submit && (
-          <Grid item xs={12}>
+          <Grid size={{ xs: 12 }}>
             <div style={{ color: '#d32f2f', fontSize: '0.875rem' }}>
               {errors.submit}
             </div>

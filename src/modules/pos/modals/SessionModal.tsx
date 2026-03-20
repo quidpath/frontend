@@ -69,8 +69,7 @@ export default function SessionModal({ open, onClose, session, onSuccess, mode }
     setLoading(true);
     try {
       if (mode === 'open') {
-        await posService.openSession({
-          terminal_id: formData.terminal_id,
+        await posService.openSession(formData.terminal_id, {
           opening_cash: formData.opening_cash,
         });
       } else if (session) {
@@ -105,7 +104,7 @@ export default function SessionModal({ open, onClose, session, onSuccess, mode }
       <Grid container spacing={2.5}>
         {mode === 'open' ? (
           <>
-            <Grid item xs={12}>
+            <Grid size={{ xs: 12 }}>
               <TextField
                 fullWidth
                 select
@@ -121,7 +120,7 @@ export default function SessionModal({ open, onClose, session, onSuccess, mode }
                 <MenuItem value="TERMINAL-03">Terminal 03</MenuItem>
               </TextField>
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={{ xs: 12 }}>
               <TextField
                 fullWidth
                 type="number"
@@ -136,7 +135,7 @@ export default function SessionModal({ open, onClose, session, onSuccess, mode }
           </>
         ) : (
           <>
-            <Grid item xs={12}>
+            <Grid size={{ xs: 12 }}>
               <TextField
                 fullWidth
                 label="Opening Cash"
@@ -144,7 +143,7 @@ export default function SessionModal({ open, onClose, session, onSuccess, mode }
                 disabled
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={{ xs: 12 }}>
               <TextField
                 fullWidth
                 label="Total Sales"
@@ -152,7 +151,7 @@ export default function SessionModal({ open, onClose, session, onSuccess, mode }
                 disabled
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid size={{ xs: 12 }}>
               <TextField
                 fullWidth
                 type="number"
@@ -168,7 +167,7 @@ export default function SessionModal({ open, onClose, session, onSuccess, mode }
         )}
 
         {errors.submit && (
-          <Grid item xs={12}>
+          <Grid size={{ xs: 12 }}>
             <div style={{ color: '#d32f2f', fontSize: '0.875rem' }}>{errors.submit}</div>
           </Grid>
         )}

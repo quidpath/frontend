@@ -27,7 +27,7 @@ export default function TimeLogModal({ open, onClose, timeLog, onSuccess }: Time
   useEffect(() => {
     if (timeLog) {
       setFormData({
-        task_id: timeLog.task_id || '',
+        task_id: String(timeLog.task_id || ''),
         employee_id: timeLog.employee_id || '',
         hours: String(timeLog.hours || ''),
         date: timeLog.date || '',
@@ -49,7 +49,7 @@ export default function TimeLogModal({ open, onClose, timeLog, onSuccess }: Time
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      const payload = { ...formData, hours: Number(formData.hours) };
+      const payload = { ...formData, task_id: Number(formData.task_id), hours: Number(formData.hours) };
       if (timeLog) {
         await projectsService.updateTimeLog(timeLog.id, payload);
       } else {
@@ -80,22 +80,22 @@ export default function TimeLogModal({ open, onClose, timeLog, onSuccess }: Time
       }
     >
       <Grid container spacing={2.5}>
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <TextField fullWidth label="Task ID" value={formData.task_id} onChange={(e) => setFormData({ ...formData, task_id: e.target.value })} required />
         </Grid>
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <TextField fullWidth label="Employee ID" value={formData.employee_id} onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })} required />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField fullWidth label="Hours" type="number" value={formData.hours} onChange={(e) => setFormData({ ...formData, hours: e.target.value })} inputProps={{ min: 0, step: 0.5 }} required />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField fullWidth label="Date" type="date" value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} InputLabelProps={{ shrink: true }} required />
         </Grid>
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <TextField fullWidth label="Description" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} multiline rows={2} />
         </Grid>
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <FormControlLabel
             control={<Checkbox checked={formData.billable} onChange={(e) => setFormData({ ...formData, billable: e.target.checked })} />}
             label="Billable"

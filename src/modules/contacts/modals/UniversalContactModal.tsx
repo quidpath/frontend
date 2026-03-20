@@ -119,7 +119,7 @@ export default function UniversalContactModal({ open, onClose, contact, onSucces
       }
     >
       <Grid container spacing={2.5}>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             fullWidth
             label="Name"
@@ -130,7 +130,7 @@ export default function UniversalContactModal({ open, onClose, contact, onSucces
             required
           />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             fullWidth
             select
@@ -143,7 +143,7 @@ export default function UniversalContactModal({ open, onClose, contact, onSucces
             ))}
           </TextField>
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             fullWidth
             label="Email"
@@ -155,7 +155,7 @@ export default function UniversalContactModal({ open, onClose, contact, onSucces
             required
           />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             fullWidth
             label="Phone"
@@ -166,7 +166,7 @@ export default function UniversalContactModal({ open, onClose, contact, onSucces
             required
           />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             fullWidth
             label="Company"
@@ -174,7 +174,7 @@ export default function UniversalContactModal({ open, onClose, contact, onSucces
             onChange={(e) => handleChange('company', e.target.value)}
           />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             fullWidth
             label="City"
@@ -182,7 +182,7 @@ export default function UniversalContactModal({ open, onClose, contact, onSucces
             onChange={(e) => handleChange('city', e.target.value)}
           />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             fullWidth
             label="Country"
@@ -190,7 +190,7 @@ export default function UniversalContactModal({ open, onClose, contact, onSucces
             onChange={(e) => handleChange('country', e.target.value)}
           />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <FormControlLabel
             control={
               <Checkbox
@@ -201,7 +201,7 @@ export default function UniversalContactModal({ open, onClose, contact, onSucces
             label="Active"
           />
         </Grid>
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <TextField
             fullWidth
             label="Address"
@@ -211,7 +211,7 @@ export default function UniversalContactModal({ open, onClose, contact, onSucces
             rows={2}
           />
         </Grid>
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <TextField
             fullWidth
             label="Notes"
@@ -222,7 +222,7 @@ export default function UniversalContactModal({ open, onClose, contact, onSucces
           />
         </Grid>
         {errors.submit && (
-          <Grid item xs={12}>
+          <Grid size={{ xs: 12 }}>
             <div style={{ color: '#d32f2f', fontSize: '0.875rem' }}>{errors.submit}</div>
           </Grid>
         )}

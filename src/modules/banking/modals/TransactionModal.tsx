@@ -114,7 +114,7 @@ export default function TransactionModal({ open, onClose, transaction, onSuccess
       }
     >
       <Grid container spacing={2.5}>
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <TextField
             fullWidth
             select
@@ -132,7 +132,7 @@ export default function TransactionModal({ open, onClose, transaction, onSuccess
             ))}
           </TextField>
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             fullWidth
             select
@@ -145,7 +145,7 @@ export default function TransactionModal({ open, onClose, transaction, onSuccess
             ))}
           </TextField>
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             fullWidth
             type="number"
@@ -157,7 +157,7 @@ export default function TransactionModal({ open, onClose, transaction, onSuccess
             required
           />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             fullWidth
             type="date"
@@ -170,7 +170,7 @@ export default function TransactionModal({ open, onClose, transaction, onSuccess
             InputLabelProps={{ shrink: true }}
           />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             fullWidth
             select
@@ -183,7 +183,7 @@ export default function TransactionModal({ open, onClose, transaction, onSuccess
             ))}
           </TextField>
         </Grid>
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <TextField
             fullWidth
             label="Reference"
@@ -191,7 +191,7 @@ export default function TransactionModal({ open, onClose, transaction, onSuccess
             onChange={(e) => handleChange('reference', e.target.value)}
           />
         </Grid>
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <TextField
             fullWidth
             label="Narration"
@@ -202,7 +202,7 @@ export default function TransactionModal({ open, onClose, transaction, onSuccess
           />
         </Grid>
         {errors.submit && (
-          <Grid item xs={12}>
+          <Grid size={{ xs: 12 }}>
             <div style={{ color: '#d32f2f', fontSize: '0.875rem' }}>{errors.submit}</div>
           </Grid>
         )}

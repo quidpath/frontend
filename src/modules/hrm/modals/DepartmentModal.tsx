@@ -73,16 +73,16 @@ export default function DepartmentModal({ open, onClose, department, onSuccess }
       }
     >
       <Grid container spacing={2.5}>
-        <Grid item xs={12} sm={8}>
+        <Grid size={{ xs: 12, sm: 8 }}>
           <TextField fullWidth label="Department Name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
         </Grid>
-        <Grid item xs={12} sm={4}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <TextField fullWidth label="Code" value={formData.code} onChange={(e) => setFormData({ ...formData, code: e.target.value })} required />
         </Grid>
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <TextField fullWidth label="Department Head ID" value={formData.head_id} onChange={(e) => setFormData({ ...formData, head_id: e.target.value })} />
         </Grid>
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <TextField fullWidth label="Description" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} multiline rows={3} />
         </Grid>
       </Grid>

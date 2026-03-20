@@ -33,7 +33,7 @@ export default function IssueModal({ open, onClose, issue, onSuccess }: IssueMod
   useEffect(() => {
     if (issue) {
       setFormData({
-        project_id: issue.project_id || '',
+        project_id: String(issue.project_id || ''),
         title: issue.title || '',
         description: issue.description || '',
         type: issue.type || 'bug',
@@ -59,10 +59,11 @@ export default function IssueModal({ open, onClose, issue, onSuccess }: IssueMod
   const handleSubmit = async () => {
     setLoading(true);
     try {
+      const projectId = Number(formData.project_id);
       if (issue) {
-        await projectsService.updateIssue(issue.id, formData);
+        await projectsService.updateIssue(issue.project_id, issue.id, { ...formData, project_id: Number(formData.project_id) });
       } else {
-        await projectsService.createIssue(formData as any);
+        await projectsService.createIssue(projectId, formData as any);
       }
       onSuccess();
     } catch (error) {
@@ -89,40 +90,40 @@ export default function IssueModal({ open, onClose, issue, onSuccess }: IssueMod
       }
     >
       <Grid container spacing={2.5}>
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <TextField fullWidth label="Project ID" value={formData.project_id} onChange={(e) => setFormData({ ...formData, project_id: e.target.value })} required />
         </Grid>
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <TextField fullWidth label="Issue Title" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} required />
         </Grid>
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <TextField fullWidth label="Description" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} multiline rows={4} />
         </Grid>
-        <Grid item xs={12} sm={4}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <TextField fullWidth select label="Type" value={formData.type} onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}>
             {ISSUE_TYPES.map((type) => (
               <MenuItem key={type} value={type}>{type.charAt(0).toUpperCase() + type.slice(1)}</MenuItem>
             ))}
           </TextField>
         </Grid>
-        <Grid item xs={12} sm={4}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <TextField fullWidth select label="Status" value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}>
             {ISSUE_STATUSES.map((status) => (
               <MenuItem key={status} value={status}>{status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ')}</MenuItem>
             ))}
           </TextField>
         </Grid>
-        <Grid item xs={12} sm={4}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <TextField fullWidth select label="Priority" value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}>
             {ISSUE_PRIORITIES.map((priority) => (
               <MenuItem key={priority} value={priority}>{priority.charAt(0).toUpperCase() + priority.slice(1)}</MenuItem>
             ))}
           </TextField>
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField fullWidth label="Assigned To" value={formData.assigned_to} onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })} />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField fullWidth label="Reported By" value={formData.reported_by} onChange={(e) => setFormData({ ...formData, reported_by: e.target.value })} />
         </Grid>
       </Grid>

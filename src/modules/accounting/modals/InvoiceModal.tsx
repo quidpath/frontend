@@ -235,7 +235,7 @@ export default function InvoiceModal({
     >
       <Grid container spacing={2.5}>
         {/* Header Information */}
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             fullWidth
             label="Customer"
@@ -248,7 +248,7 @@ export default function InvoiceModal({
           />
         </Grid>
 
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             fullWidth
             label="Purchase Order #"
@@ -258,7 +258,7 @@ export default function InvoiceModal({
           />
         </Grid>
 
-        <Grid item xs={12} sm={4}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <TextField
             fullWidth
             label="Invoice Date"
@@ -272,7 +272,7 @@ export default function InvoiceModal({
           />
         </Grid>
 
-        <Grid item xs={12} sm={4}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <TextField
             fullWidth
             label="Due Date"
@@ -286,7 +286,7 @@ export default function InvoiceModal({
           />
         </Grid>
 
-        <Grid item xs={12} sm={4}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <TextField
             fullWidth
             select
@@ -303,7 +303,7 @@ export default function InvoiceModal({
         </Grid>
 
         {/* Line Items */}
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <Divider sx={{ my: 1 }} />
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
             <Typography variant="subtitle2" fontWeight={600}>
@@ -412,7 +412,7 @@ export default function InvoiceModal({
         </Grid>
 
         {/* Totals */}
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
             <Box sx={{ minWidth: 300 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
@@ -441,7 +441,7 @@ export default function InvoiceModal({
         </Grid>
 
         {/* Comments */}
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <TextField
             fullWidth
             label="Comments / Notes"
@@ -454,7 +454,7 @@ export default function InvoiceModal({
         </Grid>
 
         {errors.submit && (
-          <Grid item xs={12}>
+          <Grid size={{ xs: 12 }}>
             <Typography variant="body2" color="error">
               {errors.submit}
             </Typography>

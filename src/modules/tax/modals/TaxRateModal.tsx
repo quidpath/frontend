@@ -103,7 +103,7 @@ export default function TaxRateModal({ open, onClose, rate, onSuccess }: TaxRate
       }
     >
       <Grid container spacing={2.5}>
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <TextField
             fullWidth
             label="Tax Name"
@@ -114,7 +114,7 @@ export default function TaxRateModal({ open, onClose, rate, onSuccess }: TaxRate
             required
           />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             fullWidth
             select
@@ -127,7 +127,7 @@ export default function TaxRateModal({ open, onClose, rate, onSuccess }: TaxRate
             ))}
           </TextField>
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             fullWidth
             type="number"
@@ -139,7 +139,7 @@ export default function TaxRateModal({ open, onClose, rate, onSuccess }: TaxRate
             required
           />
         </Grid>
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <TextField
             fullWidth
             label="Description"
@@ -149,7 +149,7 @@ export default function TaxRateModal({ open, onClose, rate, onSuccess }: TaxRate
             rows={3}
           />
         </Grid>
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <FormControlLabel
             control={
               <Checkbox
@@ -161,7 +161,7 @@ export default function TaxRateModal({ open, onClose, rate, onSuccess }: TaxRate
           />
         </Grid>
         {errors.submit && (
-          <Grid item xs={12}>
+          <Grid size={{ xs: 12 }}>
             <div style={{ color: '#d32f2f', fontSize: '0.875rem' }}>{errors.submit}</div>
           </Grid>
         )}

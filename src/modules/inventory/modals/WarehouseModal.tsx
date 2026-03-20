@@ -83,22 +83,22 @@ export default function WarehouseModal({ open, onClose, warehouse, onSuccess }: 
       }
     >
       <Grid container spacing={2.5}>
-        <Grid item xs={12} sm={8}>
+        <Grid size={{ xs: 12, sm: 8 }}>
           <TextField fullWidth label="Warehouse Name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
         </Grid>
-        <Grid item xs={12} sm={4}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <TextField fullWidth label="Code" value={formData.code} onChange={(e) => setFormData({ ...formData, code: e.target.value })} required />
         </Grid>
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <TextField fullWidth label="Location" value={formData.location} onChange={(e) => setFormData({ ...formData, location: e.target.value })} required />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField fullWidth label="Capacity" type="number" value={formData.capacity} onChange={(e) => setFormData({ ...formData, capacity: e.target.value })} />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField fullWidth label="Manager" value={formData.manager} onChange={(e) => setFormData({ ...formData, manager: e.target.value })} />
         </Grid>
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <FormControlLabel
             control={<Checkbox checked={formData.is_active} onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })} />}
             label="Active"

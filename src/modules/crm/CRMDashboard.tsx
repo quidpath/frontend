@@ -107,7 +107,7 @@ export default function CRMDashboard() {
           severity: 'info',
           onConfirm: async () => {
             try {
-              await crmService.convertContact(contact.id, contact.type === 'lead' ? 'prospect' : 'customer');
+              await crmService.convertContact(contact.id, { type: contact.type === 'lead' ? 'prospect' : 'customer' });
               showSuccess('Contact converted successfully');
               refetchContacts();
             } catch (error) {
@@ -244,7 +244,7 @@ export default function CRMDashboard() {
           <MetricCard label="Active Deals" value={summary?.total_deals ?? 0} trend="up" color="#2E7D32" loading={summaryLoading} />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <MetricCard label="Pipeline Value" value={summary ? formatCurrency(summary.pipeline_value) : '—'} trend="up" color="#F2A40E" loading={summaryLoading} />
+          <MetricCard label="Pipeline Value" value={summary ? formatCurrency(summary.pipeline_value ?? 0) : '—'} trend="up" color="#F2A40E" loading={summaryLoading} />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <MetricCard label="Conversion Rate" value={summary ? `${summary.conversion_rate}%` : '—'} trend="up" color="#9C27B0" loading={summaryLoading} />

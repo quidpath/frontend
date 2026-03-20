@@ -18,11 +18,11 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import AddIcon from '@mui/icons-material/Add';
-import { useUsers, useCreateUser, useUpdateUser, useDeleteUser } from '@/hooks/useHRM'; // Adjust as per exact hooks
-import { User } from '@/services/hrmService';
+import { useEmployees } from '@/hooks/useHRM';
+import { Employee as User } from '@/services/hrmService';
 
 const UserManagement: React.FC = () => {
-  const { data: users, isLoading } = useUsers();
+  const { data: users, isLoading } = useEmployees();
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isModalOpen, setModalOpen] = useState(false);
   const [modalType, setModalType] = useState<'create' | 'edit' | 'view' | 'delete'>('view');
@@ -65,7 +65,7 @@ const UserManagement: React.FC = () => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {users?.map((user) => (
+          {users?.results?.map((user) => (
             <TableRow key={user.id}>
               <TableCell>{user.full_name}</TableCell>
               <TableCell>{user.email}</TableCell>

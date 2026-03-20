@@ -197,7 +197,7 @@ export default function JournalModal({
     >
       <Grid container spacing={2.5}>
         {/* Header Information */}
-        <Grid item xs={12} sm={4}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <TextField
             fullWidth
             label="Date"
@@ -211,7 +211,7 @@ export default function JournalModal({
           />
         </Grid>
 
-        <Grid item xs={12} sm={4}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <TextField
             fullWidth
             label="Reference"
@@ -224,7 +224,7 @@ export default function JournalModal({
           />
         </Grid>
 
-        <Grid item xs={12} sm={4}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <TextField
             fullWidth
             label="Description"
@@ -239,7 +239,7 @@ export default function JournalModal({
 
         {/* Balance Alert */}
         {!totals.isBalanced && lines.some(l => l.account_id) && (
-          <Grid item xs={12}>
+          <Grid size={{ xs: 12 }}>
             <Alert severity="warning">
               Entry is not balanced. Debits: ${totals.totalDebit.toFixed(2)}, Credits: ${totals.totalCredit.toFixed(2)}, 
               Difference: ${Math.abs(totals.difference).toFixed(2)}
@@ -248,7 +248,7 @@ export default function JournalModal({
         )}
 
         {/* Line Items */}
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
             <Typography variant="subtitle2" fontWeight={600}>
               Journal Lines
@@ -360,7 +360,7 @@ export default function JournalModal({
         </Grid>
 
         {errors.submit && (
-          <Grid item xs={12}>
+          <Grid size={{ xs: 12 }}>
             <Typography variant="body2" color="error">
               {errors.submit}
             </Typography>

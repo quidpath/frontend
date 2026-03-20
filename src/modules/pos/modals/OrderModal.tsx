@@ -146,7 +146,7 @@ export default function OrderModal({ open, onClose, order, onSuccess }: OrderMod
       }
     >
       <Grid container spacing={2.5}>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             fullWidth
             label="Customer Name"
@@ -154,7 +154,7 @@ export default function OrderModal({ open, onClose, order, onSuccess }: OrderMod
             onChange={(e) => handleChange('customer_name', e.target.value)}
           />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             fullWidth
             select
@@ -168,14 +168,14 @@ export default function OrderModal({ open, onClose, order, onSuccess }: OrderMod
           </TextField>
         </Grid>
 
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
             <Typography variant="subtitle2">Order Items</Typography>
             <Button size="small" startIcon={<AddIcon />} onClick={addItem}>Add Item</Button>
           </Box>
           {formData.items.map((item, index) => (
             <Grid container spacing={1.5} key={index} sx={{ mb: 1.5 }}>
-              <Grid item xs={12} sm={4}>
+              <Grid size={{ xs: 12, sm: 4 }}>
                 <TextField
                   fullWidth
                   size="small"
@@ -184,7 +184,7 @@ export default function OrderModal({ open, onClose, order, onSuccess }: OrderMod
                   onChange={(e) => handleItemChange(index, 'product_name', e.target.value)}
                 />
               </Grid>
-              <Grid item xs={4} sm={2}>
+              <Grid size={{ xs: 4, sm: 2 }}>
                 <TextField
                   fullWidth
                   size="small"
@@ -194,7 +194,7 @@ export default function OrderModal({ open, onClose, order, onSuccess }: OrderMod
                   onChange={(e) => handleItemChange(index, 'quantity', Number(e.target.value))}
                 />
               </Grid>
-              <Grid item xs={4} sm={2}>
+              <Grid size={{ xs: 4, sm: 2 }}>
                 <TextField
                   fullWidth
                   size="small"
@@ -204,7 +204,7 @@ export default function OrderModal({ open, onClose, order, onSuccess }: OrderMod
                   onChange={(e) => handleItemChange(index, 'unit_price', Number(e.target.value))}
                 />
               </Grid>
-              <Grid item xs={3} sm={2}>
+              <Grid size={{ xs: 3, sm: 2 }}>
                 <TextField
                   fullWidth
                   size="small"
@@ -213,7 +213,7 @@ export default function OrderModal({ open, onClose, order, onSuccess }: OrderMod
                   disabled
                 />
               </Grid>
-              <Grid item xs={1} sm={2}>
+              <Grid size={{ xs: 1, sm: 2 }}>
                 <IconButton size="small" color="error" onClick={() => removeItem(index)} disabled={formData.items.length === 1}>
                   <DeleteIcon />
                 </IconButton>
@@ -223,14 +223,14 @@ export default function OrderModal({ open, onClose, order, onSuccess }: OrderMod
           {errors.items && <Typography color="error" variant="caption">{errors.items}</Typography>}
         </Grid>
 
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <Box sx={{ bgcolor: 'grey.50', p: 2, borderRadius: 1 }}>
             <Grid container spacing={1}>
-              <Grid item xs={6}><Typography>Subtotal:</Typography></Grid>
-              <Grid item xs={6}><Typography align="right">{subtotal.toFixed(2)}</Typography></Grid>
-              <Grid item xs={6}><Typography>Tax (16%):</Typography></Grid>
-              <Grid item xs={6}><Typography align="right">{tax.toFixed(2)}</Typography></Grid>
-              <Grid item xs={6}>
+              <Grid size={{ xs: 6 }}><Typography>Subtotal:</Typography></Grid>
+              <Grid size={{ xs: 6 }}><Typography align="right">{subtotal.toFixed(2)}</Typography></Grid>
+              <Grid size={{ xs: 6 }}><Typography>Tax (16%):</Typography></Grid>
+              <Grid size={{ xs: 6 }}><Typography align="right">{tax.toFixed(2)}</Typography></Grid>
+              <Grid size={{ xs: 6 }}>
                 <TextField
                   size="small"
                   type="number"
@@ -239,15 +239,15 @@ export default function OrderModal({ open, onClose, order, onSuccess }: OrderMod
                   onChange={(e) => handleChange('discount', Number(e.target.value))}
                 />
               </Grid>
-              <Grid item xs={6}><Typography align="right">-{formData.discount.toFixed(2)}</Typography></Grid>
-              <Grid item xs={6}><Typography variant="h6">Total:</Typography></Grid>
-              <Grid item xs={6}><Typography variant="h6" align="right">{total.toFixed(2)}</Typography></Grid>
+              <Grid size={{ xs: 6 }}><Typography align="right">-{formData.discount.toFixed(2)}</Typography></Grid>
+              <Grid size={{ xs: 6 }}><Typography variant="h6">Total:</Typography></Grid>
+              <Grid size={{ xs: 6 }}><Typography variant="h6" align="right">{total.toFixed(2)}</Typography></Grid>
             </Grid>
           </Box>
         </Grid>
 
         {errors.submit && (
-          <Grid item xs={12}>
+          <Grid size={{ xs: 12 }}>
             <Typography color="error" variant="body2">{errors.submit}</Typography>
           </Grid>
         )}

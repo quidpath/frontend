@@ -178,7 +178,7 @@ export default function SystemAdminOrganisationsPage() {
       icon: <CheckCircleIcon fontSize="small" />,
       onClick: (org) => approveMutation.mutate({ id: String(org.id), approved: true }),
       color: 'success',
-      show: (org) => !org.is_approved && !org.is_disapproved && !org.is_banned,
+      show: (org) => !!(!org.is_approved && !org.is_disapproved && !org.is_banned),
     },
     {
       type: 'custom',
@@ -186,7 +186,7 @@ export default function SystemAdminOrganisationsPage() {
       icon: <CancelIcon fontSize="small" />,
       onClick: (org) => approveMutation.mutate({ id: String(org.id), approved: false }),
       color: 'error',
-      show: (org) => !org.is_approved && !org.is_disapproved && !org.is_banned,
+      show: (org) => !!(!org.is_approved && !org.is_disapproved && !org.is_banned),
     },
     {
       type: 'custom',
@@ -194,7 +194,7 @@ export default function SystemAdminOrganisationsPage() {
       icon: <BlockIcon fontSize="small" />,
       onClick: (org) => suspendMutation.mutate(String(org.id)),
       color: 'warning',
-      show: (org) => org.is_active === true && org.is_approved && !org.is_banned,
+      show: (org) => !!(org.is_active === true && org.is_approved && !org.is_banned),
     },
     {
       type: 'custom',
@@ -202,7 +202,7 @@ export default function SystemAdminOrganisationsPage() {
       icon: <CheckCircleIcon fontSize="small" />,
       onClick: (org) => unsuspendMutation.mutate(String(org.id)),
       color: 'success',
-      show: (org) => org.is_active === false && org.is_approved && !org.is_banned,
+      show: (org) => !!(org.is_active === false && org.is_approved && !org.is_banned),
     },
     {
       type: 'custom',

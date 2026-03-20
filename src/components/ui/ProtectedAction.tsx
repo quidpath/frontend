@@ -47,13 +47,13 @@ export default function ProtectedAction({
     }
 
     if (disableTooltip) {
-      return React.cloneElement(children, { disabled: true });
+      return React.cloneElement(children, { disabled: true } as React.HTMLAttributes<HTMLElement>);
     }
 
     return (
       <Tooltip title={reason} arrow>
         <span>
-          {React.cloneElement(children, { disabled: true })}
+          {React.cloneElement(children, { disabled: true } as React.HTMLAttributes<HTMLElement>)}
         </span>
       </Tooltip>
     );

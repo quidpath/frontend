@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import hrmService from '@/services/hrmService';
 
 export const HRM_KEYS = {
@@ -62,25 +62,5 @@ export function useHRMSummary() {
       return data;
     },
     staleTime: 60_000,
-  });
-}
-
-export function useCreateEmployee() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: hrmService.createEmployee,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: HRM_KEYS.all });
-    },
-  });
-}
-
-export function useDeleteEmployee() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: hrmService.deleteEmployee,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: HRM_KEYS.all });
-    },
   });
 }

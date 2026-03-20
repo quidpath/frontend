@@ -44,6 +44,7 @@ export interface TableAction<T> {
   color?: 'default' | 'error' | 'warning' | 'success';
   requireRole?: 'user' | 'manager' | 'admin';
   show?: (row: T) => boolean;
+  divider?: boolean;
 }
 
 interface EnhancedDataTableProps<T extends object> {

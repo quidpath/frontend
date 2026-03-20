@@ -110,7 +110,7 @@ export function usePlans() {
   return useQuery({
     queryKey: ACCOUNTING_KEYS.plans(),
     queryFn: async () => {
-      const { data } = await billingClient.get<unknown[]>('/api/billing/plans/');
+      const { data } = await billingClient.get<{ id: number; name: string; price: string; billing_cycle: string; features: string[]; is_active: boolean; highlighted?: boolean }[]>('/api/billing/plans/');
       return data ?? [];
     },
     staleTime: 300_000,

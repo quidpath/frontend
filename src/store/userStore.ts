@@ -6,7 +6,7 @@ export interface StoredUserProfile {
   username: string;
   email: string;
   role: { id: number; name: string } | null;
-  corporate: { id: string | null; name: string; [key: string]: unknown };
+  corporate: { id: string | null; name: string; logo?: string; [key: string]: unknown };
   organisation_id: string | null;
   /** System owner; only they see System Admin (organisations, all users). */
   is_superuser?: boolean;

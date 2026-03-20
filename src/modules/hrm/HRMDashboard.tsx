@@ -74,9 +74,8 @@ export default function HRMDashboard() {
     catch { showError('Failed to delete leave request'); }
   };
 
-  const handleDeletePayroll = async (id: string) => {
-    try { await hrmService.deletePayrollRun(id); showSuccess('Payroll run deleted'); refetchPayroll(); }
-    catch { showError('Failed to delete payroll run'); }
+  const handleDeletePayroll = async (_id: string) => {
+    showError('Payroll runs cannot be deleted once created');
   };
 
   const getEmployeeActions = (emp: Employee): ActionMenuItem[] => [

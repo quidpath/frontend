@@ -38,8 +38,7 @@ export default function ActionMenu({ actions, size = 'small' }: ActionMenuProps)
     setAnchorEl(event.currentTarget);
   };
 
-  const handleClose = (event?: React.MouseEvent) => {
-    event?.stopPropagation();
+  const handleClose = () => {
     setAnchorEl(null);
   };
 

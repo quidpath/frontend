@@ -76,7 +76,7 @@ export default function AnalyticsDashboard() {
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <MetricCard 
             label="Total Revenue" 
-            value={summary ? formatCurrency(summary.total_revenue) : formatCurrency(0)} 
+            value={summary ? formatCurrency(summary.total_revenue ?? 0) : formatCurrency(0)} 
             trend="up" 
             color="#2E7D32" 
             loading={summaryLoading}
@@ -85,7 +85,7 @@ export default function AnalyticsDashboard() {
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <MetricCard 
             label="Total Expenses" 
-            value={summary ? formatCurrency(summary.total_revenue * 0.36) : formatCurrency(0)} 
+            value={summary ? formatCurrency((summary.total_revenue ?? 0) * 0.36) : formatCurrency(0)} 
             trend="down" 
             color="#D32F2F" 
             loading={summaryLoading}
@@ -94,7 +94,7 @@ export default function AnalyticsDashboard() {
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <MetricCard 
             label="Net Profit" 
-            value={summary ? formatCurrency(summary.total_revenue * 0.64) : formatCurrency(0)} 
+            value={summary ? formatCurrency((summary.total_revenue ?? 0) * 0.64) : formatCurrency(0)} 
             trend="up" 
             color="#1976D2" 
             loading={summaryLoading}

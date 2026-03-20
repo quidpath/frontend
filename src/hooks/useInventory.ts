@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import inventoryService from '@/services/inventoryService';
 
 export const INVENTORY_KEYS = {
@@ -50,25 +50,5 @@ export function useInventorySummary() {
       return data;
     },
     staleTime: 60_000,
-  });
-}
-
-export function useCreateProduct() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: inventoryService.createProduct,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: INVENTORY_KEYS.all });
-    },
-  });
-}
-
-export function useDeleteProduct() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: inventoryService.deleteProduct,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: INVENTORY_KEYS.all });
-    },
   });
 }

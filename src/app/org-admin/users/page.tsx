@@ -20,6 +20,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import BlockIcon from '@mui/icons-material/Block';
 import CancelIcon from '@mui/icons-material/Cancel';
 import GavelIcon from '@mui/icons-material/Gavel';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import PageHeader from '@/components/ui/PageHeader';
 import EnhancedDataTable, { TableColumn, TableAction } from '@/components/tables/EnhancedDataTable';
 import ViewModal from '@/components/ui/ViewModal';
@@ -256,7 +257,7 @@ export default function OrgAdminUsersPage() {
       icon: <CheckCircleIcon fontSize="small" />,
       onClick: (user) => approveMutation.mutate({ id: user.id, approved: true }),
       color: 'success',
-      show: (user) => !user.is_approved && !user.is_banned,
+      show: (user) => !!(!user.is_approved && !user.is_banned),
     },
     {
       type: 'custom',
@@ -264,7 +265,7 @@ export default function OrgAdminUsersPage() {
       icon: <CancelIcon fontSize="small" />,
       onClick: (user) => approveMutation.mutate({ id: user.id, approved: false }),
       color: 'error',
-      show: (user) => !user.is_approved && !user.is_banned,
+      show: (user) => !!(!user.is_approved && !user.is_banned),
     },
     {
       type: 'custom',
@@ -272,7 +273,7 @@ export default function OrgAdminUsersPage() {
       icon: <BlockIcon fontSize="small" />,
       onClick: (user) => suspendMutation.mutate(user.id),
       color: 'warning',
-      show: (user) => user.is_active && user.is_approved && !user.is_banned,
+      show: (user) => !!(user.is_active && user.is_approved && !user.is_banned),
     },
     {
       type: 'custom',
@@ -280,7 +281,7 @@ export default function OrgAdminUsersPage() {
       icon: <CheckCircleIcon fontSize="small" />,
       onClick: (user) => unsuspendMutation.mutate(user.id),
       color: 'success',
-      show: (user) => !user.is_active && user.is_approved && !user.is_banned,
+      show: (user) => !!(!user.is_active && user.is_approved && !user.is_banned),
     },
     {
       type: 'custom',

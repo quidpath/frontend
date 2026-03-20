@@ -22,17 +22,8 @@ export function usePOSOrders(params?: Record<string, unknown>) {
 export function usePurchases(params?: Record<string, unknown>) {
   return useQuery({
     queryKey: POS_KEYS.purchases(params),
-    queryFn: () => posService.getPurchases(params).then((r) => r.data),
+    queryFn: () => posService.getPurchaseOrders(params).then((r) => r.data),
     staleTime: 30_000,
-  });
-}
-
-export function usePOSSummary() {
-  return useQuery({
-    queryKey: POS_KEYS.summary(),
-    queryFn: () => posService.getSummary().then((r) => r.data),
-    staleTime: 30_000,
-    refetchInterval: 60_000,
   });
 }
 
@@ -41,5 +32,20 @@ export function usePOSSessions(params?: Record<string, unknown>) {
     queryKey: POS_KEYS.sessions(params),
     queryFn: () => posService.getSessions(params).then((r) => r.data),
     staleTime: 30_000,
+  });
+}
+
+export function usePOSSummary() {
+  return useQuery({
+    queryKey: POS_KEYS.summary(),
+    queryFn: () => posService.getOrders({ page_size: 1 }).then((r) => ({
+      total_orders: r.data?.count ?? 0,
+      total_revenue: 0,
+      todays_sales: 0,
+      average_order_value: 0,
+      transactions_today: r.data?.count ?? 0,
+      refunds_today: 0,
+    })),
+    staleTime: 60_000,
   });
 }

@@ -64,7 +64,7 @@ export default function ProjectsDashboard() {
     3: { label: 'Report Issue', onClick: () => { setSelectedItem(null); setIssueModalOpen(true); } },
   };
 
-  const handleDeleteProject = async (id: string) => {
+  const handleDeleteProject = async (id: number) => {
     try {
       await projectsService.deleteProject(id);
       showSuccess('Project deleted successfully');
@@ -74,9 +74,9 @@ export default function ProjectsDashboard() {
     }
   };
 
-  const handleDeleteTask = async (id: string) => {
+  const handleDeleteTask = async (task: Task) => {
     try {
-      await projectsService.deleteTask(id);
+      await projectsService.deleteTask(task.project_id, task.id);
       showSuccess('Task deleted successfully');
       refetchTasks();
     } catch (error) {
@@ -84,7 +84,7 @@ export default function ProjectsDashboard() {
     }
   };
 
-  const handleDeleteTimeLog = async (id: string) => {
+  const handleDeleteTimeLog = async (id: number) => {
     try {
       await projectsService.deleteTimeLog(id);
       showSuccess('Time log deleted successfully');
@@ -94,9 +94,9 @@ export default function ProjectsDashboard() {
     }
   };
 
-  const handleDeleteIssue = async (id: string) => {
+  const handleDeleteIssue = async (issue: Issue) => {
     try {
-      await projectsService.deleteIssue(id);
+      await projectsService.deleteIssue(issue.project_id, issue.id);
       showSuccess('Issue deleted successfully');
       refetchIssues();
     } catch (error) {
@@ -127,7 +127,7 @@ export default function ProjectsDashboard() {
         title: 'Delete Task',
         message: `Are you sure you want to delete "${task.title}"?`,
         severity: 'error',
-        onConfirm: () => handleDeleteTask(task.id),
+        onConfirm: () => handleDeleteTask(task),
       });
     }),
   ];
@@ -155,7 +155,7 @@ export default function ProjectsDashboard() {
         title: 'Delete Issue',
         message: `Are you sure you want to delete "${issue.title}"?`,
         severity: 'error',
-        onConfirm: () => handleDeleteIssue(issue.id),
+        onConfirm: () => handleDeleteIssue(issue),
       });
     }),
   ];

@@ -32,7 +32,7 @@ export default function TaskModal({ open, onClose, task, onSuccess }: TaskModalP
   useEffect(() => {
     if (task) {
       setFormData({
-        project_id: task.project_id || '',
+        project_id: String(task.project_id || ''),
         title: task.title || '',
         description: task.description || '',
         status: task.status || 'todo',
@@ -58,11 +58,12 @@ export default function TaskModal({ open, onClose, task, onSuccess }: TaskModalP
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      const payload = { ...formData, estimated_hours: formData.estimated_hours ? Number(formData.estimated_hours) : undefined };
+      const projectId = Number(formData.project_id);
+      const payload = { ...formData, project_id: projectId, estimated_hours: formData.estimated_hours ? Number(formData.estimated_hours) : undefined };
       if (task) {
-        await projectsService.updateTask(task.id, payload);
+        await projectsService.updateTask(task.project_id, task.id, payload);
       } else {
-        await projectsService.createTask(payload as any);
+        await projectsService.createTask(projectId, payload as any);
       }
       onSuccess();
     } catch (error) {
@@ -89,36 +90,36 @@ export default function TaskModal({ open, onClose, task, onSuccess }: TaskModalP
       }
     >
       <Grid container spacing={2.5}>
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <TextField fullWidth label="Project ID" value={formData.project_id} onChange={(e) => setFormData({ ...formData, project_id: e.target.value })} required />
         </Grid>
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <TextField fullWidth label="Task Title" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} required />
         </Grid>
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <TextField fullWidth label="Description" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} multiline rows={3} />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField fullWidth select label="Status" value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}>
             {TASK_STATUSES.map((status) => (
               <MenuItem key={status} value={status}>{status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ')}</MenuItem>
             ))}
           </TextField>
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField fullWidth select label="Priority" value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}>
             {TASK_PRIORITIES.map((priority) => (
               <MenuItem key={priority} value={priority}>{priority.charAt(0).toUpperCase() + priority.slice(1)}</MenuItem>
             ))}
           </TextField>
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField fullWidth label="Assigned To" value={formData.assigned_to} onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })} />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField fullWidth label="Due Date" type="date" value={formData.due_date} onChange={(e) => setFormData({ ...formData, due_date: e.target.value })} InputLabelProps={{ shrink: true }} />
         </Grid>
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <TextField fullWidth label="Estimated Hours" type="number" value={formData.estimated_hours} onChange={(e) => setFormData({ ...formData, estimated_hours: e.target.value })} />
         </Grid>
       </Grid>

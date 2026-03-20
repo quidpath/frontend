@@ -98,13 +98,13 @@ export default function POSDashboard() {
 
       <Grid container spacing={2.5} sx={{ mb: 3 }}>
         <Grid size={{ xs: 6, sm: 3 }}>
-          <MetricCard label="Today's Sales" value={summary ? formatCurrency(summary.todays_sales) : '—'} change={8.7} changeLabel="vs yesterday" trend="up" color="#6A1B9A" loading={summaryLoading} />
+          <MetricCard label="Today's Sales" value={summary ? formatCurrency(summary.todays_sales ?? 0) : '—'} change={8.7} changeLabel="vs yesterday" trend="up" color="#6A1B9A" loading={summaryLoading} />
         </Grid>
         <Grid size={{ xs: 6, sm: 3 }}>
           <MetricCard label="Transactions Today" value={summary?.transactions_today ?? '—'} trend="up" color="#00695C" loading={summaryLoading} />
         </Grid>
         <Grid size={{ xs: 6, sm: 3 }}>
-          <MetricCard label="Avg. Order Value" value={summary ? formatCurrency(summary.average_order_value) : '—'} color="#1565C0" loading={summaryLoading} />
+          <MetricCard label="Avg. Order Value" value={summary ? formatCurrency(summary.average_order_value ?? 0) : '—'} color="#1565C0" loading={summaryLoading} />
         </Grid>
         <Grid size={{ xs: 6, sm: 3 }}>
           <MetricCard label="Refunds Today" value={summary?.refunds_today ?? '—'} trend="down" color="#E53E3E" loading={summaryLoading} />

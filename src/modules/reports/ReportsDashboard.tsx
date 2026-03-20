@@ -65,7 +65,7 @@ export default function ReportsDashboard() {
             <CardContent>
               <Typography variant="h6" gutterBottom>Report Parameters</Typography>
               <Grid container spacing={2}>
-                <Grid item xs={12}>
+                <Grid size={{ xs: 12 }}>
                   <TextField
                     fullWidth
                     select
@@ -80,7 +80,7 @@ export default function ReportsDashboard() {
                     ))}
                   </TextField>
                 </Grid>
-                <Grid item xs={12}>
+                <Grid size={{ xs: 12 }}>
                   <TextField
                     fullWidth
                     type="date"
@@ -90,7 +90,7 @@ export default function ReportsDashboard() {
                     InputLabelProps={{ shrink: true }}
                   />
                 </Grid>
-                <Grid item xs={12}>
+                <Grid size={{ xs: 12 }}>
                   <TextField
                     fullWidth
                     type="date"
@@ -100,12 +100,12 @@ export default function ReportsDashboard() {
                     InputLabelProps={{ shrink: true }}
                   />
                 </Grid>
-                <Grid item xs={12}>
+                <Grid size={{ xs: 12 }}>
                   <Button fullWidth variant="contained" size="large" onClick={handleGenerateReport}>
                     Generate Report
                   </Button>
                 </Grid>
-                <Grid item xs={12}>
+                <Grid size={{ xs: 12 }}>
                   <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
                     Download As:
                   </Typography>

@@ -9,6 +9,11 @@ export const metadata: Metadata = {
   },
   description: 'Modern enterprise resource planning platform for growing businesses.',
   keywords: ['ERP', 'Accounting', 'Inventory', 'CRM', 'HRM', 'POS', 'Projects'],
+  icons: {
+    icon: '/quidpathShort.svg',
+    shortcut: '/quidpathShort.svg',
+    apple: '/quidpathShort.svg',
+  },
 };
 
 export const viewport: Viewport = {

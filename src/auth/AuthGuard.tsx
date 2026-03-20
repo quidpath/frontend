@@ -7,6 +7,7 @@ import { useUserStore } from '@/store/userStore';
 
 interface AuthGuardProps {
   children: React.ReactNode;
+  requirePermission?: boolean;
 }
 
 export default function AuthGuard({ children }: AuthGuardProps) {

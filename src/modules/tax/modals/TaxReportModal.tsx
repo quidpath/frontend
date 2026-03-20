@@ -81,22 +81,22 @@ export default function TaxReportModal({ open, onClose, report, onSuccess }: Tax
       >
         <Box sx={{ bgcolor: 'grey.50', p: 2.5, borderRadius: 1 }}>
           <Grid container spacing={2}>
-            <Grid item xs={6}><Typography variant="body2" color="text.secondary">Total Sales:</Typography></Grid>
-            <Grid item xs={6}><Typography variant="body2" align="right">{formatCurrency(report.total_sales)}</Typography></Grid>
+            <Grid size={{ xs: 6 }}><Typography variant="body2" color="text.secondary">Total Sales:</Typography></Grid>
+            <Grid size={{ xs: 6 }}><Typography variant="body2" align="right">{formatCurrency(report.total_sales)}</Typography></Grid>
             
-            <Grid item xs={6}><Typography variant="body2" color="text.secondary">Total Purchases:</Typography></Grid>
-            <Grid item xs={6}><Typography variant="body2" align="right">{formatCurrency(report.total_purchases)}</Typography></Grid>
+            <Grid size={{ xs: 6 }}><Typography variant="body2" color="text.secondary">Total Purchases:</Typography></Grid>
+            <Grid size={{ xs: 6 }}><Typography variant="body2" align="right">{formatCurrency(report.total_purchases)}</Typography></Grid>
             
-            <Grid item xs={6}><Typography variant="body2" color="text.secondary">Tax Collected:</Typography></Grid>
-            <Grid item xs={6}><Typography variant="body2" align="right" color="success.main">{formatCurrency(report.tax_collected)}</Typography></Grid>
+            <Grid size={{ xs: 6 }}><Typography variant="body2" color="text.secondary">Tax Collected:</Typography></Grid>
+            <Grid size={{ xs: 6 }}><Typography variant="body2" align="right" color="success.main">{formatCurrency(report.tax_collected)}</Typography></Grid>
             
-            <Grid item xs={6}><Typography variant="body2" color="text.secondary">Tax Paid:</Typography></Grid>
-            <Grid item xs={6}><Typography variant="body2" align="right" color="error.main">{formatCurrency(report.tax_paid)}</Typography></Grid>
+            <Grid size={{ xs: 6 }}><Typography variant="body2" color="text.secondary">Tax Paid:</Typography></Grid>
+            <Grid size={{ xs: 6 }}><Typography variant="body2" align="right" color="error.main">{formatCurrency(report.tax_paid)}</Typography></Grid>
             
-            <Grid item xs={12}><Box sx={{ borderTop: 1, borderColor: 'divider', my: 1 }} /></Grid>
+            <Grid size={{ xs: 12 }}><Box sx={{ borderTop: 1, borderColor: 'divider', my: 1 }} /></Grid>
             
-            <Grid item xs={6}><Typography variant="h6">Net Tax:</Typography></Grid>
-            <Grid item xs={6}><Typography variant="h6" align="right" color={report.net_tax >= 0 ? 'success.main' : 'error.main'}>{formatCurrency(report.net_tax)}</Typography></Grid>
+            <Grid size={{ xs: 6 }}><Typography variant="h6">Net Tax:</Typography></Grid>
+            <Grid size={{ xs: 6 }}><Typography variant="h6" align="right" color={report.net_tax >= 0 ? 'success.main' : 'error.main'}>{formatCurrency(report.net_tax)}</Typography></Grid>
           </Grid>
         </Box>
       </UniversalModal>
@@ -121,7 +121,7 @@ export default function TaxReportModal({ open, onClose, report, onSuccess }: Tax
       }
     >
       <Grid container spacing={2.5}>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             fullWidth
             type="date"
@@ -134,7 +134,7 @@ export default function TaxReportModal({ open, onClose, report, onSuccess }: Tax
             InputLabelProps={{ shrink: true }}
           />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             fullWidth
             type="date"
@@ -148,7 +148,7 @@ export default function TaxReportModal({ open, onClose, report, onSuccess }: Tax
           />
         </Grid>
         {errors.submit && (
-          <Grid item xs={12}>
+          <Grid size={{ xs: 12 }}>
             <div style={{ color: '#d32f2f', fontSize: '0.875rem' }}>{errors.submit}</div>
           </Grid>
         )}

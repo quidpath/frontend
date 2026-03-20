@@ -85,7 +85,7 @@ export default function ReconciliationModal({ open, onClose, onSuccess }: Reconc
       }
     >
       <Grid container spacing={2.5}>
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <TextField
             fullWidth
             select
@@ -103,7 +103,7 @@ export default function ReconciliationModal({ open, onClose, onSuccess }: Reconc
             ))}
           </TextField>
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             fullWidth
             type="date"
@@ -116,7 +116,7 @@ export default function ReconciliationModal({ open, onClose, onSuccess }: Reconc
             InputLabelProps={{ shrink: true }}
           />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             fullWidth
             type="date"
@@ -129,7 +129,7 @@ export default function ReconciliationModal({ open, onClose, onSuccess }: Reconc
             InputLabelProps={{ shrink: true }}
           />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             fullWidth
             type="number"
@@ -138,7 +138,7 @@ export default function ReconciliationModal({ open, onClose, onSuccess }: Reconc
             onChange={(e) => handleChange('opening_balance', Number(e.target.value))}
           />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             fullWidth
             type="number"
@@ -148,7 +148,7 @@ export default function ReconciliationModal({ open, onClose, onSuccess }: Reconc
           />
         </Grid>
         {errors.submit && (
-          <Grid item xs={12}>
+          <Grid size={{ xs: 12 }}>
             <div style={{ color: '#d32f2f', fontSize: '0.875rem' }}>{errors.submit}</div>
           </Grid>
         )}

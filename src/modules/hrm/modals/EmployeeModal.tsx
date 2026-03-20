@@ -55,10 +55,14 @@ export default function EmployeeModal({ open, onClose, employee, onSuccess }: Em
   const handleSubmit = async () => {
     setLoading(true);
     try {
+      const payload = {
+        ...formData,
+        salary: formData.salary ? Number(formData.salary) : undefined,
+      };
       if (employee) {
-        await hrmService.updateEmployee(employee.id, formData);
+        await hrmService.updateEmployee(employee.id, payload);
       } else {
-        await hrmService.createEmployee(formData);
+        await hrmService.createEmployee(payload);
       }
       onSuccess();
     } catch (error) {
@@ -85,28 +89,28 @@ export default function EmployeeModal({ open, onClose, employee, onSuccess }: Em
       }
     >
       <Grid container spacing={2.5}>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField fullWidth label="Full Name" value={formData.full_name} onChange={(e) => setFormData({ ...formData, full_name: e.target.value })} required />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField fullWidth label="Employee ID" value={formData.employee_id} onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })} />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField fullWidth label="Email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} required />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField fullWidth label="Phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField fullWidth label="Department ID" value={formData.department_id} onChange={(e) => setFormData({ ...formData, department_id: e.target.value })} />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField fullWidth label="Position" value={formData.position} onChange={(e) => setFormData({ ...formData, position: e.target.value })} />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField fullWidth label="Join Date" type="date" value={formData.join_date} onChange={(e) => setFormData({ ...formData, join_date: e.target.value })} InputLabelProps={{ shrink: true }} />
         </Grid>
-        <Grid item xs={12} sm={6}>
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField fullWidth label="Salary" type="number" value={formData.salary} onChange={(e) => setFormData({ ...formData, salary: e.target.value })} />
         </Grid>
       </Grid>

@@ -152,7 +152,7 @@ export default function DashboardOverview() {
         <Grid size={{ xs: 6, sm: 3 }}>
           <MetricCard
             label="Low Stock Items"
-            value={inventory?.low_stock_count ?? '—'}
+            value={inventory?.low_stock_items ?? '—'}
             trend="down"
             icon={<InventoryIcon fontSize="small" />}
             color="#1565C0"

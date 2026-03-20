@@ -107,7 +107,7 @@ export default function BankAccountModal({ open, onClose, account, onSuccess }: 
       }
     >
       <Grid container spacing={2.5}>
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <TextField
             fullWidth
             label="Bank Name"
@@ -118,7 +118,7 @@ export default function BankAccountModal({ open, onClose, account, onSuccess }: 
             required
           />
         </Grid>
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <TextField
             fullWidth
             label="Account Name"
@@ -129,7 +129,7 @@ export default function BankAccountModal({ open, onClose, account, onSuccess }: 
             required
           />
         </Grid>
-        <Grid item xs={12} sm={8}>
+        <Grid size={{ xs: 12, sm: 8 }}>
           <TextField
             fullWidth
             label="Account Number"
@@ -140,7 +140,7 @@ export default function BankAccountModal({ open, onClose, account, onSuccess }: 
             required
           />
         </Grid>
-        <Grid item xs={12} sm={4}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <TextField
             fullWidth
             select
@@ -153,7 +153,7 @@ export default function BankAccountModal({ open, onClose, account, onSuccess }: 
             ))}
           </TextField>
         </Grid>
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <FormControlLabel
             control={
               <Checkbox
@@ -164,7 +164,7 @@ export default function BankAccountModal({ open, onClose, account, onSuccess }: 
             label="Set as default account"
           />
         </Grid>
-        <Grid item xs={12}>
+        <Grid size={{ xs: 12 }}>
           <FormControlLabel
             control={
               <Checkbox
@@ -176,7 +176,7 @@ export default function BankAccountModal({ open, onClose, account, onSuccess }: 
           />
         </Grid>
         {errors.submit && (
-          <Grid item xs={12}>
+          <Grid size={{ xs: 12 }}>
             <div style={{ color: '#d32f2f', fontSize: '0.875rem' }}>{errors.submit}</div>
           </Grid>
         )}

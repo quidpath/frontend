@@ -18,8 +18,25 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import AddIcon from '@mui/icons-material/Add';
-import { useOrganizations, useCreateOrganization, useUpdateOrganization, useDeleteOrganization } from '@/hooks/useHRM';
-import { Organization } from '@/services/hrmService';
+import { useQuery } from '@tanstack/react-query';
+import { gatewayClient } from '@/services/apiClient';
+
+interface Organization {
+  id: string;
+  name: string;
+  code?: string;
+  head?: string;
+}
+
+function useOrganizations() {
+  return useQuery<Organization[]>({
+    queryKey: ['organizations'],
+    queryFn: async () => {
+      const { data } = await gatewayClient.get('/api/organizations/');
+      return data?.results ?? data ?? [];
+    },
+  });
+}
 
 const OrganizationManagement: React.FC = () => {
   const { data: organizations, isLoading } = useOrganizations();
