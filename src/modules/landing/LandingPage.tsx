@@ -567,7 +567,7 @@ function PricingSection() {
     },
   ];
 
-  const displayPlans = plans ?? fallbackPlans;
+  const displayPlans = (Array.isArray(plans) ? plans : null) ?? fallbackPlans;
 
   return (
     <Box sx={{ py: 10, backgroundColor: '#FFFFFF' }}>

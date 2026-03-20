@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import authService, { profileToStoredUser } from '@/auth/authService';
 import { useUserStore } from '@/store/userStore';
 
@@ -12,6 +12,7 @@ interface AuthGuardProps {
 
 export default function AuthGuard({ children }: AuthGuardProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const user = useUserStore((s) => s.user);
   const setUser = useUserStore((s) => s.setUser);
   const clearUser = useUserStore((s) => s.clearUser);
@@ -24,7 +25,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     if (!token) {
       clearUser();
       authService.logout();
-      router.replace('/login');
+      router.replace(`/login?next=${encodeURIComponent(pathname)}`);
       return;
     }
 
@@ -39,14 +40,14 @@ export default function AuthGuard({ children }: AuthGuardProps) {
       } catch {
         clearUser();
         authService.logout();
-        router.replace('/login');
+        router.replace(`/login?next=${encodeURIComponent(pathname)}`);
         return;
       }
       setReady(true);
     };
 
     hydrate();
-  }, [user, setUser, clearUser, router]);
+  }, [user, setUser, clearUser, router, pathname]);
 
   if (!ready || !useUserStore.getState().user) return null;
 

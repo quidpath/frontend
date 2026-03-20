@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Box,
   Button,
@@ -21,7 +21,16 @@ import authService, { profileToStoredUser } from '@/auth/authService';
 import { useUserStore } from '@/store/userStore';
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const setUser = useUserStore((s) => s.setUser);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -75,7 +84,8 @@ export default function LoginPage() {
   async function fetchProfileAndRedirect() {
     const { data } = await authService.getProfile();
     setUser(profileToStoredUser(data));
-    router.replace('/dashboard');
+    const next = searchParams.get('next');
+    router.replace(next && next.startsWith('/') ? next : '/dashboard');
   }
 
   return (

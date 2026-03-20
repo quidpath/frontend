@@ -110,8 +110,9 @@ export function usePlans() {
   return useQuery({
     queryKey: ACCOUNTING_KEYS.plans(),
     queryFn: async () => {
-      const { data } = await billingClient.get<{ id: number; name: string; price: string; billing_cycle: string; features: string[]; is_active: boolean; highlighted?: boolean }[]>('/api/billing/plans/');
-      return data ?? [];
+      type Plan = { id: number; name: string; price: string; billing_cycle: string; features: string[]; is_active: boolean; highlighted?: boolean };
+      const { data } = await billingClient.get<Plan[] | { results: Plan[]; count: number }>('/api/billing/plans/');
+      return (Array.isArray(data) ? data : data?.results) ?? [];
     },
     staleTime: 300_000,
   });
