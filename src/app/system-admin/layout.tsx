@@ -4,7 +4,7 @@ import SuperuserGuard from '@/auth/SuperuserGuard';
 
 export default function SystemAdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <AuthGuard requirePermission={false}>
+    <AuthGuard>
       <SuperuserGuard>
         <DashboardLayout>{children}</DashboardLayout>
       </SuperuserGuard>

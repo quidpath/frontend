@@ -3,7 +3,7 @@ import AuthGuard from '@/auth/AuthGuard';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <AuthGuard requirePermission={false}>
+    <AuthGuard>
       <DashboardLayout>{children}</DashboardLayout>
     </AuthGuard>
   );

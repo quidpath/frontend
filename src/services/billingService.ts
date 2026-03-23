@@ -3,33 +3,42 @@ import { billingClient } from './apiClient';
 export interface BillingPlan {
   id: string;
   name: string;
+  tier: string;
+  plan_type: string;
   description: string;
-  price: string;
-  currency: string;
-  billing_cycle: 'monthly' | 'yearly';
-  trial_days: number;
-  features: string[];
-  is_active: boolean;
+  price_monthly: number;
+  price_quarterly?: number;
+  price_yearly?: number;
+  included_users: number;
+  additional_user_price: number;
+  max_users?: number;
+  limits?: Record<string, unknown>;
 }
 
 export interface Subscription {
   id: string;
-  plan: BillingPlan;
+  corporate_id: string;
+  plan_name: string;
+  plan_tier: string;
   status: 'trial' | 'active' | 'suspended' | 'cancelled' | 'expired';
-  start_date: string;
+  billing_cycle: string;
+  total_amount: number;
+  currency: string;
   end_date: string;
-  auto_renew: boolean;
+  next_billing_date?: string;
 }
 
 export interface Invoice {
   id: string;
+  corporate_id: string;
   invoice_number: string;
-  amount: string;
-  currency: string;
   status: 'draft' | 'pending' | 'paid' | 'overdue' | 'cancelled';
+  total_amount: number;
+  currency: string;
   due_date: string;
-  created_at: string;
   paid_at?: string;
+  billing_period_start: string;
+  billing_period_end: string;
 }
 
 export interface Payment {
@@ -37,67 +46,28 @@ export interface Payment {
   amount: string;
   currency: string;
   method: 'mpesa' | 'card' | 'bank_transfer' | 'cash';
-  status: 'pending' | 'completed' | 'failed' | 'refunded';
+  status: 'pending' | 'processing' | 'success' | 'failed' | 'refunded';
   reference: string;
   created_at: string;
 }
 
 export interface AccessCheckResponse {
+  success: boolean;
   has_access: boolean;
-  subscription_status: string;
-  trial_remaining_days?: number;
-  blocked_reason?: string;
+  access_type?: 'trial' | 'subscription' | null;
+  reason?: string;
+  message?: string;
+  trial?: { status: string; days_remaining: number; end_date: string };
+  subscription?: Subscription;
 }
 
-export interface BillingSummary {
-  total_revenue: number;
-  total_outstanding: number;
-  total_overdue: number;
-  active_subscriptions: number;
-  mrr: number;
+export interface PaymentInitiatePayload {
+  plan_id: string;
+  phone_number: string;
+  billing_cycle?: string;
+  subscription_type?: 'individual' | 'organization';
+  corporate_name?: string;
 }
-
-const billingService = {
-  // Access Control
-  checkAccess: () =>
-    billingClient.get<AccessCheckResponse>('/api/billing/access/check/'),
-
-  // Plans
-  getPlans: () =>
-    billingClient.get<BillingPlan[]>('/api/billing/plans/'),
-
-  // Trials
-  createTrial: (planId: string) =>
-    billingClient.post('/api/billing/trials/create/', { plan_id: planId }),
-
-  getTrialStatus: () =>
-    billingClient.get('/api/billing/trials/status/'),
-
-  // Subscriptions
-  createSubscription: (payload: { plan_id: string; promotion_code?: string }) =>
-    billingClient.post<Subscription>('/api/billing/subscriptions/create/', payload),
-
-  getSubscriptionStatus: () =>
-    billingClient.get<Subscription>('/api/billing/subscriptions/status/'),
-
-  // Payments
-  initiatePayment: (payload: { amount: string; method: string; invoice_id?: string }) =>
-    billingClient.post('/api/billing/payments/initiate/', payload),
-
-  checkPaymentStatus: (paymentId: string) =>
-    billingClient.get(`/api/billing/payments/status/?payment_id=${paymentId}`),
-
-  getPaymentHistory: (params?: Record<string, unknown>) =>
-    billingClient.get<PaginatedResponse<Payment>>('/api/billing/payments/history/', { params }),
-
-  // Invoices
-  getInvoices: (params?: Record<string, unknown>) =>
-    billingClient.get<PaginatedResponse<Invoice>>('/api/billing/invoices/', { params }),
-
-  // Summary
-  getSummary: () =>
-    billingClient.get<BillingSummary>('/api/billing/summary/'),
-};
 
 export interface PaginatedResponse<T> {
   count: number;
@@ -105,5 +75,51 @@ export interface PaginatedResponse<T> {
   previous: string | null;
   results: T[];
 }
+
+const billingService = {
+  // Plans — public, GET is fine
+  getPlans: (planType?: string) =>
+    billingClient.get('/api/billing/plans/', { params: planType ? { type: planType } : undefined }),
+
+  // Access check — POST with corporate_id (auto-injected by apiClient interceptor)
+  checkAccess: () =>
+    billingClient.post<AccessCheckResponse>('/api/billing/access/check/', {}),
+
+  // Trials
+  createTrial: (payload: { corporate_name?: string; plan_tier?: string }) =>
+    billingClient.post('/api/billing/trials/create/', payload),
+
+  getTrialStatus: () =>
+    billingClient.post('/api/billing/trials/status/', {}),
+
+  // Subscriptions — POST with corporate_id auto-injected
+  getSubscriptionStatus: () =>
+    billingClient.post<{ success: boolean; data: { subscription: Subscription | null } }>(
+      '/api/billing/subscriptions/status/',
+      {}
+    ),
+
+  createSubscription: (payload: { plan_tier: string; billing_cycle?: string; promotion_code?: string }) =>
+    billingClient.post<Subscription>('/api/billing/subscriptions/create/', payload),
+
+  // Payments — simplified endpoint: plan_id + phone_number
+  initiatePayment: (payload: PaymentInitiatePayload) =>
+    billingClient.post('/api/billing/payments/initiate/', payload),
+
+  checkPaymentStatus: (paymentId: string) =>
+    billingClient.post('/api/billing/payments/status/', { payment_id: paymentId }),
+
+  // POST with corporate_id auto-injected
+  getPaymentHistory: () =>
+    billingClient.post<{ payments: Payment[] }>('/api/billing/payments/history/', {}),
+
+  // Invoices — POST with corporate_id auto-injected
+  getInvoices: () =>
+    billingClient.post<{ invoices: Invoice[]; corporate_id: string }>('/api/billing/invoices/', {}),
+
+  // Promotion validation — public
+  validatePromotion: (payload: { promotion_code: string; amount: number; plan_tier: string }) =>
+    billingClient.post('/api/billing/promotions/validate/', payload),
+};
 
 export default billingService;

@@ -5,6 +5,9 @@ export interface LoginResponse {
   otp_required?: boolean;
   organisation_id?: string | null;
   role?: string | null;
+  payment_required?: boolean;
+  corporate_id?: string | null;
+  message?: string;
 }
 
 /** Backend get_profile user payload */

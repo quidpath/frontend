@@ -52,11 +52,15 @@ function LoginForm() {
         setLoading(false);
         return;
       }
+      // Payment required — go to billing setup, skip profile fetch
+      if (data.payment_required && data.corporate_id) {
+        router.replace(`/settings/billing?corporate_id=${data.corporate_id}&setup=1`);
+        return;
+      }
       await fetchProfileAndRedirect();
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data
-          ?.detail ?? 'Login failed. Check username and password.';
+      const errData = (err as { response?: { data?: Record<string, unknown> } })?.response?.data;
+      const msg = errData?.detail ?? errData?.error ?? errData?.message ?? 'Login failed. Check username and password.';
       setError(typeof msg === 'string' ? msg : JSON.stringify(msg));
     } finally {
       setLoading(false);
@@ -70,11 +74,14 @@ function LoginForm() {
     try {
       const { data } = await authService.verifyOtp(otpCode);
       authService.setTokens(data.access, data.refresh);
+      if (data.payment_required && data.corporate_id) {
+        router.replace(`/settings/billing?corporate_id=${data.corporate_id}&setup=1`);
+        return;
+      }
       await fetchProfileAndRedirect();
     } catch (err: unknown) {
-      const msg =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data
-          ?.detail ?? 'Invalid OTP.';
+      const errData = (err as { response?: { data?: Record<string, unknown> } })?.response?.data;
+      const msg = errData?.detail ?? errData?.error ?? errData?.message ?? 'Invalid OTP.';
       setError(typeof msg === 'string' ? msg : JSON.stringify(msg));
     } finally {
       setLoading(false);
