@@ -40,6 +40,10 @@ const authService = {
   verifyOtp: (code: string) =>
     gatewayClient.post<LoginResponse>('/verify-otp/', { otp: code }),
 
+  /** POST /resend-activation/ to resend OTP code. */
+  resendActivation: (email: string) =>
+    gatewayClient.post<{ message: string }>('/resend-activation/', { email }),
+
   refresh: (refresh: string) =>
     gatewayClient.post<{ access: string }>('/token/refresh/', { refresh }),
 

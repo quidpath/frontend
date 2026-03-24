@@ -42,6 +42,7 @@ export default function SignUpIndividualPage() {
         password,
         plan_tier: planTier,
       });
+      
       setSuccess(true);
     } catch (err: unknown) {
       const res = (err as { response?: { data?: { error?: string } } })?.response?.data;
@@ -58,9 +59,9 @@ export default function SignUpIndividualPage() {
         <Paper sx={{ maxWidth: 400, p: 3, textAlign: 'center' }}>
           <Typography variant="h6" color="success.main" gutterBottom>Check your email</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            We sent you an OTP. Verify it to activate your account, then sign in.
+            We've sent you an activation link. Click the link in your email to activate your account and proceed to payment.
           </Typography>
-          <Button component={Link} href="/login" variant="contained">Go to sign in</Button>
+          <Button component={Link} href="/login" variant="outlined">Back to sign in</Button>
         </Paper>
       </Box>
     );
