@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Box,
@@ -14,7 +14,7 @@ import CheckCircleOutline from '@mui/icons-material/CheckCircleOutline';
 import ErrorOutline from '@mui/icons-material/ErrorOutline';
 import { gatewayClient } from '@/services/apiClient';
 
-export default function ActivateAccountPage() {
+function ActivateAccountContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
@@ -156,4 +156,24 @@ export default function ActivateAccountPage() {
   }
 
   return null;
+}
+
+export default function ActivateAccountPage() {
+  return (
+    <Suspense fallback={
+      <Box
+        sx={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          p: 2,
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    }>
+      <ActivateAccountContent />
+    </Suspense>
+  );
 }
