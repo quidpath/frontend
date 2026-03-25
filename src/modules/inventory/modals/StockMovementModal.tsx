@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Button, TextField, Grid, MenuItem } from '@mui/material';
+import { Button, TextField, Grid, MenuItem, CircularProgress } from '@mui/material';
 import UniversalModal from '@/components/ui/UniversalModal';
 import { StockMovement } from '@/services/inventoryService';
 import inventoryService from '@/services/inventoryService';
+import { useProducts, useWarehouses } from '@/hooks/useInventory';
 
 interface StockMovementModalProps {
   open: boolean;
@@ -17,6 +18,10 @@ const MOVEMENT_TYPES = ['in', 'out', 'adjustment', 'transfer'];
 
 export default function StockMovementModal({ open, onClose, movement, onSuccess }: StockMovementModalProps) {
   const [loading, setLoading] = useState(false);
+  const { data: productsData } = useProducts();
+  const { data: warehousesData } = useWarehouses();
+  const products = (productsData as any)?.results ?? (productsData as any)?.products ?? [];
+  const warehouses = (warehousesData as any)?.results ?? (warehousesData as any)?.warehouses ?? [];
   const [formData, setFormData] = useState({
     product_id: '',
     warehouse_id: '',
@@ -85,10 +90,20 @@ export default function StockMovementModal({ open, onClose, movement, onSuccess 
     >
       <Grid container spacing={2.5}>
         <Grid size={{ xs: 12 }}>
-          <TextField fullWidth label="Product ID" value={formData.product_id} onChange={(e) => setFormData({ ...formData, product_id: e.target.value })} required />
+          <TextField fullWidth select label="Product" value={formData.product_id} onChange={(e) => setFormData({ ...formData, product_id: e.target.value })} required>
+            {products.length === 0
+              ? <MenuItem disabled value="">No products found</MenuItem>
+              : products.map((p: any) => <MenuItem key={p.id} value={p.id}>{p.name} ({p.sku})</MenuItem>)
+            }
+          </TextField>
         </Grid>
         <Grid size={{ xs: 12 }}>
-          <TextField fullWidth label="Warehouse ID" value={formData.warehouse_id} onChange={(e) => setFormData({ ...formData, warehouse_id: e.target.value })} required />
+          <TextField fullWidth select label="Warehouse" value={formData.warehouse_id} onChange={(e) => setFormData({ ...formData, warehouse_id: e.target.value })} required>
+            {warehouses.length === 0
+              ? <MenuItem disabled value="">No warehouses found</MenuItem>
+              : warehouses.map((w: any) => <MenuItem key={w.id} value={w.id}>{w.name}</MenuItem>)
+            }
+          </TextField>
         </Grid>
         <Grid size={{ xs: 12, sm: 6 }}>
           <TextField fullWidth select label="Movement Type" value={formData.movement_type} onChange={(e) => setFormData({ ...formData, movement_type: e.target.value as any })}>

@@ -9,6 +9,7 @@ import {
   useInitiatePayment,
   useTrialStatus,
 } from '@/hooks/useBilling';
+import { formatCurrency } from '@/utils/formatters';
 
 export default function BillingPage() {
   const [phone, setPhone] = useState('');
@@ -78,7 +79,7 @@ export default function BillingPage() {
           <p><strong>Plan:</strong> {subscription.plan_name} ({subscription.plan_tier})</p>
           <p><strong>Status:</strong> {subscription.status}</p>
           <p><strong>Billing Cycle:</strong> {subscription.billing_cycle}</p>
-          <p><strong>Amount:</strong> {subscription.currency} {subscription.total_amount?.toLocaleString()}</p>
+          <p><strong>Amount:</strong> {formatCurrency(subscription.total_amount ?? 0)}</p>
           <p><strong>Expires:</strong> {new Date(subscription.end_date).toLocaleDateString()}</p>
         </section>
       )}
@@ -105,7 +106,7 @@ export default function BillingPage() {
             <option value="">Select a plan</option>
             {(plans as any[]).map((p: any) => (
               <option key={p.id} value={p.id}>
-                {p.name} — KES {p.price_monthly?.toLocaleString()}/mo
+                {p.name} — {formatCurrency(p.price_monthly ?? 0)}/mo
               </option>
             ))}
           </select>
@@ -159,7 +160,7 @@ export default function BillingPage() {
               {(invoices as any[]).map((inv: any) => (
                 <tr key={inv.id} style={{ borderBottom: '1px solid #f0f0f0' }}>
                   <td style={{ padding: '0.5rem' }}>{inv.invoice_number}</td>
-                  <td style={{ padding: '0.5rem' }}>{inv.currency} {Number(inv.total_amount).toLocaleString()}</td>
+                  <td style={{ padding: '0.5rem' }}>{formatCurrency(Number(inv.total_amount))}</td>
                   <td style={{ padding: '0.5rem' }}>
                     <span style={{ color: inv.status === 'paid' ? 'green' : inv.status === 'overdue' ? 'red' : '#555' }}>
                       {inv.status}

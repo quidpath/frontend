@@ -5,6 +5,8 @@ import { Button, TextField, Grid, MenuItem } from '@mui/material';
 import UniversalModal from '@/components/ui/UniversalModal';
 import { Task } from '@/services/projectsService';
 import projectsService from '@/services/projectsService';
+import { useProjects } from '@/hooks/useProjects';
+import { useEmployees } from '@/hooks/useHRM';
 
 interface TaskModalProps {
   open: boolean;
@@ -18,6 +20,10 @@ const TASK_PRIORITIES = ['low', 'medium', 'high', 'urgent'];
 
 export default function TaskModal({ open, onClose, task, onSuccess }: TaskModalProps) {
   const [loading, setLoading] = useState(false);
+  const { data: projectsData } = useProjects();
+  const { data: employeesData } = useEmployees();
+  const projects = (projectsData as any)?.results ?? (projectsData as any)?.projects ?? [];
+  const employees = (employeesData as any)?.results ?? (employeesData as any)?.employees ?? [];
   const [formData, setFormData] = useState({
     project_id: '',
     title: '',
@@ -91,7 +97,12 @@ export default function TaskModal({ open, onClose, task, onSuccess }: TaskModalP
     >
       <Grid container spacing={2.5}>
         <Grid size={{ xs: 12 }}>
-          <TextField fullWidth label="Project ID" value={formData.project_id} onChange={(e) => setFormData({ ...formData, project_id: e.target.value })} required />
+          <TextField fullWidth select label="Project" value={formData.project_id} onChange={(e) => setFormData({ ...formData, project_id: e.target.value })} required>
+            {projects.length === 0
+              ? <MenuItem disabled value="">No projects found</MenuItem>
+              : projects.map((p: any) => <MenuItem key={p.id} value={String(p.id)}>{p.name}</MenuItem>)
+            }
+          </TextField>
         </Grid>
         <Grid size={{ xs: 12 }}>
           <TextField fullWidth label="Task Title" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} required />
@@ -114,7 +125,10 @@ export default function TaskModal({ open, onClose, task, onSuccess }: TaskModalP
           </TextField>
         </Grid>
         <Grid size={{ xs: 12, sm: 6 }}>
-          <TextField fullWidth label="Assigned To" value={formData.assigned_to} onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })} />
+          <TextField fullWidth select label="Assigned To" value={formData.assigned_to} onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })}>
+            <MenuItem value="">Unassigned</MenuItem>
+            {employees.map((e: any) => <MenuItem key={e.id} value={e.id}>{e.full_name}</MenuItem>)}
+          </TextField>
         </Grid>
         <Grid size={{ xs: 12, sm: 6 }}>
           <TextField fullWidth label="Due Date" type="date" value={formData.due_date} onChange={(e) => setFormData({ ...formData, due_date: e.target.value })} InputLabelProps={{ shrink: true }} />

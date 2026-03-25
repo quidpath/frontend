@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query';
-import { billingClient } from '@/services/apiClient';
 import accountingService, {
   AccountingSummary,
   Invoice,
@@ -105,14 +104,16 @@ export function useAccountingSummary() {
   return { data: summary, isLoading };
 }
 
-/** Billing plans (subscription) — uses billing service, not main gateway. */
+/** Billing plans — use the billing hook from useBilling instead. */
 export function usePlans() {
   return useQuery({
     queryKey: ACCOUNTING_KEYS.plans(),
     queryFn: async () => {
+      // Plans are fetched via the billing gateway proxy
+      const { gatewayClient } = await import('@/services/apiClient');
       type Plan = { id: number; name: string; price: string; billing_cycle: string; features: string[]; is_active: boolean; highlighted?: boolean };
-      const { data } = await billingClient.get<Plan[] | { results: Plan[]; count: number }>('/api/billing/plans/');
-      return (Array.isArray(data) ? data : data?.results) ?? [];
+      const { data } = await gatewayClient.get<{ data: { plans: Plan[] } }>('/api/billing/plans/');
+      return (data as any)?.data?.plans ?? [];
     },
     staleTime: 300_000,
   });

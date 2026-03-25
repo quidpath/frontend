@@ -5,6 +5,7 @@ import { Button, TextField, Grid, MenuItem, InputAdornment } from '@mui/material
 import UniversalModal from '@/components/ui/UniversalModal';
 import { Deal } from '@/services/crmService';
 import crmService from '@/services/crmService';
+import { useContacts } from '@/hooks/useCRM';
 
 interface DealModalProps {
   open: boolean;
@@ -17,6 +18,8 @@ const DEAL_STAGES = ['Qualification', 'Proposal', 'Negotiation', 'Closed Won', '
 
 export default function DealModal({ open, onClose, deal, onSuccess }: DealModalProps) {
   const [loading, setLoading] = useState(false);
+  const { data: contactsData } = useContacts();
+  const contacts = (contactsData as any)?.results ?? (contactsData as any)?.contacts ?? [];
   const [formData, setFormData] = useState({
     title: '',
     contact_id: '',
@@ -96,7 +99,12 @@ export default function DealModal({ open, onClose, deal, onSuccess }: DealModalP
           <TextField fullWidth label="Deal Title" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} required />
         </Grid>
         <Grid size={{ xs: 12, sm: 6 }}>
-          <TextField fullWidth label="Contact ID" value={formData.contact_id} onChange={(e) => setFormData({ ...formData, contact_id: e.target.value })} required />
+          <TextField fullWidth select label="Contact" value={formData.contact_id} onChange={(e) => setFormData({ ...formData, contact_id: e.target.value })} required>
+            {contacts.length === 0
+              ? <MenuItem disabled value="">No contacts found</MenuItem>
+              : contacts.map((c: any) => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)
+            }
+          </TextField>
         </Grid>
         <Grid size={{ xs: 12, sm: 6 }}>
           <TextField fullWidth select label="Stage" value={formData.stage} onChange={(e) => setFormData({ ...formData, stage: e.target.value })}>

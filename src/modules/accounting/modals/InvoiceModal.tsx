@@ -21,6 +21,9 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import UniversalModal from '@/components/ui/UniversalModal';
 import { Invoice, InvoiceLine } from '@/services/accountingService';
 import accountingService from '@/services/accountingService';
+import { useTaxRates } from '@/hooks/useTax';
+import { useContacts } from '@/hooks/useContacts';
+import { formatCurrency } from '@/utils/formatters';
 
 interface InvoiceModalProps {
   open: boolean;
@@ -37,14 +40,6 @@ const PAYMENT_TERMS = [
   { value: 'due_on_receipt', label: 'Due on Receipt' },
 ];
 
-const TAX_RATES = [
-  { value: '0', label: 'No Tax (0%)' },
-  { value: '5', label: 'VAT 5%' },
-  { value: '10', label: 'VAT 10%' },
-  { value: '15', label: 'VAT 15%' },
-  { value: '16', label: 'VAT 16%' },
-];
-
 export default function InvoiceModal({
   open,
   onClose,
@@ -53,6 +48,10 @@ export default function InvoiceModal({
 }: InvoiceModalProps) {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const { data: taxRatesData } = useTaxRates();
+  const { data: contactsData } = useContacts();
+  const taxRates = (taxRatesData as any)?.results ?? (taxRatesData as any)?.tax_rates ?? [];
+  const contacts = (contactsData as any)?.results ?? (contactsData as any)?.contacts ?? [];
   const [formData, setFormData] = useState({
     customer: '',
     customer_id: '',
@@ -238,14 +237,23 @@ export default function InvoiceModal({
         <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             fullWidth
+            select
             label="Customer"
-            value={formData.customer}
-            onChange={(e) => handleChange('customer', e.target.value)}
+            value={formData.customer_id || formData.customer}
+            onChange={(e) => {
+              const contact = contacts.find((c: any) => c.id === e.target.value);
+              handleChange('customer_id', e.target.value);
+              handleChange('customer', contact?.name ?? e.target.value);
+            }}
             error={!!errors.customer}
             helperText={errors.customer}
-            placeholder="Select or enter customer name"
             required
-          />
+          >
+            {contacts.length === 0
+              ? <MenuItem disabled value="">No contacts found</MenuItem>
+              : contacts.map((c: any) => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)
+            }
+          </TextField>
         </Grid>
 
         <Grid size={{ xs: 12, sm: 6 }}>
@@ -377,16 +385,20 @@ export default function InvoiceModal({
                         value={line.tax_amount || '0'}
                         onChange={(e) => handleLineChange(index, 'tax_amount', Number(e.target.value))}
                       >
-                        {TAX_RATES.map((rate) => (
-                          <MenuItem key={rate.value} value={rate.value}>
-                            {rate.label}
-                          </MenuItem>
-                        ))}
+                        <MenuItem value="0">No Tax (0%)</MenuItem>
+                        {taxRates.length === 0
+                          ? null
+                          : taxRates.map((r: any) => (
+                              <MenuItem key={r.id} value={String(r.rate)}>
+                                {r.name} ({r.rate}%)
+                              </MenuItem>
+                            ))
+                        }
                       </TextField>
                     </TableCell>
                     <TableCell align="right">
                       <Typography variant="body2" fontWeight={600}>
-                        ${(line.total || 0).toFixed(2)}
+                        {formatCurrency(line.total || 0)}
                       </Typography>
                     </TableCell>
                     <TableCell>
@@ -417,23 +429,23 @@ export default function InvoiceModal({
             <Box sx={{ minWidth: 300 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                 <Typography variant="body2">Subtotal:</Typography>
-                <Typography variant="body2">${totals.subtotal.toFixed(2)}</Typography>
+                <Typography variant="body2">{formatCurrency(totals.subtotal)}</Typography>
               </Box>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                 <Typography variant="body2">Discount:</Typography>
                 <Typography variant="body2" color="error.main">
-                  -${totals.totalDiscount.toFixed(2)}
+                  -{formatCurrency(totals.totalDiscount)}
                 </Typography>
               </Box>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                 <Typography variant="body2">Tax:</Typography>
-                <Typography variant="body2">${totals.taxTotal.toFixed(2)}</Typography>
+                <Typography variant="body2">{formatCurrency(totals.taxTotal)}</Typography>
               </Box>
               <Divider sx={{ my: 1 }} />
               <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                 <Typography variant="subtitle1" fontWeight={700}>Total:</Typography>
                 <Typography variant="subtitle1" fontWeight={700}>
-                  ${totals.total.toFixed(2)}
+                  {formatCurrency(totals.total)}
                 </Typography>
               </Box>
             </Box>

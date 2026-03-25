@@ -1,4 +1,9 @@
-import { billingClient } from './apiClient';
+/**
+ * All billing calls go through the main gateway (/api/billing/*).
+ * The gateway authenticates the user JWT and forwards to the billing
+ * microservice using X-Service-Key — no direct frontend→billing calls.
+ */
+import { gatewayClient } from './apiClient';
 
 export interface BillingPlan {
   id: string;
@@ -77,49 +82,48 @@ export interface PaginatedResponse<T> {
 }
 
 const billingService = {
-  // Plans — public, GET is fine
+  // Plans — public GET
   getPlans: (planType?: string) =>
-    billingClient.get('/api/billing/plans/', { params: planType ? { type: planType } : undefined }),
+    gatewayClient.get('/api/billing/plans/', { params: planType ? { type: planType } : undefined }),
 
-  // Access check — POST with corporate_id (auto-injected by apiClient interceptor)
+  // Access check
   checkAccess: () =>
-    billingClient.post<AccessCheckResponse>('/api/billing/access/check/', {}),
+    gatewayClient.post<AccessCheckResponse>('/api/billing/access/check/', {}),
 
   // Trials
   createTrial: (payload: { corporate_name?: string; plan_tier?: string }) =>
-    billingClient.post('/api/billing/trials/create/', payload),
+    gatewayClient.post('/api/billing/trials/create/', payload),
 
   getTrialStatus: () =>
-    billingClient.post('/api/billing/trials/status/', {}),
+    gatewayClient.post('/api/billing/trials/status/', {}),
 
-  // Subscriptions — POST with corporate_id auto-injected
+  // Subscriptions
   getSubscriptionStatus: () =>
-    billingClient.post<{ success: boolean; data: { subscription: Subscription | null } }>(
+    gatewayClient.post<{ success: boolean; data: { subscription: Subscription | null } }>(
       '/api/billing/subscriptions/status/',
       {}
     ),
 
   createSubscription: (payload: { plan_tier: string; billing_cycle?: string; promotion_code?: string }) =>
-    billingClient.post<Subscription>('/api/billing/subscriptions/create/', payload),
+    gatewayClient.post<Subscription>('/api/billing/subscriptions/create/', payload),
 
-  // Payments — simplified endpoint: plan_id + phone_number
+  // Payments — plan_id based (creates subscription + invoice internally)
   initiatePayment: (payload: PaymentInitiatePayload) =>
-    billingClient.post('/api/billing/payments/initiate/', payload),
+    gatewayClient.post('/api/billing/payments/initiate/', payload),
 
   checkPaymentStatus: (paymentId: string) =>
-    billingClient.post('/api/billing/payments/status/', { payment_id: paymentId }),
+    gatewayClient.post('/api/billing/payments/status/', { payment_id: paymentId }),
 
-  // POST with corporate_id auto-injected
   getPaymentHistory: () =>
-    billingClient.post<{ payments: Payment[] }>('/api/billing/payments/history/', {}),
+    gatewayClient.post<{ payments: Payment[] }>('/api/billing/payments/history/', {}),
 
-  // Invoices — POST with corporate_id auto-injected
+  // Invoices
   getInvoices: () =>
-    billingClient.post<{ invoices: Invoice[]; corporate_id: string }>('/api/billing/invoices/', {}),
+    gatewayClient.post<{ invoices: Invoice[]; corporate_id: string }>('/api/billing/invoices/', {}),
 
-  // Promotion validation — public
+  // Promotions — public
   validatePromotion: (payload: { promotion_code: string; amount: number; plan_tier: string }) =>
-    billingClient.post('/api/billing/promotions/validate/', payload),
+    gatewayClient.post('/api/billing/promotions/validate/', payload),
 };
 
 export default billingService;

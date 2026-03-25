@@ -5,6 +5,7 @@ import { Button, TextField, Grid, MenuItem } from '@mui/material';
 import UniversalModal from '@/components/ui/UniversalModal';
 import { LeaveRequest } from '@/services/hrmService';
 import hrmService from '@/services/hrmService';
+import { useEmployees } from '@/hooks/useHRM';
 
 interface LeaveRequestModalProps {
   open: boolean;
@@ -17,6 +18,8 @@ const LEAVE_TYPES = ['Annual', 'Sick', 'Maternity', 'Paternity', 'Unpaid', 'Othe
 
 export default function LeaveRequestModal({ open, onClose, leaveRequest, onSuccess }: LeaveRequestModalProps) {
   const [loading, setLoading] = useState(false);
+  const { data: employeesData } = useEmployees();
+  const employees = (employeesData as any)?.results ?? (employeesData as any)?.employees ?? [];
   const [formData, setFormData] = useState({
     employee_id: '',
     leave_type: 'Annual',
@@ -79,7 +82,12 @@ export default function LeaveRequestModal({ open, onClose, leaveRequest, onSucce
     >
       <Grid container spacing={2.5}>
         <Grid size={{ xs: 12 }}>
-          <TextField fullWidth label="Employee ID" value={formData.employee_id} onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })} required />
+          <TextField fullWidth select label="Employee" value={formData.employee_id} onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })} required>
+            {employees.length === 0
+              ? <MenuItem disabled value="">No employees found</MenuItem>
+              : employees.map((e: any) => <MenuItem key={e.id} value={e.id}>{e.full_name}</MenuItem>)
+            }
+          </TextField>
         </Grid>
         <Grid size={{ xs: 12 }}>
           <TextField fullWidth select label="Leave Type" value={formData.leave_type} onChange={(e) => setFormData({ ...formData, leave_type: e.target.value })}>

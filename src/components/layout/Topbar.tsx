@@ -35,6 +35,9 @@ import authService from '@/auth/authService';
 import QuickAccess from '@/components/ui/QuickAccess';
 import { useNotificationBadge, useNotifications, useMarkAllNotificationsAsRead } from '@/hooks/useNotifications';
 import { formatDistanceToNow } from 'date-fns';
+import CurrencySwitcher from '@/components/ui/CurrencySwitcher';
+import FAQModal from '@/modules/help/modals/FAQModal';
+import ContactSupportModal from '@/modules/help/modals/ContactSupportModal';
 
 interface TopbarProps {
   onMobileMenuToggle?: () => void;
@@ -50,6 +53,9 @@ export default function Topbar({ onMobileMenuToggle }: TopbarProps) {
   const markAllAsReadMutation = useMarkAllNotificationsAsRead();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [notifAnchor, setNotifAnchor] = useState<null | HTMLElement>(null);
+  const [helpAnchor, setHelpAnchor] = useState<null | HTMLElement>(null);
+  const [faqModalOpen, setFaqModalOpen] = useState(false);
+  const [contactModalOpen, setContactModalOpen] = useState(false);
 
   const handleLogout = () => {
     setAnchorEl(null);
@@ -158,10 +164,16 @@ export default function Topbar({ onMobileMenuToggle }: TopbarProps) {
           </Tooltip>
 
           <Tooltip title="Help">
-            <IconButton size="small" sx={{ color: 'text.secondary' }}>
+            <IconButton 
+              size="small" 
+              sx={{ color: 'text.secondary' }}
+              onClick={(e) => setHelpAnchor(e.currentTarget)}
+            >
               <HelpOutlineIcon fontSize="small" />
             </IconButton>
           </Tooltip>
+
+          <CurrencySwitcher />
 
           <Divider orientation="vertical" flexItem sx={{ mx: 0.5, my: 1.5 }} />
 
@@ -254,6 +266,18 @@ export default function Topbar({ onMobileMenuToggle }: TopbarProps) {
           <ListItemIcon><PersonIcon fontSize="small" /></ListItemIcon>
           <Typography variant="body2">Profile</Typography>
         </MenuItem>
+        {roleName === 'SUPERADMIN' && (
+          <MenuItem 
+            onClick={() => {
+              setAnchorEl(null);
+              router.push('/account');
+            }} 
+            sx={{ gap: 1.5, py: 1 }}
+          >
+            <ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>
+            <Typography variant="body2">Account</Typography>
+          </MenuItem>
+        )}
         <MenuItem onClick={() => setAnchorEl(null)} sx={{ gap: 1.5, py: 1 }}>
           <ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>
           <Typography variant="body2">Settings</Typography>
@@ -335,6 +359,65 @@ export default function Topbar({ onMobileMenuToggle }: TopbarProps) {
           </Box>
         )}
       </Menu>
+
+      {/* Help Menu */}
+      <Menu
+        anchorEl={helpAnchor}
+        open={Boolean(helpAnchor)}
+        onClose={() => setHelpAnchor(null)}
+        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+        PaperProps={{
+          elevation: 4,
+          sx: { mt: 0.5, minWidth: 220, borderRadius: 2, border: '1px solid', borderColor: 'divider' },
+        }}
+      >
+        <Box sx={{ px: 2, py: 1.5 }}>
+          <Typography variant="subtitle2" fontWeight={600}>Help & Support</Typography>
+          <Typography variant="caption" color="text.secondary">Get help and resources</Typography>
+        </Box>
+        <Divider />
+        <MenuItem 
+          onClick={() => {
+            setHelpAnchor(null);
+            router.push('/help');
+          }} 
+          sx={{ gap: 1.5, py: 1 }}
+        >
+          <ListItemIcon><HelpOutlineIcon fontSize="small" /></ListItemIcon>
+          <Typography variant="body2">Help Center</Typography>
+        </MenuItem>
+        <MenuItem 
+          onClick={() => {
+            setHelpAnchor(null);
+            setFaqModalOpen(true);
+          }} 
+          sx={{ gap: 1.5, py: 1 }}
+        >
+          <ListItemIcon><HelpOutlineIcon fontSize="small" /></ListItemIcon>
+          <Typography variant="body2">FAQs</Typography>
+        </MenuItem>
+        <MenuItem 
+          onClick={() => {
+            setHelpAnchor(null);
+            setContactModalOpen(true);
+          }} 
+          sx={{ gap: 1.5, py: 1 }}
+        >
+          <ListItemIcon><HelpOutlineIcon fontSize="small" /></ListItemIcon>
+          <Typography variant="body2">Contact Support</Typography>
+        </MenuItem>
+        <Divider />
+        <Box sx={{ px: 2, py: 1.5 }}>
+          <Typography variant="caption" color="text.secondary" display="block">
+            Email: quidpath@gmail.com
+          </Typography>
+        </Box>
+      </Menu>
+
+      {/* Help Modals */}
+      <FAQModal open={faqModalOpen} onClose={() => setFaqModalOpen(false)} />
+      <ContactSupportModal open={contactModalOpen} onClose={() => setContactModalOpen(false)} />
 
     </AppBar>
   );

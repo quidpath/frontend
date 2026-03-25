@@ -148,6 +148,22 @@ function createServiceClient(baseURL: string, isGateway = false): AxiosInstance 
         window.location.href = '/unauthorized';
       }
 
+      // 402 = billing middleware blocked the request — redirect to appropriate billing page
+      if (error.response?.status === 402 && typeof window !== 'undefined') {
+        const data = error.response.data as Record<string, unknown>;
+        const currentPath = window.location.pathname;
+        if (!currentPath.startsWith('/billing-setup') && !currentPath.startsWith('/payment-required')) {
+          if (data?.requires_phone) {
+            window.location.href = '/billing-setup';
+          } else if (data?.requires_payment) {
+            window.location.href = '/payment-required';
+          } else {
+            // Default: org needs to set up billing (phone + trial)
+            window.location.href = '/billing-setup';
+          }
+        }
+      }
+
       return Promise.reject(error);
     }
   );

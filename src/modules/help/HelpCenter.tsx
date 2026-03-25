@@ -1,135 +1,208 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Box, Grid, Card, CardContent, Typography, TextField, InputAdornment, List, ListItem, ListItemText, Accordion, AccordionSummary, AccordionDetails } from '@mui/material';
+import {
+  Box,
+  Grid,
+  Card,
+  CardContent,
+  Typography,
+  Button,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Chip,
+  Stack,
+} from '@mui/material';
 import HelpIcon from '@mui/icons-material/Help';
-import SearchIcon from '@mui/icons-material/Search';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import MenuBookIcon from '@mui/icons-material/MenuBook';
+import QuizIcon from '@mui/icons-material/Quiz';
+import EmailIcon from '@mui/icons-material/Email';
+import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
+import CodeIcon from '@mui/icons-material/Code';
+import FeedbackIcon from '@mui/icons-material/Feedback';
 import PageHeader from '@/components/ui/PageHeader';
+import ContactSupportModal from './modals/ContactSupportModal';
+import UserGuideModal from './modals/UserGuideModal';
+import FAQModal from './modals/FAQModal';
 
 export default function HelpCenter() {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [contactModalOpen, setContactModalOpen] = useState(false);
+  const [guideModalOpen, setGuideModalOpen] = useState(false);
+  const [faqModalOpen, setFaqModalOpen] = useState(false);
 
-  const faqs = [
+  const quickLinks = [
     {
-      category: 'Getting Started',
-      questions: [
-        { q: 'How do I create my first invoice?', a: 'Navigate to Accounting > Invoices and click "New Invoice". Fill in customer details, add line items, and save.' },
-        { q: 'How do I add a new employee?', a: 'Go to HRM > Employees and click "New Employee". Enter employee information and assign to a department.' },
-        { q: 'How do I set up bank accounts?', a: 'Visit Banking > Accounts and click "New Account". Enter your bank details and set as default if needed.' },
-      ],
+      icon: <MenuBookIcon />,
+      title: 'User Guide',
+      description: 'Complete documentation for all modules',
+      action: () => setGuideModalOpen(true),
+      color: '#4CAF50',
     },
     {
-      category: 'Accounting',
-      questions: [
-        { q: 'How do I record an expense?', a: 'Go to Accounting > Expenses, click "New Expense", select category, enter amount and details.' },
-        { q: 'How do I reconcile bank statements?', a: 'Navigate to Banking > Reconciliation, select account and period, then match transactions.' },
-        { q: 'How do I generate financial reports?', a: 'Visit Analytics or Reports section, select report type, choose date range, and generate.' },
-      ],
+      icon: <QuizIcon />,
+      title: 'FAQs',
+      description: 'Answers to frequently asked questions',
+      action: () => setFaqModalOpen(true),
+      color: '#2196F3',
     },
     {
-      category: 'Sales & CRM',
-      questions: [
-        { q: 'How do I track deals?', a: 'Go to CRM > Deals, create new deal, set stage and probability, track through pipeline.' },
-        { q: 'How do I convert a quote to invoice?', a: 'Open the quote, click action menu, select "Convert to Invoice".' },
-        { q: 'How do I manage customer contacts?', a: 'Use Contacts module to add customers, or CRM module for leads and prospects.' },
-      ],
+      icon: <EmailIcon />,
+      title: 'Contact Support',
+      description: 'Get help from our support team',
+      action: () => setContactModalOpen(true),
+      color: '#FF9800',
     },
     {
-      category: 'Inventory & POS',
-      questions: [
-        { q: 'How do I add products?', a: 'Navigate to Inventory > Products, click "New Product", enter details, pricing, and stock levels.' },
-        { q: 'How do I process a POS sale?', a: 'Go to POS, ensure session is open, click "New Order", add items, select payment method.' },
-        { q: 'How do I track stock movements?', a: 'Inventory > Stock Movements shows all transfers, adjustments, and transactions.' },
-      ],
+      icon: <VideoLibraryIcon />,
+      title: 'Video Tutorials',
+      description: 'Step-by-step video guides',
+      action: () => window.open('https://youtube.com/@quidpath', '_blank'),
+      color: '#E91E63',
     },
     {
-      category: 'HRM & Payroll',
-      questions: [
-        { q: 'How do I run payroll?', a: 'Go to HRM > Payroll, click "New Pay Run", select period and employees, review and process.' },
-        { q: 'How do I approve leave requests?', a: 'HRM > Leave shows pending requests. Click action menu and approve or reject.' },
-        { q: 'How do I manage departments?', a: 'HRM > Departments allows you to create and manage organizational structure.' },
-      ],
+      icon: <CodeIcon />,
+      title: 'API Documentation',
+      description: 'Developer resources and API reference',
+      action: () => window.open('/api/docs', '_blank'),
+      color: '#9C27B0',
     },
+    {
+      icon: <FeedbackIcon />,
+      title: 'Send Feedback',
+      description: 'Share your ideas and suggestions',
+      action: () => setContactModalOpen(true),
+      color: '#00BCD4',
+    },
+  ];
+
+  const popularTopics = [
+    { title: 'Creating your first invoice', category: 'Accounting' },
+    { title: 'Setting up employees', category: 'HRM' },
+    { title: 'Processing POS sales', category: 'POS' },
+    { title: 'Managing inventory', category: 'Inventory' },
+    { title: 'Tracking deals in CRM', category: 'CRM' },
+    { title: 'Running payroll', category: 'HRM' },
+    { title: 'Generating reports', category: 'Analytics' },
+    { title: 'User permissions', category: 'Settings' },
   ];
 
   return (
     <Box>
       <PageHeader
         title="Help & Support"
-        subtitle="Documentation, FAQs, and support resources"
+        subtitle="Get the help you need to make the most of QuidPath"
         breadcrumbs={[{ label: 'Home', href: '/dashboard' }, { label: 'Help' }]}
         icon={<HelpIcon sx={{ fontSize: 26 }} />}
         color="#FF9800"
       />
 
       <Grid container spacing={2.5}>
-        <Grid size={{ xs: 12 }}>
-          <TextField
-            fullWidth
-            placeholder="Search for help..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon />
-                </InputAdornment>
-              ),
-            }}
-          />
-        </Grid>
+        {/* Quick Access Cards */}
+        {quickLinks.map((link, idx) => (
+          <Grid key={idx} size={{ xs: 12, sm: 6, md: 4 }}>
+            <Card
+              sx={{
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                '&:hover': {
+                  transform: 'translateY(-4px)',
+                  boxShadow: 4,
+                },
+              }}
+              onClick={link.action}
+            >
+              <CardContent>
+                <Box
+                  sx={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 2,
+                    bgcolor: link.color,
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    mb: 2,
+                  }}
+                >
+                  {link.icon}
+                </Box>
+                <Typography variant="h6" fontWeight={600} gutterBottom>
+                  {link.title}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {link.description}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        ))}
 
-        <Grid size={{ xs: 12, md: 4 }}>
+        {/* Popular Topics */}
+        <Grid size={{ xs: 12 }}>
           <Card>
             <CardContent>
-              <Typography variant="h6" gutterBottom>Quick Links</Typography>
-              <List>
-                <ListItem component="button" sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}>
-                  <ListItemText primary="User Guide" secondary="Complete system documentation" />
-                </ListItem>
-                <ListItem component="button" sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}>
-                  <ListItemText primary="Video Tutorials" secondary="Step-by-step video guides" />
-                </ListItem>
-                <ListItem component="button" sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}>
-                  <ListItemText primary="API Documentation" secondary="Developer resources" />
-                </ListItem>
-                <ListItem component="button" sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}>
-                  <ListItemText primary="Contact Support" secondary="Get help from our team" />
-                </ListItem>
-                <ListItem component="button" sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}>
-                  <ListItemText primary="Feature Requests" secondary="Suggest new features" />
-                </ListItem>
-              </List>
+              <Typography variant="h6" fontWeight={600} gutterBottom>
+                Popular Topics
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Quick access to commonly searched help topics
+              </Typography>
+              <Stack direction="row" flexWrap="wrap" gap={1}>
+                {popularTopics.map((topic, idx) => (
+                  <Chip
+                    key={idx}
+                    label={topic.title}
+                    onClick={() => setFaqModalOpen(true)}
+                    sx={{ cursor: 'pointer' }}
+                  />
+                ))}
+              </Stack>
             </CardContent>
           </Card>
         </Grid>
 
-        <Grid size={{ xs: 12, md: 8 }}>
-          <Card>
+        {/* Contact Information */}
+        <Grid size={{ xs: 12 }}>
+          <Card sx={{ bgcolor: 'primary.main', color: 'white' }}>
             <CardContent>
-              <Typography variant="h6" gutterBottom>Frequently Asked Questions</Typography>
-              {faqs.map((category) => (
-                <Box key={category.category} sx={{ mb: 2 }}>
-                  <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 1 }}>
-                    {category.category}
+              <Grid container spacing={3} alignItems="center">
+                <Grid size={{ xs: 12, md: 8 }}>
+                  <Typography variant="h6" fontWeight={600} gutterBottom>
+                    Still need help?
                   </Typography>
-                  {category.questions.map((faq, idx) => (
-                    <Accordion key={idx}>
-                      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                        <Typography>{faq.q}</Typography>
-                      </AccordionSummary>
-                      <AccordionDetails>
-                        <Typography color="text.secondary">{faq.a}</Typography>
-                      </AccordionDetails>
-                    </Accordion>
-                  ))}
-                </Box>
-              ))}
+                  <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                    Our support team is here to help you. Send us a message and we'll get back to you as soon as possible at quidpath@gmail.com
+                  </Typography>
+                </Grid>
+                <Grid size={{ xs: 12, md: 4 }} sx={{ textAlign: { xs: 'left', md: 'right' } }}>
+                  <Button
+                    variant="contained"
+                    size="large"
+                    onClick={() => setContactModalOpen(true)}
+                    sx={{
+                      bgcolor: 'white',
+                      color: 'primary.main',
+                      '&:hover': { bgcolor: 'grey.100' },
+                    }}
+                    startIcon={<EmailIcon />}
+                  >
+                    Contact Support
+                  </Button>
+                </Grid>
+              </Grid>
             </CardContent>
           </Card>
         </Grid>
       </Grid>
+
+      {/* Modals */}
+      <ContactSupportModal open={contactModalOpen} onClose={() => setContactModalOpen(false)} />
+      <UserGuideModal open={guideModalOpen} onClose={() => setGuideModalOpen(false)} />
+      <FAQModal open={faqModalOpen} onClose={() => setFaqModalOpen(false)} />
     </Box>
   );
 }

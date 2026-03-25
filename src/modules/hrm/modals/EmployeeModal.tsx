@@ -5,6 +5,7 @@ import { Button, TextField, Grid, MenuItem } from '@mui/material';
 import UniversalModal from '@/components/ui/UniversalModal';
 import { Employee } from '@/services/hrmService';
 import hrmService from '@/services/hrmService';
+import { useDepartments } from '@/hooks/useHRM';
 
 interface EmployeeModalProps {
   open: boolean;
@@ -15,6 +16,8 @@ interface EmployeeModalProps {
 
 export default function EmployeeModal({ open, onClose, employee, onSuccess }: EmployeeModalProps) {
   const [loading, setLoading] = useState(false);
+  const { data: deptData } = useDepartments();
+  const departments = (deptData as any)?.results ?? (deptData as any)?.departments ?? [];
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
@@ -102,7 +105,12 @@ export default function EmployeeModal({ open, onClose, employee, onSuccess }: Em
           <TextField fullWidth label="Phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
         </Grid>
         <Grid size={{ xs: 12, sm: 6 }}>
-          <TextField fullWidth label="Department ID" value={formData.department_id} onChange={(e) => setFormData({ ...formData, department_id: e.target.value })} />
+          <TextField fullWidth select label="Department" value={formData.department_id} onChange={(e) => setFormData({ ...formData, department_id: e.target.value })}>
+            {departments.length === 0
+              ? <MenuItem disabled value="">No departments found</MenuItem>
+              : departments.map((d: any) => <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>)
+            }
+          </TextField>
         </Grid>
         <Grid size={{ xs: 12, sm: 6 }}>
           <TextField fullWidth label="Position" value={formData.position} onChange={(e) => setFormData({ ...formData, position: e.target.value })} />

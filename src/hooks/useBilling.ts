@@ -1,13 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import billingService, {
-  BillingPlan,
-  Subscription,
-  Invoice,
-  Payment,
   AccessCheckResponse,
   PaymentInitiatePayload,
+  Subscription,
 } from '@/services/billingService';
-import { useSubscription as useSubscriptionHook } from '@/hooks/useBilling';
 
 export const BILLING_KEYS = {
   all: ['billing'] as const,
@@ -19,14 +15,29 @@ export const BILLING_KEYS = {
   trialStatus: () => ['billing', 'trial-status'] as const,
 };
 
-/** Fetch billing plans (public) */
+// ─── Response shape helpers ───────────────────────────────────────────────────
+// Gateway wraps billing responses as: { success, data: <billing_svc_response> }
+// Billing service itself wraps as:    { success, data: { ... } }
+// So the full path is: response.data  →  { success, data: billingData }
+//                      billingData    →  { success, data: { plans/invoices/etc } }
+
+function unwrap(response: any, ...keys: string[]): any {
+  // response.data = gateway wrapper { success, data: billingData }
+  let val = response?.data?.data;
+  for (const k of keys) {
+    val = val?.[k] ?? val?.data?.[k];
+  }
+  return val ?? null;
+}
+
+/** Fetch billing plans (public — no auth needed) */
 export function usePlans(planType?: string) {
   return useQuery({
     queryKey: BILLING_KEYS.plans(planType),
     queryFn: async () => {
-      const { data } = await billingService.getPlans(planType);
-      // billing service returns { success, data: { plans, count } }
-      return (data as any)?.data?.plans ?? (data as any)?.plans ?? [];
+      const res = await billingService.getPlans(planType);
+      // gateway: { success, data: { plans, count } }
+      return res.data?.data?.plans ?? res.data?.plans ?? [];
     },
     staleTime: 300_000,
   });
@@ -37,8 +48,9 @@ export function useSubscription() {
   return useQuery({
     queryKey: BILLING_KEYS.subscription(),
     queryFn: async () => {
-      const { data } = await billingService.getSubscriptionStatus();
-      return data?.data?.subscription ?? null;
+      const res = await billingService.getSubscriptionStatus();
+      // gateway: { success, data: { subscription } }
+      return res.data?.data?.subscription ?? null;
     },
     staleTime: 60_000,
     retry: false,
@@ -50,8 +62,9 @@ export function useInvoices() {
   return useQuery({
     queryKey: BILLING_KEYS.invoices(),
     queryFn: async () => {
-      const { data } = await billingService.getInvoices();
-      return (data as any)?.data?.invoices ?? [];
+      const res = await billingService.getInvoices();
+      // gateway: { success, data: { invoices, corporate_id } }
+      return res.data?.invoices ?? [];
     },
     staleTime: 30_000,
   });
@@ -62,8 +75,9 @@ export function usePaymentHistory() {
   return useQuery({
     queryKey: BILLING_KEYS.payments(),
     queryFn: async () => {
-      const { data } = await billingService.getPaymentHistory();
-      return (data as any)?.data?.payments ?? [];
+      const res = await billingService.getPaymentHistory();
+      // gateway: { success, data: { payments } }
+      return res.data?.payments ?? [];
     },
     staleTime: 30_000,
   });
@@ -74,8 +88,9 @@ export function useAccessCheck() {
   return useQuery({
     queryKey: BILLING_KEYS.access(),
     queryFn: async () => {
-      const { data } = await billingService.checkAccess();
-      return data;
+      const res = await billingService.checkAccess();
+      // gateway: { success, has_access, access_type, trial, ... }
+      return res.data as AccessCheckResponse;
     },
     staleTime: 30_000,
     retry: false,
@@ -87,8 +102,9 @@ export function useTrialStatus() {
   return useQuery({
     queryKey: BILLING_KEYS.trialStatus(),
     queryFn: async () => {
-      const { data } = await billingService.getTrialStatus();
-      return (data as any)?.data ?? null;
+      const res = await billingService.getTrialStatus();
+      // gateway: { success, data: { has_trial, trial } }
+      return res.data?.data ?? null;
     },
     staleTime: 60_000,
     retry: false,
@@ -102,9 +118,9 @@ export function useInitiatePayment() {
     mutationFn: (payload: PaymentInitiatePayload) =>
       billingService.initiatePayment(payload),
     onSuccess: () => {
-      // Invalidate subscription and access after payment initiated
       queryClient.invalidateQueries({ queryKey: BILLING_KEYS.subscription() });
       queryClient.invalidateQueries({ queryKey: BILLING_KEYS.access() });
+      queryClient.invalidateQueries({ queryKey: BILLING_KEYS.payments() });
     },
   });
 }

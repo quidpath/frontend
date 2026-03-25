@@ -64,3 +64,25 @@ export function useHRMSummary() {
     staleTime: 60_000,
   });
 }
+
+export function usePositions(params?: Record<string, unknown>) {
+  return useQuery({
+    queryKey: ['hrm', 'positions', params],
+    queryFn: async () => {
+      const { data } = await hrmService.getPositions(params);
+      return data;
+    },
+    staleTime: 30_000,
+  });
+}
+
+export function useLeaveTypes() {
+  return useQuery({
+    queryKey: ['hrm', 'leave-types'],
+    queryFn: async () => {
+      const { data } = await hrmService.getLeaveTypes();
+      return data;
+    },
+    staleTime: 60_000,
+  });
+}

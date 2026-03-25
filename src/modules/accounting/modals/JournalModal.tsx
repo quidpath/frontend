@@ -20,6 +20,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import UniversalModal from '@/components/ui/UniversalModal';
 import { JournalEntry, JournalEntryLine } from '@/services/accountingService';
 import accountingService from '@/services/accountingService';
+import { formatCurrency } from '@/utils/formatters';
 
 interface JournalModalProps {
   open: boolean;
@@ -241,8 +242,8 @@ export default function JournalModal({
         {!totals.isBalanced && lines.some(l => l.account_id) && (
           <Grid size={{ xs: 12 }}>
             <Alert severity="warning">
-              Entry is not balanced. Debits: ${totals.totalDebit.toFixed(2)}, Credits: ${totals.totalCredit.toFixed(2)}, 
-              Difference: ${Math.abs(totals.difference).toFixed(2)}
+              Entry is not balanced. Debits: {formatCurrency(totals.totalDebit)}, Credits: {formatCurrency(totals.totalCredit)}, 
+              Difference: {formatCurrency(Math.abs(totals.difference))}
             </Alert>
           </Grid>
         )}
@@ -333,12 +334,12 @@ export default function JournalModal({
                   </TableCell>
                   <TableCell align="right">
                     <Typography variant="subtitle2" fontWeight={700}>
-                      ${totals.totalDebit.toFixed(2)}
+                      {formatCurrency(totals.totalDebit)}
                     </Typography>
                   </TableCell>
                   <TableCell align="right">
                     <Typography variant="subtitle2" fontWeight={700}>
-                      ${totals.totalCredit.toFixed(2)}
+                      {formatCurrency(totals.totalCredit)}
                     </Typography>
                   </TableCell>
                   <TableCell></TableCell>
