@@ -36,7 +36,7 @@ import SupportAgentIcon from '@mui/icons-material/SupportAgent';
 import AutorenewIcon from '@mui/icons-material/Autorenew';
 import StarIcon from '@mui/icons-material/Star';
 import FormatQuoteIcon from '@mui/icons-material/FormatQuote';
-import { usePlans } from '@/hooks/useAccounting';
+import { usePlans } from '@/hooks/useBilling';
 
 const MODULES = [
   {
@@ -523,51 +523,70 @@ function FeaturesSection() {
 }
 
 function PricingSection() {
-  const { data: plans, isLoading } = usePlans();
+  const { data: allPlans, isLoading } = usePlans();
 
-  const fallbackPlans = [
-    {
-      id: 1,
-      name: 'Starter',
-      price: '49',
-      billing_cycle: 'monthly',
-      features: ['Up to 5 users', 'Accounting & Invoicing', 'Inventory Management', 'Email support'],
-      is_active: true,
-    },
-    {
-      id: 2,
-      name: 'Growth',
-      price: '149',
-      billing_cycle: 'monthly',
-      features: [
-        'Up to 25 users',
-        'All Starter features',
-        'CRM & Pipeline',
-        'HR Management',
-        'POS Module',
-        'Priority support',
-      ],
-      is_active: true,
-      highlighted: true,
-    },
-    {
-      id: 3,
-      name: 'Enterprise',
-      price: '399',
-      billing_cycle: 'monthly',
-      features: [
-        'Unlimited users',
-        'All Growth features',
-        'Project Management',
-        'Custom integrations',
-        'Dedicated account manager',
-        'SLA guarantee',
-      ],
-      is_active: true,
-    },
-  ];
+  // Filter out testing plans and separate by type
+  const individualPlans = (allPlans || []).filter(
+    (p: any) => p.plan_type === 'individual' && !p.tier.toLowerCase().includes('test')
+  );
+  const organizationPlans = (allPlans || []).filter(
+    (p: any) => p.plan_type === 'organization' && !p.tier.toLowerCase().includes('test')
+  );
 
-  const displayPlans = (Array.isArray(plans) ? plans : null) ?? fallbackPlans;
+  // Helper to format plan features from limits
+  const formatFeatures = (plan: any): string[] => {
+    const features: string[] = [];
+    
+    // User limits
+    if (plan.included_users) {
+      features.push(
+        plan.max_users 
+          ? `${plan.included_users}-${plan.max_users} users` 
+          : `Up to ${plan.included_users} users`
+      );
+    }
+    
+    // Add description if available
+    if (plan.description) {
+      features.push(plan.description);
+    }
+    
+    // Parse limits object for features
+    if (plan.limits && typeof plan.limits === 'object') {
+      Object.entries(plan.limits).forEach(([key, value]) => {
+        if (typeof value === 'boolean' && value) {
+          // Convert snake_case to Title Case
+          const label = key.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+          features.push(label);
+        } else if (typeof value === 'number' && value > 0) {
+          const label = key.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+          features.push(`${label}: ${value}`);
+        } else if (typeof value === 'string' && value) {
+          const label = key.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+          features.push(`${label}: ${value}`);
+        }
+      });
+    }
+    
+    // Add pricing info
+    if (plan.price_quarterly) {
+      features.push(`Quarterly: KES ${plan.price_quarterly.toLocaleString()}`);
+    }
+    if (plan.price_yearly) {
+      features.push(`Yearly: KES ${plan.price_yearly.toLocaleString()}`);
+    }
+    
+    // Additional user pricing
+    if (plan.additional_user_price > 0) {
+      features.push(`+KES ${plan.additional_user_price}/user`);
+    }
+    
+    return features.length > 0 ? features : ['Full platform access', 'Email support', 'Regular updates'];
+  };
+
+  // Determine which plans to display
+  const displayPlans = organizationPlans.length > 0 ? organizationPlans : individualPlans;
+  const planType = organizationPlans.length > 0 ? 'Organization' : 'Individual';
 
   return (
     <Box sx={{ py: 10, backgroundColor: '#FFFFFF' }}>
@@ -579,9 +598,14 @@ function PricingSection() {
           <Typography variant="h3" fontWeight={700} sx={{ mt: 1, mb: 2 }}>
             Simple, transparent pricing
           </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 420, mx: 'auto' }}>
-            All plans include a 14-day free trial. No credit card required.
+          <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 420, mx: 'auto', mb: 2 }}>
+            {planType} plans — All plans include a 30-day free trial.
           </Typography>
+          {individualPlans.length > 0 && organizationPlans.length > 0 && (
+            <Typography variant="caption" color="text.secondary">
+              Showing {planType} plans • {planType === 'Organization' ? individualPlans.length : organizationPlans.length} {planType === 'Organization' ? 'Individual' : 'Organization'} plans also available
+            </Typography>
+          )}
         </Box>
 
         <Grid container spacing={3} justifyContent="center">
@@ -599,89 +623,114 @@ function PricingSection() {
                   </Card>
                 </Grid>
               ))
-            : displayPlans.map((plan: typeof fallbackPlans[0] & { highlighted?: boolean }) => (
-                <Grid key={plan.id} size={{ xs: 12, sm: 6, md: 4 }}>
-                  <Card
-                    sx={{
-                      height: '100%',
-                      position: 'relative',
-                      ...(plan.highlighted
-                        ? {
-                            border: '2px solid',
-                            borderColor: 'primary.main',
-                            boxShadow: `0 8px 32px ${alpha('#43A047', 0.18)}`,
-                            transform: { md: 'scale(1.03)' },
-                          }
-                        : {}),
-                    }}
-                  >
-                    {plan.highlighted && (
-                      <Box
-                        sx={{
-                          position: 'absolute',
-                          top: -14,
-                          left: '50%',
-                          transform: 'translateX(-50%)',
-                        }}
-                      >
-                        <Chip
-                          label="Most Popular"
-                          size="small"
-                          sx={{
-                            background: 'linear-gradient(135deg, #43A047, #2E7D32)',
-                            color: '#fff',
-                            fontWeight: 700,
-                            fontSize: '0.7rem',
-                          }}
-                        />
-                      </Box>
-                    )}
-                    <CardContent sx={{ p: 3.5 }}>
-                      <Typography variant="h6" fontWeight={700} sx={{ mb: 0.5 }}>
-                        {plan.name}
+            : displayPlans.length === 0
+            ? (
+                <Grid size={{ xs: 12 }}>
+                  <Card>
+                    <CardContent sx={{ textAlign: 'center', py: 6 }}>
+                      <Typography variant="h6" color="text.secondary" gutterBottom>
+                        No plans available
                       </Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, mb: 3 }}>
-                        <Typography variant="h3" fontWeight={800} color="text.primary">
-                          ${plan.price}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          / {plan.billing_cycle === 'monthly' ? 'mo' : 'yr'}
-                        </Typography>
-                      </Box>
-
-                      <Button
-                        fullWidth
-                        variant={plan.highlighted ? 'contained' : 'outlined'}
-                        sx={{
-                          mb: 3,
-                          ...(plan.highlighted
-                            ? {
-                                background: 'linear-gradient(135deg, #43A047, #2E7D32)',
-                                boxShadow: '0 2px 12px rgba(67,160,71,0.3)',
-                              }
-                            : {}),
-                        }}
-                      >
-                        Get Started
-                      </Button>
-
-                      <List dense disablePadding>
-                        {plan.features.map((feature: string) => (
-                          <ListItem key={feature} disablePadding sx={{ py: 0.5 }}>
-                            <ListItemIcon sx={{ minWidth: 28 }}>
-                              <CheckCircleIcon sx={{ fontSize: 16, color: 'primary.main' }} />
-                            </ListItemIcon>
-                            <ListItemText
-                              primary={feature}
-                              primaryTypographyProps={{ variant: 'body2', color: 'text.secondary' }}
-                            />
-                          </ListItem>
-                        ))}
-                      </List>
+                      <Typography variant="body2" color="text.secondary">
+                        Please contact sales for pricing information.
+                      </Typography>
                     </CardContent>
                   </Card>
                 </Grid>
-              ))}
+              )
+            : displayPlans.map((plan: any, index: number) => {
+                const isHighlighted = index === 1 || plan.tier.toLowerCase().includes('growth') || plan.tier.toLowerCase().includes('professional');
+                const features = formatFeatures(plan);
+                
+                return (
+                  <Grid key={plan.id} size={{ xs: 12, sm: 6, md: 4 }}>
+                    <Card
+                      sx={{
+                        height: '100%',
+                        position: 'relative',
+                        ...(isHighlighted
+                          ? {
+                              border: '2px solid',
+                              borderColor: 'primary.main',
+                              boxShadow: `0 8px 32px ${alpha('#43A047', 0.18)}`,
+                              transform: { md: 'scale(1.03)' },
+                            }
+                          : {}),
+                      }}
+                    >
+                      {isHighlighted && (
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            top: -14,
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                          }}
+                        >
+                          <Chip
+                            label="Most Popular"
+                            size="small"
+                            sx={{
+                              background: 'linear-gradient(135deg, #43A047, #2E7D32)',
+                              color: '#fff',
+                              fontWeight: 700,
+                              fontSize: '0.7rem',
+                            }}
+                          />
+                        </Box>
+                      )}
+                      <CardContent sx={{ p: 3.5 }}>
+                        <Typography variant="h6" fontWeight={700} sx={{ mb: 0.5 }}>
+                          {plan.name}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: 'block' }}>
+                          {plan.tier.charAt(0).toUpperCase() + plan.tier.slice(1)} • {plan.plan_type}
+                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, mb: 3 }}>
+                          <Typography variant="h3" fontWeight={800} color="text.primary">
+                            KES {plan.price_monthly.toLocaleString()}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            / month
+                          </Typography>
+                        </Box>
+
+                        <Button
+                          fullWidth
+                          variant={isHighlighted ? 'contained' : 'outlined'}
+                          component={Link}
+                          href="/billing-setup"
+                          sx={{
+                            mb: 3,
+                            ...(isHighlighted
+                              ? {
+                                  background: 'linear-gradient(135deg, #43A047, #2E7D32)',
+                                  boxShadow: '0 2px 12px rgba(67,160,71,0.3)',
+                                }
+                              : {}),
+                          }}
+                        >
+                          Start Free Trial
+                        </Button>
+
+                        <List dense disablePadding>
+                          {features.map((feature: string, idx: number) => (
+                            <ListItem key={idx} disablePadding sx={{ py: 0.5 }}>
+                              <ListItemIcon sx={{ minWidth: 28 }}>
+                                <CheckCircleIcon sx={{ fontSize: 16, color: 'primary.main' }} />
+                              </ListItemIcon>
+                              <ListItemText
+                                primary={feature}
+                                primaryTypographyProps={{ variant: 'body2', color: 'text.secondary' }}
+                              />
+                            </ListItem>
+                          ))}
+                        </List>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                );
+              })}
         </Grid>
       </Container>
     </Box>
