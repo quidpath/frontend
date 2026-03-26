@@ -2,21 +2,15 @@
 
 import React, { useState } from 'react';
 import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  TextField,
-  Button,
-  Alert,
-  CircularProgress,
-  Divider,
-  Avatar,
-  MenuItem,
-  Chip,
+  Alert, Box, Button, Card, CardContent, Chip, CircularProgress,
+  Divider, InputAdornment, Radio, TextField, Typography,
 } from '@mui/material';
-import PaymentIcon from '@mui/icons-material/Payment';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import PhoneAndroidIcon from '@mui/icons-material/PhoneAndroid';
+import PaymentIcon from '@mui/icons-material/Payment';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import { useRouter } from 'next/navigation';
 import { useUserStore } from '@/store/userStore';
 import { usePlans, useInitiatePayment } from '@/hooks/useBilling';
@@ -25,80 +19,66 @@ import { formatCurrency } from '@/utils/formatters';
 export default function PaymentRequiredPage() {
   const router = useRouter();
   const user = useUserStore((s) => s.user);
-  const [phone, setPhone] = useState('');
-  const [selectedPlanId, setSelectedPlanId] = useState('');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
-  const [checkoutId, setCheckoutId] = useState('');
 
-  const { data: plans = [], isLoading: plansLoading } = usePlans('organization');
+  const [selectedPlanId, setSelectedPlanId] = useState('');
+  const [phone, setPhone] = useState('');
+  const [error, setError] = useState('');
+  const [done, setDone] = useState(false);
+  const [checkoutId, setCheckoutId] = useState('');
+  const [selectedPlanName, setSelectedPlanName] = useState('');
+
+  const corporateName = user?.corporate?.name ?? '';
+  const isSuperuser = user?.is_superuser;
+
+  const { data: orgPlans = [], isLoading: orgLoading } = usePlans('organization');
+  const { data: indPlans = [], isLoading: indLoading } = usePlans('individual');
+  const plans = (isSuperuser ? indPlans : orgPlans) as any[];
+  const plansLoading = isSuperuser ? indLoading : orgLoading;
+
   const initiatePayment = useInitiatePayment();
 
-  const corporateName = user?.corporate?.name;
-
-  const handlePay = async () => {
-    if (!selectedPlanId) {
-      setError('Please select a plan');
-      return;
-    }
-    if (!phone.trim()) {
-      setError('Please enter your M-Pesa phone number');
-      return;
-    }
-
+  const handlePay = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPlanId) { setError('Please select a plan'); return; }
+    if (!phone.trim()) { setError('Please enter your M-Pesa phone number'); return; }
     setError('');
-
     try {
       const res = await initiatePayment.mutateAsync({
         plan_id: selectedPlanId,
         phone_number: phone.trim(),
-        subscription_type: 'organization',
+        subscription_type: isSuperuser ? 'individual' : 'organization',
         corporate_name: corporateName,
       });
       const d = (res.data as any)?.data;
       setCheckoutId(d?.checkout_request_id ?? '');
-      setSuccess(true);
+      setDone(true);
     } catch (e: any) {
       setError(e?.response?.data?.message || e?.response?.data?.error || 'Payment failed. Please try again.');
     }
   };
 
-  if (success) {
+  if (done) {
     return (
-      <Box
-        sx={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: 'background.default',
-          p: 2,
-        }}
-      >
-        <Card sx={{ maxWidth: 480, width: '100%' }}>
-          <CardContent sx={{ textAlign: 'center', py: 5, px: 4 }}>
-            <CheckCircleIcon sx={{ fontSize: 64, color: 'success.main', mb: 2 }} />
-            <Typography variant="h5" fontWeight={700} gutterBottom>
-              Payment initiated
+      <Box sx={pageWrap}>
+        <Card sx={cardSx}>
+          <CardContent sx={{ p: { xs: 3, sm: 5 }, textAlign: 'center' }}>
+            <Box sx={iconCircle}><PhoneAndroidIcon sx={{ fontSize: 36, color: '#fff' }} /></Box>
+            <Typography variant="h5" fontWeight={700} gutterBottom>Check your phone</Typography>
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 0.5 }}>
+              An M-Pesa prompt has been sent to <Box component="span" fontWeight={600}>{phone}</Box>.
             </Typography>
-            <Typography variant="body1" color="text.secondary" sx={{ mb: 1 }}>
-              Check your phone for the M-Pesa STK push prompt and enter your PIN to complete payment.
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              Enter your M-Pesa PIN to complete payment for <strong>{selectedPlanName}</strong>.
             </Typography>
             {checkoutId && (
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 3, fontFamily: 'monospace' }}>
-                Checkout ID: {checkoutId}
+              <Typography variant="caption" color="text.disabled" sx={{ display: 'block', mb: 2, fontFamily: 'monospace' }}>
+                Ref: {checkoutId}
               </Typography>
             )}
-            <Alert severity="info" sx={{ mb: 3, textAlign: 'left' }}>
-              Once payment is confirmed, your account will be activated automatically. This may take a few minutes.
+            <Alert severity="info" sx={{ mb: 3, textAlign: 'left', borderRadius: 2 }}>
+              Your account will be activated automatically within a few minutes of payment confirmation.
             </Alert>
-            <Button
-              variant="contained"
-              color="primary"
-              size="large"
-              fullWidth
-              onClick={() => router.replace('/dashboard')}
-            >
+            <Button variant="contained" size="large" fullWidth onClick={() => router.replace('/dashboard')} sx={{ py: 1.5, fontWeight: 700 }}>
               Continue to Dashboard
             </Button>
           </CardContent>
@@ -108,102 +88,131 @@ export default function PaymentRequiredPage() {
   }
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'background.default',
-        p: 2,
-      }}
-    >
-      <Card sx={{ maxWidth: 480, width: '100%' }}>
-        <CardContent sx={{ py: 4, px: 4 }}>
-          <Box sx={{ textAlign: 'center', mb: 3 }}>
-            <Avatar
-              sx={{
-                width: 56,
-                height: 56,
-                mx: 'auto',
-                mb: 2,
-                background: 'linear-gradient(135deg, #43A047, #1B5E20)',
-              }}
-            >
-              <PaymentIcon />
-            </Avatar>
-            <Typography variant="h5" fontWeight={700} gutterBottom>
-              Payment required
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {corporateName
-                ? `Choose a plan for ${corporateName} to start using the system.`
-                : 'Choose a plan to start using the system.'}
-            </Typography>
-          </Box>
+    <Box sx={pageWrap}>
+      <Card sx={cardSx}>
+        <Box sx={headerBand}>
+          <Box component="img" src="/quidpathLong.svg" alt="QuidPath"
+            sx={{ height: 32, objectFit: 'contain', filter: 'brightness(0) invert(1)', mb: 2 }} />
+          <Typography variant="h5" fontWeight={700} color="#fff" gutterBottom>
+            {corporateName ? `Subscribe ${corporateName}` : 'Choose your plan'}
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.85)' }}>
+            Select a plan and pay via M-Pesa to activate your account.
+          </Typography>
+        </Box>
 
-          <Divider sx={{ mb: 3 }} />
+        <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
+          <Box component="form" onSubmit={handlePay} noValidate>
+            <Typography variant="subtitle2" fontWeight={600} gutterBottom>Select a plan</Typography>
 
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <TextField
-              select
-              label="Select Plan"
-              value={selectedPlanId}
-              onChange={(e) => setSelectedPlanId(e.target.value)}
-              fullWidth
-              disabled={plansLoading}
-            >
-              {plansLoading ? (
-                <MenuItem disabled>
-                  <CircularProgress size={20} />
-                </MenuItem>
-              ) : (
-                (plans as any[]).map((p: any) => (
-                  <MenuItem key={p.id} value={p.id}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', gap: 1 }}>
-                      <span>{p.name}</span>
-                      <Chip
-                        label={`${formatCurrency(p.price_monthly ?? 0)}/mo`}
-                        size="small"
-                        color="primary"
-                        variant="outlined"
-                      />
+            {plansLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}><CircularProgress size={28} /></Box>
+            ) : plans.length === 0 ? (
+              <Alert severity="warning" sx={{ mb: 2 }}>No plans available. Please contact support.</Alert>
+            ) : (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 3 }}>
+                {plans.map((plan: any) => {
+                  const selected = selectedPlanId === plan.id;
+                  return (
+                    <Box
+                      key={plan.id}
+                      onClick={() => { setSelectedPlanId(plan.id); setSelectedPlanName(plan.name); }}
+                      sx={{
+                        border: '1.5px solid', borderColor: selected ? 'primary.main' : 'divider',
+                        borderRadius: 2, p: 2, cursor: 'pointer',
+                        bgcolor: selected ? 'rgba(67,160,71,0.04)' : 'background.paper',
+                        transition: 'all 0.15s ease', display: 'flex', alignItems: 'flex-start', gap: 1.5,
+                        '&:hover': { borderColor: 'primary.light', bgcolor: 'rgba(67,160,71,0.03)' },
+                      }}
+                    >
+                      <Radio checked={selected} size="small" sx={{ p: 0, mt: 0.25, color: selected ? 'primary.main' : 'text.disabled' }}
+                        onChange={() => { setSelectedPlanId(plan.id); setSelectedPlanName(plan.name); }} />
+                      <Box sx={{ flex: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.25 }}>
+                          <Typography variant="subtitle2" fontWeight={700}>{plan.name}</Typography>
+                          {plan.is_featured && <Chip label="Popular" size="small" color="primary" sx={{ height: 18, fontSize: '0.65rem' }} />}
+                        </Box>
+                        {plan.description && (
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>{plan.description}</Typography>
+                        )}
+                        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+                          <Typography variant="h6" fontWeight={700} color="primary.main">{formatCurrency(plan.price_monthly ?? 0)}</Typography>
+                          <Typography variant="caption" color="text.secondary">/month</Typography>
+                        </Box>
+                      </Box>
+                      {selected && <CheckCircleIcon sx={{ color: 'primary.main', fontSize: 20, mt: 0.25 }} />}
                     </Box>
-                  </MenuItem>
-                ))
-              )}
-            </TextField>
+                  );
+                })}
+              </Box>
+            )}
+
+            <Divider sx={{ mb: 3 }} />
+
+            <Typography variant="subtitle2" fontWeight={600} gutterBottom>M-Pesa phone number</Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
+              Enter the number registered with M-Pesa to receive the payment prompt.
+            </Typography>
 
             <TextField
-              label="M-Pesa Phone Number"
-              placeholder="e.g. 0712345678"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              fullWidth
-              helperText="Enter your M-Pesa registered phone number"
-              onKeyDown={(e) => e.key === 'Enter' && handlePay()}
+              fullWidth required placeholder="e.g. 0712 345 678"
+              value={phone} onChange={(e) => setPhone(e.target.value)}
+              inputProps={{ inputMode: 'tel' }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <PhoneAndroidIcon sx={{ color: 'primary.main', fontSize: 20 }} />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{ mb: 2 }}
             />
 
-            {error && <Alert severity="error">{error}</Alert>}
+            {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
 
             <Button
-              variant="contained"
-              color="primary"
-              size="large"
-              fullWidth
-              onClick={handlePay}
+              type="submit" variant="contained" size="large" fullWidth
               disabled={initiatePayment.isPending || !selectedPlanId || !phone.trim()}
-              startIcon={initiatePayment.isPending ? <CircularProgress size={20} color="inherit" /> : <PaymentIcon />}
+              startIcon={initiatePayment.isPending ? <CircularProgress size={18} color="inherit" /> : <PaymentIcon />}
+              sx={{ py: 1.5, fontWeight: 700, mb: 2 }}
             >
-              {initiatePayment.isPending ? 'Processing...' : 'Pay with M-Pesa'}
+              {initiatePayment.isPending ? 'Sending M-Pesa prompt…' : 'Pay with M-Pesa'}
             </Button>
 
-            <Typography variant="caption" color="text.secondary" textAlign="center">
-              You'll receive an M-Pesa prompt on your phone. Enter your PIN to complete payment.
-            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
+              {[
+                { icon: <LockOutlinedIcon sx={{ fontSize: 13 }} />, label: 'Secure payment' },
+                { icon: <AccessTimeIcon sx={{ fontSize: 13 }} />, label: 'Instant activation' },
+                { icon: <CheckCircleOutlineIcon sx={{ fontSize: 13 }} />, label: 'Cancel anytime' },
+              ].map(({ icon, label }) => (
+                <Box key={label} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <Box sx={{ color: 'primary.main' }}>{icon}</Box>
+                  <Typography variant="caption" color="text.secondary">{label}</Typography>
+                </Box>
+              ))}
+            </Box>
           </Box>
         </CardContent>
       </Card>
     </Box>
   );
 }
+
+const pageWrap = {
+  minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+  bgcolor: 'background.default', p: 2,
+  backgroundImage: 'radial-gradient(ellipse at 60% 0%, rgba(67,160,71,0.08) 0%, transparent 60%)',
+};
+const cardSx = {
+  maxWidth: 520, width: '100%', borderRadius: '14px', overflow: 'hidden',
+  border: '1px solid', borderColor: 'divider', boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
+};
+const headerBand = {
+  background: 'linear-gradient(135deg, #2E7D32 0%, #43A047 60%, #1ABC9C 100%)',
+  px: 4, py: 3.5, borderRadius: '14px 14px 0 0',
+};
+const iconCircle = {
+  width: 72, height: 72, borderRadius: '50%', mx: 'auto', mb: 2.5,
+  background: 'linear-gradient(135deg, #43A047, #1B5E20)',
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+};

@@ -262,7 +262,13 @@ export default function Topbar({ onMobileMenuToggle }: TopbarProps) {
           )}
         </Box>
         <Divider />
-        <MenuItem onClick={() => setAnchorEl(null)} sx={{ gap: 1.5, py: 1 }}>
+        <MenuItem
+          onClick={() => {
+            setAnchorEl(null);
+            router.push('/account/profile');
+          }}
+          sx={{ gap: 1.5, py: 1 }}
+        >
           <ListItemIcon><PersonIcon fontSize="small" /></ListItemIcon>
           <Typography variant="body2">Profile</Typography>
         </MenuItem>
@@ -278,7 +284,13 @@ export default function Topbar({ onMobileMenuToggle }: TopbarProps) {
             <Typography variant="body2">Account</Typography>
           </MenuItem>
         )}
-        <MenuItem onClick={() => setAnchorEl(null)} sx={{ gap: 1.5, py: 1 }}>
+        <MenuItem
+          onClick={() => {
+            setAnchorEl(null);
+            router.push('/settings');
+          }}
+          sx={{ gap: 1.5, py: 1 }}
+        >
           <ListItemIcon><SettingsIcon fontSize="small" /></ListItemIcon>
           <Typography variant="body2">Settings</Typography>
         </MenuItem>

@@ -82,7 +82,7 @@ function shouldExcludeEndpoint(url: string): boolean {
 function createServiceClient(baseURL: string, isGateway = false): AxiosInstance {
   const client = axios.create({
     baseURL,
-    timeout: 30000,
+    timeout: 60000, // 60s for large exports
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
@@ -97,9 +97,15 @@ function createServiceClient(baseURL: string, isGateway = false): AxiosInstance 
           config.headers.Authorization = `Bearer ${token}`;
         }
 
+        // Don't override Content-Type for multipart/form-data — let axios set the boundary
+        const isMultipart = config.data instanceof FormData;
+        if (isMultipart) {
+          delete config.headers['Content-Type'];
+        }
+
         const corporateId = getCorporateId();
         if (corporateId && config.url && !shouldExcludeEndpoint(config.url)) {
-          if (config.method === 'post' || config.method === 'put') {
+          if ((config.method === 'post' || config.method === 'put') && !isMultipart) {
             if (config.data && typeof config.data === 'object') {
               if (!config.data.corporate_id && !config.data.corporate) {
                 config.data = { ...config.data, corporate: corporateId, corporate_id: corporateId };
@@ -140,7 +146,6 @@ function createServiceClient(baseURL: string, isGateway = false): AxiosInstance 
           originalRequest.headers.Authorization = `Bearer ${newToken}`;
           return client(originalRequest);
         }
-        // refreshAccessToken already redirected to /login
         return Promise.reject(error);
       }
 
@@ -148,17 +153,25 @@ function createServiceClient(baseURL: string, isGateway = false): AxiosInstance 
         window.location.href = '/unauthorized';
       }
 
-      // 402 = billing middleware blocked the request — redirect to appropriate billing page
+      // 402 = billing middleware blocked — parse JSON even if responseType was blob
       if (error.response?.status === 402 && typeof window !== 'undefined') {
-        const data = error.response.data as Record<string, unknown>;
         const currentPath = window.location.pathname;
         if (!currentPath.startsWith('/billing-setup') && !currentPath.startsWith('/payment-required')) {
-          if (data?.requires_phone) {
+          let payload: Record<string, unknown> = {};
+          try {
+            const raw = error.response.data;
+            if (raw instanceof Blob) {
+              const text = await raw.text();
+              payload = JSON.parse(text);
+            } else {
+              payload = raw as Record<string, unknown>;
+            }
+          } catch {}
+          if (payload?.requires_phone) {
             window.location.href = '/billing-setup';
-          } else if (data?.requires_payment) {
+          } else if (payload?.requires_payment) {
             window.location.href = '/payment-required';
           } else {
-            // Default: org needs to set up billing (phone + trial)
             window.location.href = '/billing-setup';
           }
         }

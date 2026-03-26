@@ -44,66 +44,62 @@ export interface AnalyticsOverview {
   invoice_status: InvoiceStatusItem[];
 }
 
+export type ExportFormat = 'excel' | 'csv';
+export type ImportEntity = 'customers' | 'vendors' | 'expenses' | 'products';
+
 const analyticsService = {
+  // ── Analytics overview ────────────────────────────────────────────────────
   getOverview: (params?: { start_date?: string; end_date?: string }) =>
     gatewayClient.get<{ data: AnalyticsOverview }>('/analytics/overview/', { params }),
 
-  // Export endpoints — return blob URLs
-  exportInvoices: (params: { format: 'excel' | 'csv'; start_date?: string; end_date?: string }) =>
+  // ── Export endpoints — return blob ────────────────────────────────────────
+  exportInvoices: (params: { format: ExportFormat; start_date?: string; end_date?: string }) =>
     gatewayClient.get('/export/invoices/', { params, responseType: 'blob' }),
 
-  exportVendorBills: (params: { format: 'excel' | 'csv'; start_date?: string; end_date?: string }) =>
+  exportVendorBills: (params: { format: ExportFormat; start_date?: string; end_date?: string }) =>
     gatewayClient.get('/export/vendor-bills/', { params, responseType: 'blob' }),
 
-  exportExpenses: (params: { format: 'excel' | 'csv'; start_date?: string; end_date?: string }) =>
+  exportExpenses: (params: { format: ExportFormat; start_date?: string; end_date?: string }) =>
     gatewayClient.get('/export/expenses/', { params, responseType: 'blob' }),
 
-  exportQuotations: (params: { format: 'excel' | 'csv'; start_date?: string; end_date?: string }) =>
+  exportQuotations: (params: { format: ExportFormat; start_date?: string; end_date?: string }) =>
     gatewayClient.get('/export/quotations/', { params, responseType: 'blob' }),
 
-  exportPurchaseOrders: (params: { format: 'excel' | 'csv'; start_date?: string; end_date?: string }) =>
+  exportPurchaseOrders: (params: { format: ExportFormat; start_date?: string; end_date?: string }) =>
     gatewayClient.get('/export/purchase-orders/', { params, responseType: 'blob' }),
 
-  exportJournalEntries: (params: { format: 'excel' | 'csv'; start_date?: string; end_date?: string }) =>
+  exportJournalEntries: (params: { format: ExportFormat; start_date?: string; end_date?: string }) =>
     gatewayClient.get('/export/journal-entries/', { params, responseType: 'blob' }),
 
-  exportFinancialReport: (params: { report_id: string; format: 'excel' | 'csv' }) =>
+  exportFinancialReport: (params: { report_id: string; format: ExportFormat }) =>
     gatewayClient.get('/export/financial-report/', { params, responseType: 'blob' }),
 
-  // Import endpoints
+  // ── Import endpoints — multipart/form-data ────────────────────────────────
   importCustomers: (file: File) => {
     const fd = new FormData();
     fd.append('file', file);
-    return gatewayClient.post('/import/customers/', fd, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    return gatewayClient.post('/import/customers/', fd);
   },
 
   importVendors: (file: File) => {
     const fd = new FormData();
     fd.append('file', file);
-    return gatewayClient.post('/import/vendors/', fd, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    return gatewayClient.post('/import/vendors/', fd);
   },
 
   importExpenses: (file: File) => {
     const fd = new FormData();
     fd.append('file', file);
-    return gatewayClient.post('/import/expenses/', fd, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    return gatewayClient.post('/import/expenses/', fd);
   },
 
   importProducts: (file: File) => {
     const fd = new FormData();
     fd.append('file', file);
-    return gatewayClient.post('/import/products/', fd, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    return gatewayClient.post('/import/products/', fd);
   },
 
-  downloadTemplate: (entity: 'customers' | 'vendors' | 'expenses' | 'products') =>
+  downloadTemplate: (entity: ImportEntity) =>
     gatewayClient.get('/import/template/', { params: { entity }, responseType: 'blob' }),
 };
 

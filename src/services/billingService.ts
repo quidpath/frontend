@@ -62,7 +62,7 @@ export interface AccessCheckResponse {
   access_type?: 'trial' | 'subscription' | null;
   reason?: string;
   message?: string;
-  trial?: { status: string; days_remaining: number; end_date: string };
+  trial?: { status: string; days_remaining: number; end_date: string; phone_number?: string };
   subscription?: Subscription;
 }
 

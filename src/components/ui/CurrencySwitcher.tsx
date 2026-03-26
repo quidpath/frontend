@@ -3,21 +3,19 @@
 import React, { useState } from 'react';
 import {
   Box, Button, Menu, MenuItem, Typography, Divider,
-  ListItemText, CircularProgress, Tooltip,
+  ListItemText, Tooltip,
 } from '@mui/material';
 import CurrencyExchangeIcon from '@mui/icons-material/CurrencyExchange';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import { useCurrency } from '@/hooks/useCurrency';
-import { useCurrencyRates } from '@/hooks/useCurrency';
+import { useCurrency, useCurrencyRates } from '@/hooks/useCurrency';
 import { SUPPORTED_CURRENCIES, CurrencyCode } from '@/store/currencyStore';
 
 export default function CurrencySwitcher() {
-  useCurrencyRates(); // fetch/refresh rates on mount
+  useCurrencyRates(); // fetch/refresh rates silently in the background
   const { currency, setCurrency, rates } = useCurrency();
   const [anchor, setAnchor] = useState<null | HTMLElement>(null);
 
   const current = SUPPORTED_CURRENCIES.find((c) => c.code === currency);
-  const ratesLoaded = Object.keys(rates).length > 0;
 
   return (
     <>
@@ -37,14 +35,10 @@ export default function CurrencySwitcher() {
             '&:hover': { backgroundColor: 'grey.100' },
           }}
         >
-          {ratesLoaded ? (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <CurrencyExchangeIcon sx={{ fontSize: 14 }} />
-              {current?.code ?? currency}
-            </Box>
-          ) : (
-            <CircularProgress size={14} />
-          )}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <CurrencyExchangeIcon sx={{ fontSize: 14 }} />
+            {current?.code ?? currency}
+          </Box>
         </Button>
       </Tooltip>
 
