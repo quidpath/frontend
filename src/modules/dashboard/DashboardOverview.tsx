@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Box, Card, CardContent, Grid, Typography, alpha, Divider, Avatar, Chip, CircularProgress } from '@mui/material';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import InventoryIcon from '@mui/icons-material/Inventory2';
@@ -11,11 +11,14 @@ import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import PageHeader from '@/components/ui/PageHeader';
 import MetricCard from '@/components/ui/MetricCard';
-import { useSubscription, useInvoices, usePaymentHistory } from '@/hooks/useBilling';
+import { useSubscription, useInvoices, usePaymentHistory, useAccessCheck } from '@/hooks/useBilling';
 import { useRecentActivity, formatRelativeTime, getActivityColor } from '@/hooks/useActivity';
 import { formatCurrency } from '@/utils/formatters';
+import { useUserStore } from '@/store/userStore';
+import { checkBillingSetup } from '@/middleware/billingCheck';
 
 const MODULE_CARDS = [
   {
@@ -63,7 +66,21 @@ const MODULE_CARDS = [
 ];
 
 export default function DashboardOverview() {
+  const router = useRouter();
+  const user = useUserStore((s) => s.user);
+  const { data: accessData, isLoading: accessLoading } = useAccessCheck();
   const { data: subscription, isLoading: billingLoading } = useSubscription();
+  
+  // Check if user needs billing setup
+  useEffect(() => {
+    if (!accessLoading && user && accessData) {
+      const billingCheck = checkBillingSetup(user, accessData);
+      if (billingCheck.needsSetup && billingCheck.redirectTo) {
+        router.push(billingCheck.redirectTo);
+      }
+    }
+  }, [user, accessData, accessLoading, router]);
+  
   const billing = subscription ? {
     total_revenue: 0,
     total_outstanding: 0,
