@@ -13,12 +13,12 @@ export function checkBillingSetup(user: any, accessData: any): BillingCheckResul
     return { needsSetup: false };
   }
 
-  // Check if user has access
-  if (accessData?.has_access) {
+  // If access check is successful and user has access, no setup needed
+  if (accessData?.success && accessData?.has_access) {
     return { needsSetup: false };
   }
 
-  // Individual users need to pay immediately
+  // Individual users need to pay immediately if they don't have access
   if (user.role?.name === 'Individual') {
     return {
       needsSetup: true,
@@ -27,10 +27,10 @@ export function checkBillingSetup(user: any, accessData: any): BillingCheckResul
     };
   }
 
-  // Corporate users need to set up billing contact
+  // Corporate SuperAdmin users need to set up billing if they don't have access
   if (user.role?.name === 'SuperAdmin' && user.corporate) {
-    // Check if corporate has phone number set
-    if (!user.corporate.phone && !accessData?.trial) {
+    // If no access and no trial, they need to set up billing
+    if (!accessData?.has_access) {
       return {
         needsSetup: true,
         reason: 'Please provide billing contact information to start your trial',

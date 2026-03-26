@@ -50,7 +50,8 @@ export function useSubscription() {
     queryFn: async () => {
       const res = await billingService.getSubscriptionStatus();
       // gateway: { success, data: { subscription } }
-      return res.data?.data?.subscription ?? null;
+      const data = res.data as any;
+      return data?.data?.subscription ?? data?.subscription ?? null;
     },
     staleTime: 60_000,
     retry: false,
@@ -64,7 +65,8 @@ export function useInvoices() {
     queryFn: async () => {
       const res = await billingService.getInvoices();
       // gateway: { success, data: { invoices, corporate_id } }
-      return res.data?.invoices ?? [];
+      const data = res.data as any;
+      return data?.data?.invoices ?? data?.invoices ?? [];
     },
     staleTime: 30_000,
   });
@@ -77,7 +79,8 @@ export function usePaymentHistory() {
     queryFn: async () => {
       const res = await billingService.getPaymentHistory();
       // gateway: { success, data: { payments } }
-      return res.data?.payments ?? [];
+      const data = res.data as any;
+      return data?.data?.payments ?? data?.payments ?? [];
     },
     staleTime: 30_000,
   });
