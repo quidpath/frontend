@@ -95,7 +95,7 @@ function BillingSetupContent() {
               You&apos;re all set!
             </Typography>
             <Typography variant="body1" color="text.secondary" sx={{ mb: 0.5 }}>
-              Your 14-day free trial has started.
+              Your 30-day free trial has started.
             </Typography>
             {trialEndDate && (
               <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
