@@ -1,22 +1,27 @@
-'use client';
+﻿'use client';
 
 import React, { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  Alert, Avatar, Box, Button, Card, CardContent, Chip,
-  CircularProgress, Divider, InputAdornment, TextField, Typography,
+  Alert, Box, Button, Card, CardContent, CircularProgress,
+  Divider, FormControl, FormControlLabel, FormLabel, Radio, RadioGroup,
+  TextField, Typography,
 } from '@mui/material';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
-import PhoneAndroidIcon from '@mui/icons-material/PhoneAndroid';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import CreditCardIcon from '@mui/icons-material/CreditCard';
+import PhoneAndroidIcon from '@mui/icons-material/PhoneAndroid';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import { useUserStore } from '@/store/userStore';
-import { gatewayClient } from '@/services/apiClient';
+import axios from 'axios';
+
+const API_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || 'http://localhost:8000';
 
 export default function BillingSetupPage() {
   return (
-    <Suspense>
+    <Suspense fallback={<CircularProgress />}>
       <BillingSetupContent />
     </Suspense>
   );
@@ -36,49 +41,80 @@ function BillingSetupContent() {
   const searchParams = useSearchParams();
   const user = useUserStore((s) => s.user);
 
+  const [paymentMethod, setPaymentMethod] = useState<'card' | 'mobile_money' | 'bank'>('card');
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
   const [trialEndDate, setTrialEndDate] = useState('');
 
-  // corporate_id can come from query param (email link) or from the logged-in user
   const corporateId = searchParams.get('corporate_id') || user?.corporate?.id || '';
   const corporateName = user?.corporate?.name || '';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!phone.trim()) { setError('Please enter your M-Pesa phone number'); return; }
-    if (!corporateId) { setError('Organisation not found. Please log in again.'); return; }
+    
+    if (paymentMethod === 'mobile_money' && !phone.trim()) {
+      setError('Please enter your phone number');
+      return;
+    }
+    
+    if (!corporateId) {
+      setError('Organisation not found. Please log in again.');
+      return;
+    }
 
     setLoading(true);
     setError('');
+
     try {
-      const res = await gatewayClient.post('/billing/setup/', {
-        corporate_id: corporateId,
-        phone_number: phone.trim(),
-      });
-      const d = res.data as any;
-      setTrialEndDate(d?.trial_end_date ?? '');
-      setDone(true);
+      if (paymentMethod === 'card') {
+        const response = await axios.post(`${API_URL}/api/billing/payments/individual/initiate/`, {
+          corporate_id: corporateId,
+          payment_method: 'card',
+        });
+        window.location.href = response.data.authorization_url;
+      } else if (paymentMethod === 'mobile_money') {
+        const response = await axios.post(`${API_URL}/api/billing/payments/individual/initiate/`, {
+          corporate_id: corporateId,
+          payment_method: 'mobile_money',
+          phone_number: phone.trim(),
+        });
+        setTrialEndDate(response.data?.trial_end_date ?? '');
+        setDone(true);
+      } else {
+        const response = await axios.post(`${API_URL}/api/billing/payments/individual/initiate/`, {
+          corporate_id: corporateId,
+          payment_method: 'bank',
+        });
+        setTrialEndDate(response.data?.trial_end_date ?? '');
+        setDone(true);
+      }
     } catch (e: any) {
-      setError(
-        e?.response?.data?.error ||
-        e?.response?.data?.message ||
-        'Setup failed. Please try again.'
-      );
+      setError(e?.response?.data?.error || e?.response?.data?.message || 'Setup failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  // ── Success screen ────────────────────────────────────────────────────────
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const reference = params.get('reference');
+    const status = params.get('status');
+
+    if (reference && status === 'success') {
+      setDone(true);
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + 30);
+      setTrialEndDate(endDate.toISOString());
+    }
+  }, []);
+
   if (done) {
     return (
       <Box sx={pageWrap}>
         <Card sx={cardSx}>
           <CardContent sx={{ p: { xs: 3, sm: 5 }, textAlign: 'center' }}>
-            {/* Brand header */}
             <Box sx={brandBar}>
               <Box component="img" src="/quidpathLong.svg" alt="QuidPath" sx={{ height: 36, objectFit: 'contain' }} />
             </Box>
@@ -92,7 +128,7 @@ function BillingSetupContent() {
             </Box>
 
             <Typography variant="h5" fontWeight={700} gutterBottom>
-              You&apos;re all set!
+              You are all set!
             </Typography>
             <Typography variant="body1" color="text.secondary" sx={{ mb: 0.5 }}>
               Your 30-day free trial has started.
@@ -106,21 +142,25 @@ function BillingSetupContent() {
               </Typography>
             )}
 
-            <Alert
-              severity="info"
-              icon={<AccessTimeIcon />}
-              sx={{ mb: 3, textAlign: 'left', borderRadius: 2 }}
-            >
-              You&apos;ll receive an M-Pesa prompt on <strong>{phone}</strong> when your trial ends. No charge today.
+            <Alert severity="info" icon={<AccessTimeIcon />} sx={{ mb: 3, textAlign: 'left', borderRadius: 2 }}>
+              {paymentMethod === 'card' && (
+                <Typography variant="body2">
+                  Your card has been verified. You will be charged when your trial ends. No charge today.
+                </Typography>
+              )}
+              {paymentMethod === 'mobile_money' && phone && (
+                <Typography variant="body2">
+                  You will receive a payment prompt on <strong>{phone}</strong> when your trial ends. No charge today.
+                </Typography>
+              )}
+              {paymentMethod === 'bank' && (
+                <Typography variant="body2">
+                  You will receive bank transfer instructions when your trial ends. No charge today.
+                </Typography>
+              )}
             </Alert>
 
-            <Button
-              variant="contained"
-              size="large"
-              fullWidth
-              onClick={() => router.replace('/dashboard')}
-              sx={{ py: 1.5, fontWeight: 700 }}
-            >
+            <Button variant="contained" size="large" fullWidth onClick={() => router.replace('/dashboard')} sx={{ py: 1.5, fontWeight: 700 }}>
               Go to Dashboard
             </Button>
           </CardContent>
@@ -129,11 +169,9 @@ function BillingSetupContent() {
     );
   }
 
-  // ── Setup form ────────────────────────────────────────────────────────────
   return (
     <Box sx={pageWrap}>
       <Card sx={cardSx}>
-        {/* Green brand header band */}
         <Box sx={{
           background: 'linear-gradient(135deg, #2E7D32 0%, #43A047 60%, #1ABC9C 100%)',
           px: 4, py: 3.5, borderRadius: '14px 14px 0 0',
@@ -144,17 +182,14 @@ function BillingSetupContent() {
             Start your free trial
           </Typography>
           <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.85)' }}>
-            {corporateName
-              ? `Set up billing for ${corporateName} — no charge for 14 days.`
-              : 'Enter your M-Pesa number to activate your 14-day free trial.'}
+            {corporateName ? `Set up billing for ${corporateName} - no charge for 30 days.` : 'Choose your payment method to activate your 30-day free trial.'}
           </Typography>
         </Box>
 
         <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
-          {/* Feature list */}
           <Box sx={{ mb: 3 }}>
             <Typography variant="overline" color="text.secondary" sx={{ mb: 1.5, display: 'block' }}>
-              What&apos;s included in your trial
+              What is included in your trial
             </Typography>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
               {TRIAL_FEATURES.map((f) => (
@@ -168,56 +203,99 @@ function BillingSetupContent() {
 
           <Divider sx={{ mb: 3 }} />
 
-          {/* Phone input */}
           <Box component="form" onSubmit={handleSubmit} noValidate>
-            <Typography variant="subtitle2" fontWeight={600} gutterBottom>
-              M-Pesa billing number
-            </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
-              This number will be charged when your trial ends. You can change it anytime.
-            </Typography>
+            <FormControl component="fieldset" fullWidth sx={{ mb: 3 }}>
+              <FormLabel component="legend" sx={{ mb: 1.5, fontWeight: 600 }}>
+                Choose payment method
+              </FormLabel>
+              <RadioGroup value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value as any)}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                  <Card variant="outlined" sx={{
+                    cursor: 'pointer',
+                    borderColor: paymentMethod === 'card' ? 'primary.main' : 'divider',
+                    borderWidth: paymentMethod === 'card' ? 2 : 1,
+                    bgcolor: paymentMethod === 'card' ? 'rgba(67,160,71,0.04)' : 'transparent',
+                  }} onClick={() => setPaymentMethod('card')}>
+                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                      <FormControlLabel value="card" control={<Radio />} label={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <CreditCardIcon sx={{ color: 'primary.main' }} />
+                          <Box>
+                            <Typography variant="body1" fontWeight={600}>Card Payment</Typography>
+                            <Typography variant="caption" color="text.secondary">Visa, Mastercard, Verve - Instant verification</Typography>
+                          </Box>
+                        </Box>
+                      } sx={{ m: 0, width: '100%' }} />
+                    </CardContent>
+                  </Card>
 
-            <TextField
-              fullWidth
-              required
-              autoFocus
-              placeholder="e.g. 0712 345 678"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              inputProps={{ inputMode: 'tel' }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <PhoneAndroidIcon sx={{ color: 'primary.main', fontSize: 20 }} />
-                  </InputAdornment>
-                ),
-              }}
-              sx={{ mb: 2 }}
-            />
+                  <Card variant="outlined" sx={{
+                    cursor: 'pointer',
+                    borderColor: paymentMethod === 'mobile_money' ? 'primary.main' : 'divider',
+                    borderWidth: paymentMethod === 'mobile_money' ? 2 : 1,
+                    bgcolor: paymentMethod === 'mobile_money' ? 'rgba(67,160,71,0.04)' : 'transparent',
+                  }} onClick={() => setPaymentMethod('mobile_money')}>
+                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                      <FormControlLabel value="mobile_money" control={<Radio />} label={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <PhoneAndroidIcon sx={{ color: 'primary.main' }} />
+                          <Box>
+                            <Typography variant="body1" fontWeight={600}>Mobile Money</Typography>
+                            <Typography variant="caption" color="text.secondary">M-Pesa, Airtel Money - Pay via phone</Typography>
+                          </Box>
+                        </Box>
+                      } sx={{ m: 0, width: '100%' }} />
+                    </CardContent>
+                  </Card>
 
-            {error && (
-              <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
-                {error}
-              </Alert>
+                  <Card variant="outlined" sx={{
+                    cursor: 'pointer',
+                    borderColor: paymentMethod === 'bank' ? 'primary.main' : 'divider',
+                    borderWidth: paymentMethod === 'bank' ? 2 : 1,
+                    bgcolor: paymentMethod === 'bank' ? 'rgba(67,160,71,0.04)' : 'transparent',
+                  }} onClick={() => setPaymentMethod('bank')}>
+                    <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                      <FormControlLabel value="bank" control={<Radio />} label={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <AccountBalanceIcon sx={{ color: 'primary.main' }} />
+                          <Box>
+                            <Typography variant="body1" fontWeight={600}>Bank Transfer</Typography>
+                            <Typography variant="caption" color="text.secondary">Direct bank transfer - Manual verification</Typography>
+                          </Box>
+                        </Box>
+                      } sx={{ m: 0, width: '100%' }} />
+                    </CardContent>
+                  </Card>
+                </Box>
+              </RadioGroup>
+            </FormControl>
+
+            {paymentMethod === 'mobile_money' && (
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="subtitle2" fontWeight={600} gutterBottom>Mobile money number</Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
+                  This number will be charged when your trial ends.
+                </Typography>
+                <TextField fullWidth required autoFocus placeholder="e.g. 0712 345 678" value={phone}
+                  onChange={(e) => setPhone(e.target.value)} inputProps={{ inputMode: 'tel' }}
+                  InputProps={{ startAdornment: <PhoneAndroidIcon sx={{ mr: 1, color: 'primary.main', fontSize: 20 }} /> }}
+                />
+              </Box>
             )}
 
-            <Button
-              type="submit"
-              variant="contained"
-              size="large"
-              fullWidth
-              disabled={loading || !phone.trim()}
-              startIcon={loading ? <CircularProgress size={18} color="inherit" /> : <PhoneAndroidIcon />}
-              sx={{ py: 1.5, fontWeight: 700, mb: 2 }}
-            >
-              {loading ? 'Activating trial…' : 'Start 14-day free trial'}
+            {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
+
+            <Button type="submit" variant="contained" size="large" fullWidth
+              disabled={loading || (paymentMethod === 'mobile_money' && !phone.trim())}
+              startIcon={loading ? <CircularProgress size={18} color="inherit" /> : null}
+              sx={{ py: 1.5, fontWeight: 700, mb: 2 }}>
+              {loading ? 'Processing' : 'Start 30-day free trial'}
             </Button>
 
-            {/* Trust signals */}
             <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
               {[
                 { icon: <LockOutlinedIcon sx={{ fontSize: 13 }} />, label: 'No charge today' },
-                { icon: <AccessTimeIcon sx={{ fontSize: 13 }} />, label: '14 days free' },
+                { icon: <AccessTimeIcon sx={{ fontSize: 13 }} />, label: '30 days free' },
                 { icon: <CheckCircleOutlineIcon sx={{ fontSize: 13 }} />, label: 'Cancel anytime' },
               ].map(({ icon, label }) => (
                 <Box key={label} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -233,7 +311,6 @@ function BillingSetupContent() {
   );
 }
 
-// ── Shared styles ─────────────────────────────────────────────────────────────
 const pageWrap = {
   minHeight: '100vh',
   display: 'flex',
@@ -245,7 +322,7 @@ const pageWrap = {
 };
 
 const cardSx = {
-  maxWidth: 480,
+  maxWidth: 520,
   width: '100%',
   borderRadius: '14px',
   overflow: 'hidden',
