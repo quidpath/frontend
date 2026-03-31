@@ -42,11 +42,14 @@ import { formatDistanceToNow } from 'date-fns';
 import { formatCurrency } from '@/utils/formatters';
 import { useCurrencyStore } from '@/store/currencyStore';
 
+import { usePaystack } from '@/hooks/usePaystack';
+
 export default function AccountPage() {
   const [tab, setTab] = useState(0);
-  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [selectedPlanId, setSelectedPlanId] = useState('');
   const [paymentResult, setPaymentResult] = useState<string | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState(0);
   
   const user = useUserStore((s) => s.user);
   const currency = useCurrencyStore((s) => s.currency);
@@ -55,30 +58,47 @@ export default function AccountPage() {
   const { data: invoices = [], isLoading: invoicesLoading } = useInvoices();
   const { data: plans = [], isLoading: plansLoading } = usePlans('organization');
   const { data: paymentHistory = [], isLoading: paymentsLoading } = usePaymentHistory();
-  const initiatePayment = useInitiatePayment();
+
+  // Get Paystack public key from environment
+  const paystackPublicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '';
+
+  // Initialize Paystack
+  const paystack = usePaystack({
+    publicKey: paystackPublicKey,
+    email: email || user?.email || '',
+    amount: paymentAmount,
+    currency: 'KES',
+    metadata: {
+      plan_id: selectedPlanId,
+      corporate_id: user?.corporate?.id,
+      user_id: user?.id,
+    },
+    onSuccess: async (response) => {
+      setPaymentResult(`Payment successful! Reference: ${response.reference}`);
+      // TODO: Verify payment on backend
+      console.log('Payment successful:', response);
+    },
+    onClose: () => {
+      setPaymentResult('Payment cancelled');
+    },
+  });
 
   const handlePay = async () => {
-    if (!selectedPlanId || !phone) {
-      setPaymentResult('Please select a plan and enter phone number');
+    if (!selectedPlanId || !email) {
+      setPaymentResult('Please select a plan and enter email');
       return;
     }
-    try {
-      const res = await initiatePayment.mutateAsync({
-        plan_id: selectedPlanId,
-        phone_number: phone,
-        subscription_type: 'organization',
-      });
-      const d = (res.data as any)?.data;
-      setPaymentResult(
-        d?.checkout_request_id
-          ? `STK push sent to ${phone}. Please check your phone to complete payment.`
-          : 'Payment initiated successfully.'
-      );
-      setPhone('');
-      setSelectedPlanId('');
-    } catch (e: any) {
-      setPaymentResult(e?.response?.data?.message || 'Payment failed. Please try again.');
+
+    const selectedPlan = (plans as any[]).find((p: any) => p.id === selectedPlanId);
+    if (!selectedPlan) {
+      setPaymentResult('Invalid plan selected');
+      return;
     }
+
+    setPaymentAmount(selectedPlan.price_monthly || 0);
+    
+    // Initialize Paystack payment
+    paystack.initializePayment();
   };
 
   const getStatusColor = (status: string) => {
@@ -457,11 +477,12 @@ export default function AccountPage() {
                   <Grid size={{ xs: 12 }}>
                     <TextField
                       fullWidth
-                      label="M-Pesa Phone Number"
-                      placeholder="e.g. 0712345678"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      helperText="Enter your M-Pesa registered phone number"
+                      label="Email Address"
+                      type="email"
+                      placeholder="your@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      helperText="Email for payment receipt"
                     />
                   </Grid>
                   <Grid size={{ xs: 12 }}>
@@ -471,11 +492,16 @@ export default function AccountPage() {
                       size="large"
                       fullWidth
                       onClick={handlePay}
-                      disabled={!selectedPlanId || !phone || initiatePayment.isPending}
-                      startIcon={initiatePayment.isPending ? <CircularProgress size={20} /> : <PaymentIcon />}
+                      disabled={!selectedPlanId || !email || paystack.isLoading || !paystackPublicKey}
+                      startIcon={paystack.isLoading ? <CircularProgress size={20} /> : <PaymentIcon />}
                     >
-                      {initiatePayment.isPending ? 'Processing...' : 'Pay with M-Pesa'}
+                      {paystack.isLoading ? 'Processing...' : 'Pay with Paystack'}
                     </Button>
+                    {!paystackPublicKey && (
+                      <Typography variant="caption" color="error" sx={{ mt: 1, display: 'block' }}>
+                        Paystack is not configured. Please contact support.
+                      </Typography>
+                    )}
                   </Grid>
                   {paymentResult && (
                     <Grid size={{ xs: 12 }}>

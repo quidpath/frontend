@@ -20,6 +20,12 @@ import PersonOutlined from '@mui/icons-material/PersonOutlined';
 import EmailOutlined from '@mui/icons-material/EmailOutlined';
 import authService from '@/auth/authService';
 
+const PLAN_OPTIONS = [
+  { value: 'starter', label: 'Starter', price: 2500, features: ['Up to 5 users', 'Basic features', 'Email support'] },
+  { value: 'professional', label: 'Professional', price: 5000, features: ['Up to 20 users', 'Advanced features', 'Priority support'] },
+  { value: 'enterprise', label: 'Enterprise', price: 10000, features: ['Unlimited users', 'All features', '24/7 support'] },
+];
+
 export default function SignUpIndividualPage() {
   const router = useRouter();
   const [username, setUsername] = useState('');
@@ -28,22 +34,24 @@ export default function SignUpIndividualPage() {
   const [planTier, setPlanTier] = useState('starter');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
+    
     try {
-      await authService.registerIndividual({
+      const response = await authService.registerIndividual({
         username,
         email,
         password,
         plan_tier: planTier,
       });
       
-      setSuccess(true);
+      // Redirect to payment page
+      const planPrice = PLAN_OPTIONS.find(p => p.value === planTier)?.price || 2500;
+      router.push(`/payment?email=${encodeURIComponent(email)}&amount=${planPrice}&corporate_id=${response.data.corporate_id}&plan_tier=${planTier}&type=individual`);
     } catch (err: unknown) {
       const res = (err as { response?: { data?: { error?: string } } })?.response?.data;
       const msg = res?.error ?? (typeof res === 'string' ? res : 'Registration failed.');
@@ -53,29 +61,17 @@ export default function SignUpIndividualPage() {
     }
   };
 
-  if (success) {
-    return (
-      <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', p: 2 }}>
-        <Paper sx={{ maxWidth: 400, p: 3, textAlign: 'center' }}>
-          <Typography variant="h6" color="success.main" gutterBottom>Check your email</Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            We've sent you an activation link. Click the link in your email to activate your account and proceed to payment.
-          </Typography>
-          <Button component={Link} href="/login" variant="outlined">Back to sign in</Button>
-        </Paper>
-      </Box>
-    );
-  }
-
   return (
-    <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', p: 2 }}>
+    <Box sx={pageWrap}>
       <Paper sx={{ maxWidth: 400, width: '100%', p: 3 }}>
-        <Typography variant="h5" gutterBottom>Individual sign up</Typography>
+        <Typography variant="h5" gutterBottom>Individual Sign Up</Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Create your account and workspace.
+          Create your account - payment required to activate
         </Typography>
+
         {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
-        <Box component="form" onSubmit={handleSubmit} noValidate>
+        
+        <Box component="form" onSubmit={handleRegister} noValidate>
           <TextField
             margin="normal"
             required
@@ -120,21 +116,8 @@ export default function SignUpIndividualPage() {
               ),
             }}
           />
-          <TextField
-            margin="normal"
-            fullWidth
-            select
-            label="Plan"
-            value={planTier}
-            onChange={(e) => setPlanTier(e.target.value)}
-            SelectProps={{ native: true }}
-          >
-            <option value="starter">Starter</option>
-            <option value="professional">Professional</option>
-            <option value="enterprise">Enterprise</option>
-          </TextField>
           <Button type="submit" fullWidth variant="contained" sx={{ mt: 3, mb: 2 }} disabled={loading}>
-            {loading ? 'Creating account…' : 'Create account'}
+            {loading ? 'Creating account…' : 'Continue to Payment'}
           </Button>
         </Box>
         <Typography variant="body2" color="text.secondary">
@@ -144,3 +127,13 @@ export default function SignUpIndividualPage() {
     </Box>
   );
 }
+
+const pageWrap = {
+  minHeight: '100vh',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  bgcolor: 'background.default',
+  p: 2,
+  backgroundImage: 'radial-gradient(ellipse at 60% 0%, rgba(67,160,71,0.08) 0%, transparent 60%)',
+};

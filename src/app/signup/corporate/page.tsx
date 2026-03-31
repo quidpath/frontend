@@ -16,7 +16,7 @@ import { usePaystack } from '@/hooks/usePaystack';
 import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || 'http://localhost:8000';
-const PAYSTACK_PUBLIC_KEY = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || 'pk_live_2b1bc258f0419b7a2f08cd3c4e16fb6edf71a67c';
+const PAYSTACK_PUBLIC_KEY = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '';
 
 const steps = ['Organization Details', 'Payment Verification', 'Confirmation'];
 
@@ -92,17 +92,28 @@ export default function SignUpCorporatePage() {
     setError('');
 
     try {
-      const response = await axios.post(`${API_URL}/corporate/payment/initiate`, formData);
+      // First, initiate registration to get registration ID
+      const response = await axios.post(`${API_URL}/api/orgauth/corporate/register/initiate`, formData);
       const data = response.data;
 
-      setRegistrationId(data.registration_id);
-      setPaymentReference(data.payment_reference);
-      setAuthorizationUrl(data.authorization_url);
+      if (!data.success) {
+        setError(data.error || 'Registration failed');
+        setLoading(false);
+        return;
+      }
 
-      // Redirect to Paystack payment page
-      window.location.href = data.authorization_url;
+      // Redirect to custom payment page for card verification
+      const queryParams = new URLSearchParams({
+        email: formData.email,
+        amount: '1', // KES 1 for card verification
+        corporate_name: formData.name,
+        registration_id: data.registration_id,
+        type: 'corporate',
+      });
+      
+      router.push(`/payment?${queryParams.toString()}`);
     } catch (err: any) {
-      setError(err?.response?.data?.error || 'Failed to initiate payment. Please try again.');
+      setError(err?.response?.data?.error || 'Failed to initiate registration. Please try again.');
       setLoading(false);
     }
   };
