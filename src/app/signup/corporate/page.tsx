@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Alert, Box, Button, Card, CardContent, Chip, CircularProgress,
+  Alert, Box, Button, Card, CardContent, CircularProgress,
   Divider, Step, StepLabel, Stepper, TextField, Typography,
 } from '@mui/material';
 import BusinessIcon from '@mui/icons-material/Business';
@@ -12,11 +12,9 @@ import PhoneIcon from '@mui/icons-material/Phone';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import PaymentIcon from '@mui/icons-material/Payment';
-import { usePaystack } from '@/hooks/usePaystack';
 import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || 'http://localhost:8000';
-const PAYSTACK_PUBLIC_KEY = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '';
 
 const steps = ['Organization Details', 'Payment Verification', 'Confirmation'];
 
@@ -53,8 +51,6 @@ export default function SignUpCorporatePage() {
 
   // Payment state
   const [registrationId, setRegistrationId] = useState('');
-  const [paymentReference, setPaymentReference] = useState('');
-  const [authorizationUrl, setAuthorizationUrl] = useState('');
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -92,9 +88,11 @@ export default function SignUpCorporatePage() {
     setError('');
 
     try {
-      // First, initiate registration to get registration ID
-      const response = await axios.post(`${API_URL}/api/orgauth/corporate/register/initiate/`, formData);
-      const data = response.data;
+      const { data } = await axios.post(`${API_URL}/api/orgauth/corporate/register/initiate/`, formData, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
       if (!data.success) {
         setError(data.error || 'Registration failed');
@@ -102,10 +100,9 @@ export default function SignUpCorporatePage() {
         return;
       }
 
-      // Redirect to custom payment page for card verification
       const queryParams = new URLSearchParams({
         email: formData.email,
-        amount: '1', // KES 1 for card verification
+        amount: '1',
         corporate_name: formData.name,
         registration_id: data.registration_id,
         type: 'corporate',
@@ -113,7 +110,8 @@ export default function SignUpCorporatePage() {
       
       router.push(`/payment?${queryParams.toString()}`);
     } catch (err: any) {
-      setError(err?.response?.data?.error || 'Failed to initiate registration. Please try again.');
+      const errorMsg = err?.response?.data?.error || err?.message || 'Failed to initiate registration. Please try again.';
+      setError(errorMsg);
       setLoading(false);
     }
   };
@@ -123,7 +121,7 @@ export default function SignUpCorporatePage() {
     setActiveStep(1);
 
     try {
-      const response = await axios.post(`${API_URL}/corporate/payment/verify`, {
+      await axios.post(`${API_URL}/api/orgauth/corporate/register/verify/`, {
         registration_id: registrationId,
         reference: reference,
       });
@@ -147,7 +145,6 @@ export default function SignUpCorporatePage() {
 
       if (reference && regId) {
         setRegistrationId(regId);
-        setPaymentReference(reference);
         verifyPayment(reference);
       }
     }
@@ -292,8 +289,10 @@ export default function SignUpCorporatePage() {
                 name="name"
                 value={formData.name}
                 onChange={handleInputChange}
-                InputProps={{
-                  startAdornment: <BusinessIcon sx={{ mr: 1, color: 'action.active' }} />,
+                slotProps={{
+                  input: {
+                    startAdornment: <BusinessIcon sx={{ mr: 1, color: 'action.active' }} />,
+                  }
                 }}
               />
 
@@ -306,8 +305,10 @@ export default function SignUpCorporatePage() {
                   type="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  InputProps={{
-                    startAdornment: <EmailIcon sx={{ mr: 1, color: 'action.active' }} />,
+                  slotProps={{
+                    input: {
+                      startAdornment: <EmailIcon sx={{ mr: 1, color: 'action.active' }} />,
+                    }
                   }}
                 />
 
@@ -319,8 +320,10 @@ export default function SignUpCorporatePage() {
                   value={formData.phone}
                   onChange={handleInputChange}
                   placeholder="+254712345678"
-                  InputProps={{
-                    startAdornment: <PhoneIcon sx={{ mr: 1, color: 'action.active' }} />,
+                  slotProps={{
+                    input: {
+                      startAdornment: <PhoneIcon sx={{ mr: 1, color: 'action.active' }} />,
+                    }
                   }}
                 />
               </Box>
@@ -332,8 +335,10 @@ export default function SignUpCorporatePage() {
                 name="address"
                 value={formData.address}
                 onChange={handleInputChange}
-                InputProps={{
-                  startAdornment: <LocationOnIcon sx={{ mr: 1, color: 'action.active' }} />,
+                slotProps={{
+                  input: {
+                    startAdornment: <LocationOnIcon sx={{ mr: 1, color: 'action.active' }} />,
+                  }
                 }}
               />
 

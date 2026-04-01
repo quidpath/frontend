@@ -1,14 +1,10 @@
 'use client';
 
-import React from 'react';
-import { useRouter } from 'next/navigation';
-import {
-  Alert, Box, Button, Card, CardContent, Typography,
-} from '@mui/material';
+import { Box, Button, Card, CardContent, Typography, Alert } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import { useRouter } from 'next/navigation';
 
-export default function CorporateSignupSuccessPage() {
+export default function CorporateSuccessPage() {
   const router = useRouter();
 
   return (
@@ -33,17 +29,14 @@ export default function CorporateSignupSuccessPage() {
             You will receive an email with your login credentials once approved.
           </Typography>
 
-          <Alert severity="info" icon={<AccessTimeIcon />} sx={{ mb: 3, textAlign: 'left' }}>
+          <Alert severity="info" sx={{ mb: 3, textAlign: 'left' }}>
             <Typography variant="body2" fontWeight={600} gutterBottom>
               What happens next?
             </Typography>
-            <Typography variant="body2" component="div">
-              <ol style={{ margin: 0, paddingLeft: 20 }}>
-                <li>Our team reviews your application (usually within 24 hours)</li>
-                <li>You receive approval email with admin credentials</li>
-                <li>Log in and start your 30-day free trial</li>
-                <li>Full access to all features during trial period</li>
-              </ol>
+            <Typography variant="body2">
+              1. Our team reviews your application (usually within 24 hours)<br />
+              2. You receive approval email with admin credentials<br />
+              3. Log in and start your 30-day free trial
             </Typography>
           </Alert>
 

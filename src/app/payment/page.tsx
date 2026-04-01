@@ -38,12 +38,6 @@ function PaymentContent() {
   const planTier = searchParams.get('plan_tier') || 'starter';
   const paymentType = searchParams.get('type') || 'individual'; // individual or corporate
   const corporateName = searchParams.get('corporate_name') || '';
-  
-  // Card details
-  const [cardNumber, setCardNumber] = useState('');
-  const [expiryDate, setExpiryDate] = useState('');
-  const [cvv, setCvv] = useState('');
-  const [cardName, setCardName] = useState('');
 
   // Initialize Paystack
   const paystack = usePaystack({
@@ -58,7 +52,6 @@ function PaymentContent() {
       corporate_name: corporateName,
     },
     onSuccess: async (response) => {
-      console.log('Payment successful:', response);
       await handlePaymentSuccess(response.reference);
     },
     onClose: () => {
@@ -69,6 +62,8 @@ function PaymentContent() {
 
   const handlePaymentSuccess = async (reference: string) => {
     setLoading(true);
+    setError('');
+    
     try {
       if (paymentType === 'individual') {
         // Verify individual payment with plan_id
@@ -98,33 +93,11 @@ function PaymentContent() {
       }
     } catch (err: any) {
       setError(err?.response?.data?.error || 'Payment verification failed');
-    } finally {
       setLoading(false);
     }
   };
 
-  const formatCardNumber = (value: string) => {
-    const cleaned = value.replace(/\s/g, '');
-    const formatted = cleaned.match(/.{1,4}/g)?.join(' ') || cleaned;
-    return formatted.substring(0, 19); // Max 16 digits + 3 spaces
-  };
-
-  const formatExpiryDate = (value: string) => {
-    const cleaned = value.replace(/\D/g, '');
-    if (cleaned.length >= 2) {
-      return `${cleaned.substring(0, 2)}/${cleaned.substring(2, 4)}`;
-    }
-    return cleaned;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!cardNumber || !expiryDate || !cvv || !cardName) {
-      setError('Please fill in all card details');
-      return;
-    }
-    
+  const handlePayNow = () => {
     if (!PAYSTACK_PUBLIC_KEY) {
       setError('Payment system is not configured. Please contact support.');
       return;
@@ -133,7 +106,7 @@ function PaymentContent() {
     setLoading(true);
     setError('');
     
-    // Initialize Paystack payment
+    // Initialize Paystack payment popup
     paystack.initializePayment();
   };
 
@@ -223,87 +196,45 @@ function PaymentContent() {
             </Alert>
           )}
 
-          {/* Card Form */}
-          <Box component="form" onSubmit={handleSubmit}>
+          {/* Payment Info */}
+          <Box sx={{ mb: 3 }}>
             <Typography variant="subtitle1" fontWeight={600} gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <CreditCardIcon color="primary" />
-              Card Details
+              Secure Payment
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Click the button below to complete your payment securely through Paystack. 
+              You'll be prompted to enter your card details in a secure popup window.
             </Typography>
 
-            <TextField
-              fullWidth
-              required
-              label="Card Number"
-              placeholder="1234 5678 9012 3456"
-              value={cardNumber}
-              onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
-              sx={{ mb: 2 }}
-              inputProps={{ maxLength: 19 }}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <CreditCardIcon color="action" />
-                  </InputAdornment>
-                ),
-              }}
-            />
-
-            <TextField
-              fullWidth
-              required
-              label="Cardholder Name"
-              placeholder="JOHN DOE"
-              value={cardName}
-              onChange={(e) => setCardName(e.target.value.toUpperCase())}
-              sx={{ mb: 2 }}
-            />
-
-            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mb: 3 }}>
-              <TextField
-                required
-                label="Expiry Date"
-                placeholder="MM/YY"
-                value={expiryDate}
-                onChange={(e) => setExpiryDate(formatExpiryDate(e.target.value))}
-                inputProps={{ maxLength: 5 }}
-              />
-
-              <TextField
-                required
-                label="CVV"
-                placeholder="123"
-                type="password"
-                value={cvv}
-                onChange={(e) => setCvv(e.target.value.replace(/\D/g, '').substring(0, 4))}
-                inputProps={{ maxLength: 4 }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <LockIcon color="action" fontSize="small" />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-            </Box>
-
-            <Button
-              type="submit"
-              variant="contained"
-              size="large"
-              fullWidth
-              disabled={loading || paystack.isLoading}
-              startIcon={loading || paystack.isLoading ? <CircularProgress size={20} color="inherit" /> : <LockIcon />}
-              sx={{ py: 1.5, fontWeight: 700, mb: 2 }}
-            >
-              {loading || paystack.isLoading ? 'Processing...' : `Pay KES ${amount.toLocaleString()}`}
-            </Button>
-
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 1 }}>
-              <LockIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
-              <Typography variant="caption" color="text.secondary">
-                Secured by Paystack • Your card details are encrypted
+            <Alert severity="info" sx={{ mb: 2 }}>
+              <Typography variant="body2">
+                {paymentType === 'individual' 
+                  ? 'Your account will be activated immediately after successful payment.'
+                  : 'We will verify your card with a KES 1 hold that will be immediately released. No charge today.'}
               </Typography>
-            </Box>
+            </Alert>
+          </Box>
+
+          <Button
+            variant="contained"
+            size="large"
+            fullWidth
+            onClick={handlePayNow}
+            disabled={loading || paystack.isLoading || !paystack.isLoaded || !PAYSTACK_PUBLIC_KEY}
+            startIcon={loading || paystack.isLoading ? <CircularProgress size={20} color="inherit" /> : <LockIcon />}
+            sx={{ py: 1.5, fontWeight: 700, mb: 2 }}
+          >
+            {!paystack.isLoaded ? 'Loading payment system...' : 
+             loading || paystack.isLoading ? 'Processing...' : 
+             `Pay KES ${amount.toLocaleString()}`}
+          </Button>
+
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 1 }}>
+            <LockIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+            <Typography variant="caption" color="text.secondary">
+              Secured by Paystack • Your card details are encrypted
+            </Typography>
           </Box>
         </CardContent>
       </Card>

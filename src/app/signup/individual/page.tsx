@@ -134,7 +134,11 @@ export default function SignUpIndividualPage() {
             autoComplete="username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            InputProps={{ startAdornment: <InputAdornment position="start"><PersonOutlined color="action" /></InputAdornment> }}
+            slotProps={{
+              input: {
+                startAdornment: <InputAdornment position="start"><PersonOutlined color="action" /></InputAdornment>
+              }
+            }}
           />
           <TextField
             margin="normal"
@@ -146,7 +150,11 @@ export default function SignUpIndividualPage() {
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            InputProps={{ startAdornment: <InputAdornment position="start"><EmailOutlined color="action" /></InputAdornment> }}
+            slotProps={{
+              input: {
+                startAdornment: <InputAdornment position="start"><EmailOutlined color="action" /></InputAdornment>
+              }
+            }}
           />
           <TextField
             margin="normal"
@@ -158,15 +166,17 @@ export default function SignUpIndividualPage() {
             autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            InputProps={{
-              startAdornment: <InputAdornment position="start"><LockOutlined color="action" /></InputAdornment>,
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton onClick={() => setShowPassword(!showPassword)} edge="end" aria-label="toggle password">
-                    {showPassword ? <VisibilityOff /> : <Visibility />}
-                  </IconButton>
-                </InputAdornment>
-              ),
+            slotProps={{
+              input: {
+                startAdornment: <InputAdornment position="start"><LockOutlined color="action" /></InputAdornment>,
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton onClick={() => setShowPassword(!showPassword)} edge="end" aria-label="toggle password">
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }
             }}
           />
 

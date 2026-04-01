@@ -82,7 +82,7 @@ const authService = {
       password,
     }),
 
-  /** POST /register-individual/ — creates user + org (SUPERADMIN). plan_tier and plan_id optional. */
+  /** POST /api/auth/register-individual/ — creates user + org (SUPERADMIN). plan_tier and plan_id optional. */
   registerIndividual: (payload: {
     username: string;
     email: string;
@@ -101,7 +101,7 @@ const authService = {
       otp_required?: boolean;
       corporate_id?: string;
       subscription_required?: boolean;
-    }>('/register-individual/', payload),
+    }>('/api/auth/register-individual/', payload),
 
   /** POST corporate/create — create organisation (pending approval). */
   createCorporate: (payload: {
