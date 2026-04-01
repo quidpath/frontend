@@ -93,7 +93,7 @@ export default function SignUpCorporatePage() {
 
     try {
       // First, initiate registration to get registration ID
-      const response = await axios.post(`${API_URL}/api/orgauth/corporate/register/initiate`, formData);
+      const response = await axios.post(`${API_URL}/api/orgauth/corporate/register/initiate/`, formData);
       const data = response.data;
 
       if (!data.success) {

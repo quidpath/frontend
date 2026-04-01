@@ -71,10 +71,12 @@ function PaymentContent() {
     setLoading(true);
     try {
       if (paymentType === 'individual') {
-        // Verify individual payment
-        await axios.post(`${API_URL}/api/auth/payment/verify-individual`, {
+        // Verify individual payment with plan_id
+        const planId = searchParams.get('plan_id') || '';
+        await axios.post(`${API_URL}/api/auth/payment/verify-individual/`, {
           reference,
           corporate_id: corporateId,
+          plan_id: planId,
         });
         
         setSuccess(true);
@@ -84,7 +86,7 @@ function PaymentContent() {
       } else {
         // Verify corporate payment
         const registrationId = searchParams.get('registration_id') || '';
-        await axios.post(`${API_URL}/api/orgauth/corporate/register/verify`, {
+        await axios.post(`${API_URL}/api/orgauth/corporate/register/verify/`, {
           reference,
           registration_id: registrationId,
         });

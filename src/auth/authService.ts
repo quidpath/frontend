@@ -82,12 +82,13 @@ const authService = {
       password,
     }),
 
-  /** POST /register-individual/ — creates user + org (SUPERADMIN). plan_tier optional. */
+  /** POST /register-individual/ — creates user + org (SUPERADMIN). plan_tier and plan_id optional. */
   registerIndividual: (payload: {
     username: string;
     email: string;
     password: string;
     plan_tier?: string;
+    plan_id?: string;
     phone?: string;
     address?: string;
     city?: string;

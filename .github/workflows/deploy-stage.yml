@@ -50,6 +50,7 @@ jobs:
             NEXT_PUBLIC_HRM_URL=${{ secrets.NEXT_PUBLIC_HRM_URL_STAGE }}
             NEXT_PUBLIC_POS_URL=${{ secrets.NEXT_PUBLIC_POS_URL_STAGE }}
             NEXT_PUBLIC_PROJECTS_URL=${{ secrets.NEXT_PUBLIC_PROJECTS_URL_STAGE }}
+            NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY=${{ secrets.PAYSTACK_PUBLIC_KEY_STAGING }}
 
       - name: Encode docker-compose.stage.yml
         id: compose
