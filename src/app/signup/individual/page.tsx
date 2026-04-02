@@ -91,9 +91,18 @@ export default function SignUpIndividualPage() {
         plan_id: selectedPlanId,
       });
       
-      // Redirect to payment page with plan_id
+      // Redirect to payment page
       const planPrice = selectedPlan?.price_monthly || 2500;
-      router.push(`/payment?email=${encodeURIComponent(email)}&amount=${planPrice}&corporate_id=${response.data.corporate_id}&plan_id=${selectedPlanId}&plan_tier=${selectedPlan?.tier}&type=individual`);
+      const params = new URLSearchParams({
+        email,
+        amount: String(planPrice),
+        corporate_id: response.data.corporate_id || '',
+        plan_id: selectedPlanId,
+        plan_tier: selectedPlan?.tier || 'starter',
+        plan_name: selectedPlan?.name || 'Starter',
+        type: 'individual',
+      });
+      router.push(`/payment?${params.toString()}`);
     } catch (err: unknown) {
       const res = (err as { response?: { data?: { error?: string } } })?.response?.data;
       const msg = res?.error ?? (typeof res === 'string' ? res : 'Registration failed.');

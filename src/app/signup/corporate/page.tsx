@@ -104,6 +104,7 @@ export default function SignUpCorporatePage() {
         email: formData.email,
         amount: '1',
         corporate_name: formData.name,
+        plan_name: formData.name,
         registration_id: data.registration_id,
         type: 'corporate',
       });

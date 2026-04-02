@@ -59,29 +59,9 @@ export default function AccountPage() {
   const { data: plans = [], isLoading: plansLoading } = usePlans('organization');
   const { data: paymentHistory = [], isLoading: paymentsLoading } = usePaymentHistory();
 
-  // Get Paystack public key from environment
-  const paystackPublicKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '';
-
   // Initialize Paystack
-  const paystack = usePaystack({
-    publicKey: paystackPublicKey,
-    email: email || user?.email || '',
-    amount: paymentAmount,
-    currency: 'KES',
-    metadata: {
-      plan_id: selectedPlanId,
-      corporate_id: user?.corporate?.id,
-      user_id: user?.id,
-    },
-    onSuccess: async (response) => {
-      setPaymentResult(`Payment successful! Reference: ${response.reference}`);
-      // TODO: Verify payment on backend
-      console.log('Payment successful:', response);
-    },
-    onClose: () => {
-      setPaymentResult('Payment cancelled');
-    },
-  });
+  const paystack = usePaystack();
+  const [paystackBusy, setPaystackBusy] = useState(false);
 
   const handlePay = async () => {
     if (!selectedPlanId || !email) {
@@ -95,10 +75,47 @@ export default function AccountPage() {
       return;
     }
 
-    setPaymentAmount(selectedPlan.price_monthly || 0);
-    
-    // Initialize Paystack payment
-    paystack.initializePayment();
+    const amount = selectedPlan.price_monthly || 0;
+    setPaymentAmount(amount);
+    setPaystackBusy(true);
+
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || 'http://localhost:8000';
+      const { data } = await (await import('axios')).default.post(
+        `${API_URL}/api/auth/payment/initialize/`,
+        {
+          email: email || user?.email || '',
+          amount,
+          payment_type: 'individual',
+          corporate_id: user?.corporate?.id || '',
+          plan_id: selectedPlanId,
+        }
+      );
+
+      if (!data.access_code) {
+        setPaymentResult('Could not initialize payment. Please try again.');
+        setPaystackBusy(false);
+        return;
+      }
+
+      paystack.resumeTransaction(data.access_code, {
+        onSuccess: (transaction) => {
+          setPaystackBusy(false);
+          setPaymentResult(`Payment successful! Reference: ${transaction.reference}`);
+        },
+        onCancel: () => {
+          setPaystackBusy(false);
+          setPaymentResult('Payment cancelled');
+        },
+        onError: (message) => {
+          setPaystackBusy(false);
+          setPaymentResult(`Payment failed: ${message}`);
+        },
+      });
+    } catch {
+      setPaystackBusy(false);
+      setPaymentResult('Failed to start payment. Please try again.');
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -492,16 +509,11 @@ export default function AccountPage() {
                       size="large"
                       fullWidth
                       onClick={handlePay}
-                      disabled={!selectedPlanId || !email || paystack.isLoading || !paystackPublicKey}
-                      startIcon={paystack.isLoading ? <CircularProgress size={20} /> : <PaymentIcon />}
+                      disabled={!selectedPlanId || !email || paystackBusy}
+                      startIcon={paystackBusy ? <CircularProgress size={20} /> : <PaymentIcon />}
                     >
-                      {paystack.isLoading ? 'Processing...' : 'Pay with Paystack'}
+                      {paystackBusy ? 'Processing...' : 'Pay with Paystack'}
                     </Button>
-                    {!paystackPublicKey && (
-                      <Typography variant="caption" color="error" sx={{ mt: 1, display: 'block' }}>
-                        Paystack is not configured. Please contact support.
-                      </Typography>
-                    )}
                   </Grid>
                   {paymentResult && (
                     <Grid size={{ xs: 12 }}>

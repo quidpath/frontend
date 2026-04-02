@@ -1,116 +1,113 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-// Paystack Popup types
-interface PaystackPopup {
-  setup: (config: PaystackConfig) => void;
-  resumeTransaction: (accessCode: string) => void;
-  newTransaction: () => void;
+// ─── Paystack v2 InlineJS types ──────────────────────────────────────────────
+interface PaystackTransaction {
+  reference: string;
+  trans: string;
+  status: string;
+  message: string;
+  transaction: string;
+  trxref: string;
 }
 
-interface PaystackConfig {
+interface PaystackNewTransactionOptions {
   key: string;
   email: string;
   amount: number;
   currency?: string;
-  ref?: string;
-  metadata?: Record<string, any>;
-  callback?: (response: PaystackResponse) => void;
-  onClose?: () => void;
+  reference?: string;
+  metadata?: Record<string, unknown>;
+  onSuccess?: (transaction: PaystackTransaction) => void;
+  onLoad?: (response: unknown) => void;
+  onCancel?: () => void;
+  onError?: (error: { message: string }) => void;
 }
 
-interface PaystackResponse {
-  reference: string;
-  status: string;
-  trans: string;
-  transaction: string;
-  trxref: string;
-  message?: string;
+interface PaystackInstance {
+  newTransaction: (options: PaystackNewTransactionOptions) => void;
+  resumeTransaction: (accessCode: string, callbacks?: {
+    onSuccess?: (transaction: PaystackTransaction) => void;
+    onLoad?: (response: unknown) => void;
+    onCancel?: () => void;
+    onError?: (error: { message: string }) => void;
+  }) => void;
 }
 
 declare global {
   interface Window {
-    PaystackPop?: {
-      setup: (config: PaystackConfig) => PaystackPopup;
-    };
+    // v2 inline.js exposes a constructor
+    Paystack?: new () => PaystackInstance;
   }
 }
 
+// ─── Hook options ─────────────────────────────────────────────────────────────
 export interface UsePaystackOptions {
-  publicKey: string;
-  email: string;
-  amount: number;
-  currency?: string;
-  reference?: string;
-  metadata?: Record<string, any>;
-  onSuccess?: (response: PaystackResponse) => void;
-  onClose?: () => void;
+  onSuccess?: (transaction: PaystackTransaction) => void;
+  onCancel?: () => void;
+  onError?: (message: string) => void;
 }
 
-export function usePaystack(options: UsePaystackOptions) {
+export interface UsePaystackReturn {
+  isLoaded: boolean;
+  resumeTransaction: (
+    accessCode: string,
+    callbacks: {
+      onSuccess: (transaction: PaystackTransaction) => void;
+      onCancel: () => void;
+      onError: (message: string) => void;
+    }
+  ) => void;
+}
+
+// ─── Hook ─────────────────────────────────────────────────────────────────────
+export function usePaystack(): UsePaystackReturn {
   const [isLoaded, setIsLoaded] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const instanceRef = useRef<PaystackInstance | null>(null);
 
   useEffect(() => {
-    // Check if Paystack script is already loaded
-    if (window.PaystackPop) {
+    // Already loaded
+    if (window.Paystack) {
+      instanceRef.current = new window.Paystack();
       setIsLoaded(true);
       return;
     }
 
-    // Load Paystack inline script
-    const script = document.createElement('script');
-    script.src = 'https://js.paystack.co/v1/inline.js';
-    script.async = true;
-    script.onload = () => setIsLoaded(true);
-    script.onerror = () => console.error('Failed to load Paystack script');
-    document.body.appendChild(script);
-
-    return () => {
-      // Cleanup script on unmount
-      if (script.parentNode) {
-        script.parentNode.removeChild(script);
-      }
-    };
-  }, []);
-
-  const initializePayment = () => {
-    if (!isLoaded || !window.PaystackPop) {
-      console.error('Paystack not loaded yet');
+    const existing = document.querySelector('script[src*="js.paystack.co/v2"]');
+    if (existing) {
+      existing.addEventListener('load', () => {
+        if (window.Paystack) {
+          instanceRef.current = new window.Paystack();
+          setIsLoaded(true);
+        }
+      });
       return;
     }
 
-    setIsLoading(true);
-
-    const config: PaystackConfig = {
-      key: options.publicKey,
-      email: options.email,
-      amount: options.amount * 100, // Convert to kobo/cents
-      currency: options.currency || 'KES',
-      ref: options.reference || `${Date.now()}-${Math.random().toString(36).substring(7)}`,
-      metadata: options.metadata || {},
-      callback: (response: PaystackResponse) => {
-        setIsLoading(false);
-        if (options.onSuccess) {
-          options.onSuccess(response);
-        }
-      },
-      onClose: () => {
-        setIsLoading(false);
-        if (options.onClose) {
-          options.onClose();
-        }
-      },
+    const script = document.createElement('script');
+    script.src = 'https://js.paystack.co/v2/inline.js';
+    script.async = true;
+    script.onload = () => {
+      if (window.Paystack) {
+        instanceRef.current = new window.Paystack();
+        setIsLoaded(true);
+      }
     };
+    document.head.appendChild(script);
+  }, []);
 
-    const handler = window.PaystackPop.setup(config);
-    handler.newTransaction();
+  const resumeTransaction: UsePaystackReturn['resumeTransaction'] = (accessCode, callbacks) => {
+    if (!instanceRef.current) {
+      callbacks.onError('Payment system not ready. Please refresh and try again.');
+      return;
+    }
+    instanceRef.current.resumeTransaction(accessCode, {
+      onSuccess: callbacks.onSuccess,
+      onCancel: callbacks.onCancel,
+      onError: (err) => callbacks.onError(err.message),
+    });
   };
 
-  return {
-    initializePayment,
-    isLoaded,
-    isLoading,
-  };
+  return { isLoaded, resumeTransaction };
 }

@@ -1,23 +1,22 @@
 'use client';
 
-import React, { Suspense, useState, useEffect } from 'react';
+import React, { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Alert, Box, Button, Card, CardContent, CircularProgress,
-  TextField, Typography, InputAdornment, Divider,
+  Divider, Typography,
 } from '@mui/material';
-import CreditCardIcon from '@mui/icons-material/CreditCard';
 import LockIcon from '@mui/icons-material/Lock';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import { usePaystack } from '@/hooks/usePaystack';
+import CreditCardIcon from '@mui/icons-material/CreditCard';
 import axios from 'axios';
+import { usePaystack } from '@/hooks/usePaystack';
 
 const API_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || 'http://localhost:8000';
-const PAYSTACK_PUBLIC_KEY = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '';
 
 export default function PaymentPage() {
   return (
-    <Suspense fallback={<CircularProgress />}>
+    <Suspense fallback={<Box sx={pageWrap}><CircularProgress /></Box>}>
       <PaymentContent />
     </Suspense>
   );
@@ -26,110 +25,99 @@ export default function PaymentPage() {
 function PaymentContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  
-  const [loading, setLoading] = useState(false);
+  const paystack = usePaystack();
+
+  const [step, setStep] = useState<'idle' | 'initializing' | 'verifying' | 'done'>('idle');
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
-  
-  // Payment details from URL params
-  const email = searchParams.get('email') || '';
-  const amount = parseFloat(searchParams.get('amount') || '0');
-  const corporateId = searchParams.get('corporate_id') || '';
-  const planTier = searchParams.get('plan_tier') || 'starter';
-  const paymentType = searchParams.get('type') || 'individual'; // individual or corporate
-  const corporateName = searchParams.get('corporate_name') || '';
 
-  // Initialize Paystack
-  const paystack = usePaystack({
-    publicKey: PAYSTACK_PUBLIC_KEY,
-    email: email,
-    amount: amount,
-    currency: 'KES',
-    metadata: {
-      corporate_id: corporateId,
-      plan_tier: planTier,
-      payment_type: paymentType,
-      corporate_name: corporateName,
-    },
-    onSuccess: async (response) => {
-      await handlePaymentSuccess(response.reference);
-    },
-    onClose: () => {
-      setError('Payment cancelled. Please try again.');
-      setLoading(false);
-    },
-  });
+  const email          = searchParams.get('email') || '';
+  const amount         = parseFloat(searchParams.get('amount') || '0');
+  const paymentType    = searchParams.get('type') || 'individual';
+  const corporateId    = searchParams.get('corporate_id') || '';
+  const registrationId = searchParams.get('registration_id') || '';
+  const planId         = searchParams.get('plan_id') || '';
+  const planTier       = searchParams.get('plan_tier') || 'starter';
+  const planName       = searchParams.get('plan_name') || (planTier.charAt(0).toUpperCase() + planTier.slice(1));
 
-  const handlePaymentSuccess = async (reference: string) => {
-    setLoading(true);
-    setError('');
-    
+  const verifyWithBackend = async (reference: string) => {
+    setStep('verifying');
     try {
       if (paymentType === 'individual') {
-        // Verify individual payment with plan_id
-        const planId = searchParams.get('plan_id') || '';
         await axios.post(`${API_URL}/api/auth/payment/verify-individual/`, {
           reference,
           corporate_id: corporateId,
           plan_id: planId,
         });
-        
-        setSuccess(true);
-        setTimeout(() => {
-          router.push('/login?payment=success');
-        }, 2000);
       } else {
-        // Verify corporate payment
-        const registrationId = searchParams.get('registration_id') || '';
         await axios.post(`${API_URL}/api/orgauth/corporate/register/verify/`, {
           reference,
           registration_id: registrationId,
         });
-        
-        setSuccess(true);
-        setTimeout(() => {
-          router.push('/signup/corporate/success');
-        }, 2000);
       }
-    } catch (err: any) {
-      setError(err?.response?.data?.error || 'Payment verification failed');
-      setLoading(false);
+      setStep('done');
+      setTimeout(() => {
+        router.push(paymentType === 'individual' ? '/login?payment=success' : '/signup/corporate/success');
+      }, 2000);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
+        || 'Verification failed. Please contact support.';
+      setError(msg);
+      setStep('idle');
     }
   };
 
-  const handlePayNow = () => {
-    if (!PAYSTACK_PUBLIC_KEY) {
-      setError('Payment system is not configured. Please contact support.');
-      return;
-    }
-    
-    setLoading(true);
+  const handlePayNow = async () => {
     setError('');
-    
-    // Initialize Paystack payment popup
-    paystack.initializePayment();
+    setStep('initializing');
+    try {
+      const { data } = await axios.post(`${API_URL}/api/auth/payment/initialize/`, {
+        email,
+        amount,
+        payment_type: paymentType,
+        corporate_id: corporateId,
+        registration_id: registrationId,
+        plan_id: planId,
+        plan_tier: planTier,
+      });
+
+      if (!data.access_code) {
+        setError('Could not initialize payment. Please try again.');
+        setStep('idle');
+        return;
+      }
+
+      paystack.resumeTransaction(data.access_code, {
+        onSuccess: (transaction) => verifyWithBackend(transaction.reference),
+        onCancel: () => {
+          setError('Payment cancelled. You can try again.');
+          setStep('idle');
+        },
+        onError: (message) => {
+          setError(message || 'Payment failed. Please try again.');
+          setStep('idle');
+        },
+      });
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
+        || 'Failed to start payment. Please try again.';
+      setError(msg);
+      setStep('idle');
+    }
   };
 
-  if (success) {
+  if (step === 'done') {
     return (
       <Box sx={pageWrap}>
         <Card sx={cardSx}>
           <CardContent sx={{ p: { xs: 3, sm: 5 }, textAlign: 'center' }}>
-            <Box sx={{
-              width: 80, height: 80, borderRadius: '50%', mx: 'auto', mb: 3,
-              background: 'linear-gradient(135deg, #43A047, #2E7D32)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
+            <Box sx={successCircle}>
               <CheckCircleIcon sx={{ fontSize: 48, color: '#fff' }} />
             </Box>
-
-            <Typography variant="h4" fontWeight={700} gutterBottom>
-              Payment Successful!
-            </Typography>
+            <Typography variant="h4" fontWeight={700} gutterBottom>Payment Successful!</Typography>
             <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-              {paymentType === 'individual' 
-                ? 'Your account is now active. Redirecting to login...'
-                : 'Your registration is complete. Redirecting...'}
+              {paymentType === 'individual'
+                ? 'Your account is now active. Redirecting to login…'
+                : 'Your registration is complete. Redirecting…'}
             </Typography>
             <CircularProgress size={24} />
           </CardContent>
@@ -138,35 +126,46 @@ function PaymentContent() {
     );
   }
 
+  if (step === 'verifying') {
+    return (
+      <Box sx={pageWrap}>
+        <Card sx={cardSx}>
+          <CardContent sx={{ p: { xs: 3, sm: 5 }, textAlign: 'center' }}>
+            <CircularProgress size={56} sx={{ mb: 3 }} />
+            <Typography variant="h5" fontWeight={600} gutterBottom>Confirming your payment…</Typography>
+            <Typography color="text.secondary">Please wait, do not close this page.</Typography>
+          </CardContent>
+        </Card>
+      </Box>
+    );
+  }
+
+  const busy = step === 'initializing';
+
   return (
     <Box sx={pageWrap}>
       <Card sx={cardSx}>
-        {/* Header */}
-        <Box sx={{
-          background: 'linear-gradient(135deg, #2E7D32 0%, #43A047 60%, #1ABC9C 100%)',
-          px: 4, py: 4,
-        }}>
+        <Box sx={headerSx}>
           <Box component="img" src="/quidpathLong.svg" alt="QuidPath"
             sx={{ height: 32, objectFit: 'contain', filter: 'brightness(0) invert(1)', mb: 2 }} />
           <Typography variant="h5" fontWeight={700} color="#fff" gutterBottom>
             {paymentType === 'individual' ? 'Complete Your Payment' : 'Verify Your Card'}
           </Typography>
-          <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.9)' }}>
-            {paymentType === 'individual' 
-              ? 'Pay to activate your account and start using Quidpath'
-              : 'We\'ll verify your card with a KES 1 hold (immediately released)'}
+          <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.85)' }}>
+            {paymentType === 'individual'
+              ? 'Pay securely to activate your Quidpath account'
+              : 'A KES 1 hold will be placed on your card and immediately released'}
           </Typography>
         </Box>
 
         <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
-          {/* Payment Summary */}
           <Box sx={{ mb: 3, p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
-            <Typography variant="subtitle2" fontWeight={600} gutterBottom>
-              Payment Summary
-            </Typography>
+            <Typography variant="subtitle2" fontWeight={600} gutterBottom>Payment Summary</Typography>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-              <Typography variant="body2" color="text.secondary">Plan</Typography>
-              <Typography variant="body2" fontWeight={600}>{planTier.charAt(0).toUpperCase() + planTier.slice(1)}</Typography>
+              <Typography variant="body2" color="text.secondary">
+                {paymentType === 'individual' ? 'Plan' : 'Organization'}
+              </Typography>
+              <Typography variant="body2" fontWeight={600}>{planName}</Typography>
             </Box>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
               <Typography variant="body2" color="text.secondary">Email</Typography>
@@ -181,9 +180,7 @@ function PaymentContent() {
             </Box>
             {paymentType === 'corporate' && (
               <Alert severity="info" sx={{ mt: 2 }}>
-                <Typography variant="caption">
-                  This is a card verification. No charge will be made today.
-                </Typography>
+                <Typography variant="caption">Card verification only — no charge today.</Typography>
               </Alert>
             )}
           </Box>
@@ -191,29 +188,19 @@ function PaymentContent() {
           <Divider sx={{ mb: 3 }} />
 
           {error && (
-            <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError('')}>
-              {error}
-            </Alert>
+            <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError('')}>{error}</Alert>
           )}
 
-          {/* Payment Info */}
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="subtitle1" fontWeight={600} gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <CreditCardIcon color="primary" />
-              Secure Payment
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Click the button below to complete your payment securely through Paystack. 
-              You'll be prompted to enter your card details in a secure popup window.
-            </Typography>
-
-            <Alert severity="info" sx={{ mb: 2 }}>
-              <Typography variant="body2">
-                {paymentType === 'individual' 
-                  ? 'Your account will be activated immediately after successful payment.'
-                  : 'We will verify your card with a KES 1 hold that will be immediately released. No charge today.'}
+          <Box sx={{ mb: 3, display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+            <CreditCardIcon color="primary" sx={{ mt: 0.3 }} />
+            <Box>
+              <Typography variant="subtitle2" fontWeight={600} gutterBottom>Secure card payment</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Clicking the button below opens a secure Paystack payment window.
+                Your card details are collected and processed directly by Paystack —
+                we never see or store your card information.
               </Typography>
-            </Alert>
+            </Box>
           </Box>
 
           <Button
@@ -221,19 +208,17 @@ function PaymentContent() {
             size="large"
             fullWidth
             onClick={handlePayNow}
-            disabled={loading || paystack.isLoading || !paystack.isLoaded || !PAYSTACK_PUBLIC_KEY}
-            startIcon={loading || paystack.isLoading ? <CircularProgress size={20} color="inherit" /> : <LockIcon />}
+            disabled={busy || !paystack.isLoaded}
+            startIcon={busy ? <CircularProgress size={20} color="inherit" /> : <LockIcon />}
             sx={{ py: 1.5, fontWeight: 700, mb: 2 }}
           >
-            {!paystack.isLoaded ? 'Loading payment system...' : 
-             loading || paystack.isLoading ? 'Processing...' : 
-             `Pay KES ${amount.toLocaleString()}`}
+            {!paystack.isLoaded ? 'Loading…' : busy ? 'Opening payment window…' : `Pay KES ${amount.toLocaleString()}`}
           </Button>
 
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 1 }}>
-            <LockIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
-            <Typography variant="caption" color="text.secondary">
-              Secured by Paystack • Your card details are encrypted
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 0.75 }}>
+            <LockIcon sx={{ fontSize: 13, color: 'text.disabled' }} />
+            <Typography variant="caption" color="text.disabled">
+              256-bit SSL encryption · Secured by Paystack
             </Typography>
           </Box>
         </CardContent>
@@ -253,11 +238,29 @@ const pageWrap = {
 };
 
 const cardSx = {
-  maxWidth: 520,
+  maxWidth: 480,
   width: '100%',
   borderRadius: '14px',
   overflow: 'hidden',
   border: '1px solid',
   borderColor: 'divider',
   boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
+};
+
+const headerSx = {
+  background: 'linear-gradient(135deg, #2E7D32 0%, #43A047 60%, #1ABC9C 100%)',
+  px: 4,
+  py: 4,
+};
+
+const successCircle = {
+  width: 80,
+  height: 80,
+  borderRadius: '50%',
+  mx: 'auto',
+  mb: 3,
+  background: 'linear-gradient(135deg, #43A047, #2E7D32)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
 };
