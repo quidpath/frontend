@@ -4,9 +4,10 @@ import React, { useState } from 'react';
 import {
   Box, Tab, Tabs, Card, CardContent, Grid, Alert, Chip,
   TextField, MenuItem, FormControlLabel, Checkbox, Typography,
+  Dialog, DialogTitle, DialogContent, DialogActions, Button,
 } from '@mui/material';
 import SettingsIcon from '@mui/icons-material/Settings';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import PageHeader from '@/components/ui/PageHeader';
 import CrudTable from '@/components/ui/CrudTable';
 import FormModal from '@/components/ui/FormModal';
@@ -21,8 +22,11 @@ import taxService, { TaxRate } from '@/services/taxService';
 import bankingService, { BankAccount } from '@/services/bankingService';
 import { useCurrencyStore, SUPPORTED_CURRENCIES, CurrencyCode } from '@/store/currencyStore';
 import { useCurrencyRates } from '@/hooks/useCurrency';
+import roleService, { RoleWithPermissions, Permission } from '@/services/roleService';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+type RoleRow = Omit<RoleWithPermissions, 'id'> & { id: string };
+
 function rows<T>(data: any, ...keys: string[]): T[] {
   for (const k of keys) if (data?.[k]) return data[k];
   return data?.results ?? [];
@@ -254,6 +258,274 @@ function TaxRatesPanel({ can }: { can: boolean }) {
   );
 }
 
+// ─── Roles & Permissions ──────────────────────────────────────────────────────
+function RolesPanel() {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<RoleRow | null>(null);
+  const [form, setForm] = useState({ name: '', description: '', permission_ids: [] as number[] });
+  const [err, setErr] = useState('');
+  const [permDialogOpen, setPermDialogOpen] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<RoleRow | null>(null);
+
+  const { data: rolesData, isLoading: rolesLoading } = useQuery({
+    queryKey: ['roles-all'],
+    queryFn: async () => {
+      const res = await roleService.listAllRoles();
+      return res.data;
+    },
+  });
+
+  const { data: permsData, isLoading: permsLoading } = useQuery({
+    queryKey: ['permissions-all'],
+    queryFn: async () => {
+      const res = await roleService.listAllPermissions();
+      return res.data;
+    },
+  });
+
+  const roles: RoleRow[] = (rolesData?.roles || []).map((r: RoleWithPermissions) => ({ ...r, id: String(r.id) }));
+  const permissions = permsData?.permissions || [];
+
+  const createMutation = useMutation({
+    mutationFn: (data: { name: string; description: string; permission_ids: number[] }) =>
+      roleService.createRole(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['roles-all'] });
+      setOpen(false);
+    },
+    onError: (e: any) => setErr(e?.response?.data?.error || 'Failed to create role'),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (data: { role_id: number; name: string; description: string; permission_ids: number[] }) =>
+      roleService.updateRole(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['roles-all'] });
+      setOpen(false);
+    },
+    onError: (e: any) => setErr(e?.response?.data?.error || 'Failed to update role'),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (roleId: number) => roleService.deleteRole(roleId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['roles-all'] }),
+    onError: (e: any) => alert(e?.response?.data?.error || 'Failed to delete role'),
+  });
+
+  const addPermMutation = useMutation({
+    mutationFn: ({ roleId, permId }: { roleId: number; permId: number }) =>
+      roleService.addPermission(roleId, permId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['roles-all'] }),
+  });
+
+  const removePermMutation = useMutation({
+    mutationFn: ({ roleId, permId }: { roleId: number; permId: number }) =>
+      roleService.removePermission(roleId, permId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['roles-all'] }),
+  });
+
+  const openAdd = () => {
+    setEditing(null);
+    setForm({ name: '', description: '', permission_ids: [] });
+    setErr('');
+    setOpen(true);
+  };
+
+  const openEdit = (role: RoleRow) => {
+    setEditing(role);
+    setForm({
+      name: role.name,
+      description: role.description || '',
+      permission_ids: role.permissions.map((p: Permission) => p.id),
+    });
+    setErr('');
+    setOpen(true);
+  };
+
+  const handleSave = () => {
+    if (!form.name.trim()) {
+      setErr('Role name is required');
+      return;
+    }
+    if (editing) {
+      updateMutation.mutate({ role_id: Number(editing.id), ...form });
+    } else {
+      createMutation.mutate(form);
+    }
+  };
+
+  const openPermDialog = (role: RoleRow) => {
+    setSelectedRole(role);
+    setPermDialogOpen(true);
+  };
+
+  const togglePermission = (permId: number) => {
+    if (!selectedRole) return;
+    const hasIt = selectedRole.permissions.some((p: Permission) => p.id === permId);
+    if (hasIt) {
+      removePermMutation.mutate({ roleId: Number(selectedRole.id), permId });
+    } else {
+      addPermMutation.mutate({ roleId: Number(selectedRole.id), permId });
+    }
+  };
+
+  // Group permissions by module
+  const permsByModule: Record<string, Permission[]> = {};
+  permissions.forEach((p: Permission) => {
+    if (!permsByModule[p.module_slug]) permsByModule[p.module_slug] = [];
+    permsByModule[p.module_slug].push(p);
+  });
+
+  return (
+    <>
+      <CrudTable
+        title="Roles & Permissions"
+        subtitle="Manage user roles and their module access permissions"
+        columns={[
+          { key: 'name', label: 'Role Name' },
+          { key: 'description', label: 'Description' },
+          {
+            key: 'permissions',
+            label: 'Permissions',
+            render: (r: RoleRow) => (
+              <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                {r.permissions.slice(0, 3).map((p: Permission) => (
+                  <Chip key={p.id} label={p.name} size="small" variant="outlined" />
+                ))}
+                {r.permissions.length > 3 && (
+                  <Chip label={`+${r.permissions.length - 3} more`} size="small" color="primary" />
+                )}
+                <Chip
+                  label="Manage"
+                  size="small"
+                  color="secondary"
+                  onClick={() => openPermDialog(r)}
+                  sx={{ cursor: 'pointer' }}
+                />
+              </Box>
+            ),
+          },
+        ]}
+        rows={roles}
+        loading={rolesLoading}
+        canAdd
+        canEdit
+        canDelete
+        onAdd={openAdd}
+        onEdit={openEdit}
+        onDelete={(r: RoleRow) => {
+          if (confirm(`Delete role "${r.name}"? This cannot be undone.`)) {
+            deleteMutation.mutate(Number(r.id));
+          }
+        }}
+        emptyMessage="No roles yet"
+      />
+
+      {/* Create/Edit Role Modal */}
+      <FormModal
+        open={open}
+        onClose={() => setOpen(false)}
+        title={editing ? 'Edit Role' : 'Create Role'}
+        onSubmit={handleSave}
+        loading={createMutation.isPending || updateMutation.isPending}
+      >
+        <Err msg={err} />
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <TextField
+            label="Role Name"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            required
+            fullWidth
+            disabled={editing?.name === 'SUPERUSER'}
+          />
+          <TextField
+            label="Description"
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            fullWidth
+            multiline
+            rows={2}
+          />
+          <Box>
+            <Typography variant="subtitle2" gutterBottom>
+              Select Permissions ({form.permission_ids.length} selected)
+            </Typography>
+            <Box sx={{ maxHeight: 300, overflowY: 'auto', border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 1 }}>
+              {Object.entries(permsByModule).map(([module, perms]) => (
+                <Box key={module} sx={{ mb: 1 }}>
+                  <Typography variant="caption" fontWeight={600} color="primary" sx={{ textTransform: 'uppercase' }}>
+                    {module}
+                  </Typography>
+                  {perms.map((p: Permission) => (
+                    <FormControlLabel
+                      key={p.id}
+                      control={
+                        <Checkbox
+                          checked={form.permission_ids.includes(p.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setForm({ ...form, permission_ids: [...form.permission_ids, p.id] });
+                            } else {
+                              setForm({ ...form, permission_ids: form.permission_ids.filter((id) => id !== p.id) });
+                            }
+                          }}
+                          size="small"
+                        />
+                      }
+                      label={<Typography variant="body2">{p.name}</Typography>}
+                      sx={{ display: 'block', ml: 1 }}
+                    />
+                  ))}
+                </Box>
+              ))}
+            </Box>
+          </Box>
+        </Box>
+      </FormModal>
+
+      {/* Manage Permissions Dialog */}
+      <Dialog open={permDialogOpen} onClose={() => setPermDialogOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>
+          Manage Permissions: {selectedRole?.name}
+        </DialogTitle>
+        <DialogContent>
+          {selectedRole && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+              {Object.entries(permsByModule).map(([module, perms]) => (
+                <Box key={module}>
+                  <Typography variant="subtitle2" fontWeight={600} color="primary" sx={{ mb: 1, textTransform: 'uppercase' }}>
+                    {module}
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {perms.map((p: Permission) => {
+                      const hasIt = selectedRole.permissions.some((rp: Permission) => rp.id === p.id);
+                      return (
+                        <Chip
+                          key={p.id}
+                          label={p.name}
+                          color={hasIt ? 'success' : 'default'}
+                          variant={hasIt ? 'filled' : 'outlined'}
+                          onClick={() => togglePermission(p.id)}
+                          sx={{ cursor: 'pointer' }}
+                        />
+                      );
+                    })}
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPermDialogOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+    </>
+  );
+}
+
 // ─── Bank Accounts ────────────────────────────────────────────────────────────
 function BankAccountsPanel({ can }: { can: boolean }) {
   const qc = useQueryClient();
@@ -336,6 +608,7 @@ export default function SettingsDashboard() {
         <Tab label="Tax" />
         <Tab label="Contacts" />
         <Tab label="HRM" />
+        {isSuperuser && <Tab label="Roles & Permissions" />}
       </Tabs>
 
       {/* General */}
@@ -483,6 +756,19 @@ export default function SettingsDashboard() {
             <Card>
               <CardContent>
                 <PositionsPanel can={isSuperAdmin} />
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      )}
+
+      {/* Roles & Permissions (Superuser only) */}
+      {tab === 8 && isSuperuser && (
+        <Grid container spacing={2.5}>
+          <Grid size={{ xs: 12 }}>
+            <Card>
+              <CardContent>
+                <RolesPanel />
               </CardContent>
             </Card>
           </Grid>

@@ -16,13 +16,17 @@ async function refreshAccessToken(): Promise<string | null> {
       const refresh = typeof window !== 'undefined' ? localStorage.getItem('refresh_token') : null;
       if (!refresh) return null;
 
-      const res = await axios.post<{ access: string }>(
+      const res = await axios.post<{ access: string; refresh: string }>(
         `${GATEWAY_URL}/api/auth/token/refresh/`,
         { refresh },
         { headers: { 'Content-Type': 'application/json' } }
       );
       const newAccess = res.data.access;
+      const newRefresh = res.data.refresh;
       localStorage.setItem('access_token', newAccess);
+      if (newRefresh) {
+        localStorage.setItem('refresh_token', newRefresh);
+      }
       return newAccess;
     } catch {
       // Refresh failed — clear tokens and redirect once
