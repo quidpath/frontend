@@ -18,44 +18,37 @@ export interface CorporatesListResponse {
 }
 
 const adminService = {
-  /** GET corporate/list — superuser only. */
   listCorporates: () =>
-    gatewayClient.get<CorporatesListResponse>('/corporate/list'),
+    gatewayClient.get<CorporatesListResponse>('/api/orgauth/corporate/list'),
 
-  /** POST corporate/approve — superuser only. Body: { id, approved: true|false }. */
   approveCorporate: (corporateId: string, approved: boolean) =>
-    gatewayClient.post<{ message: string }>('/corporate/approve', {
+    gatewayClient.post<{ message: string }>('/api/orgauth/corporate/approve', {
       id: corporateId,
       approved,
     }),
 
-  /** POST corporate/delete — superuser only. Body: { id }. */
   deleteCorporate: (corporateId: string) =>
-    gatewayClient.post<{ message: string }>('/corporate/delete', {
+    gatewayClient.post<{ message: string }>('/api/orgauth/corporate/delete', {
       id: corporateId,
     }),
 
-  /** POST corporate/suspend — superuser only. Body: { id }. */
   suspendCorporate: (corporateId: string) =>
-    gatewayClient.post<{ message: string }>('/corporate/suspend', {
+    gatewayClient.post<{ message: string }>('/api/orgauth/corporate/suspend', {
       id: corporateId,
     }),
 
-  /** POST corporate/unsuspend — superuser only. Body: { id }. */
   unsuspendCorporate: (corporateId: string) =>
-    gatewayClient.post<{ message: string }>('/corporate/unsuspend', {
+    gatewayClient.post<{ message: string }>('/api/orgauth/corporate/unsuspend', {
       id: corporateId,
     }),
 
-  /** POST corporate/ban — superuser only. Body: { id }. */
   banCorporate: (corporateId: string) =>
-    gatewayClient.post<{ message: string }>('/corporate/ban', {
+    gatewayClient.post<{ message: string }>('/api/orgauth/corporate/ban', {
       id: corporateId,
     }),
 
-  /** POST corporate/unban — superuser only. Body: { id }. */
   unbanCorporate: (corporateId: string) =>
-    gatewayClient.post<{ message: string }>('/corporate/unban', {
+    gatewayClient.post<{ message: string }>('/api/orgauth/corporate/unban', {
       id: corporateId,
     }),
 };

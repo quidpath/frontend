@@ -29,17 +29,15 @@ export interface ActivityStats {
 }
 
 const activityService = {
-  /** GET /activity/recent/ - Get recent activity feed */
   getRecentActivity: (params?: {
     page?: number;
     page_size?: number;
     category?: string;
   }) =>
-    gatewayClient.get<ActivityListResponse>('/activity/recent/', { params }),
+    gatewayClient.get<ActivityListResponse>('/api/auth/activity/recent/', { params }),
 
-  /** GET /activity/stats/ - Get activity statistics */
   getActivityStats: () =>
-    gatewayClient.get<ActivityStats>('/activity/stats/'),
+    gatewayClient.get<ActivityStats>('/api/auth/activity/stats/'),
 };
 
 export default activityService;

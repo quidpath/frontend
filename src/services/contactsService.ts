@@ -1,4 +1,4 @@
-import { gatewayClient } from './apiClient';
+import { crmClient } from './apiClient';
 
 export interface UniversalContact {
   id: string;
@@ -24,22 +24,22 @@ export interface ContactListResponse {
 
 const contactsService = {
   getContacts: (params?: Record<string, unknown>) =>
-    gatewayClient.get<ContactListResponse>('/contacts/list/', { params }),
+    crmClient.get<ContactListResponse>('/api/crm/contacts/', { params }),
 
   getContact: (id: string) =>
-    gatewayClient.get<UniversalContact>(`/contacts/${id}/`),
+    crmClient.get<UniversalContact>(`/api/crm/contacts/${id}/`),
 
   createContact: (data: Omit<UniversalContact, 'id' | 'created_at'>) =>
-    gatewayClient.post<UniversalContact>('/contacts/create/', data),
+    crmClient.post<UniversalContact>('/api/crm/contacts/', data),
 
   updateContact: (id: string, data: Partial<UniversalContact>) =>
-    gatewayClient.put<UniversalContact>(`/contacts/${id}/update/`, data),
+    crmClient.put<UniversalContact>(`/api/crm/contacts/${id}/`, data),
 
   deleteContact: (id: string) =>
-    gatewayClient.delete(`/contacts/${id}/delete/`),
+    crmClient.delete(`/api/crm/contacts/${id}/`),
 
   searchContacts: (query: string, type?: string) =>
-    gatewayClient.get<ContactListResponse>('/contacts/search/', { params: { q: query, type } }),
+    crmClient.get<ContactListResponse>('/api/crm/contacts/', { params: { search: query, type } }),
 };
 
 export default contactsService;

@@ -22,76 +22,65 @@ export interface RoleOption {
 }
 
 const orgAdminService = {
-  /** GET corporate-users/list — SUPERADMIN only (current org users). */
   listCorporateUsers: () =>
-    gatewayClient.get<CorporateUsersListResponse>('/corporate-users/list'),
+    gatewayClient.get<CorporateUsersListResponse>('/api/orgauth/corporate-users/list'),
 
-  /** GET corporate-users/get — get single user. Body: { id }. */
   getCorporateUser: (userId: string) =>
-    gatewayClient.get<{ user: CorporateUserRow }>('/corporate-users/get', {
+    gatewayClient.get<{ user: CorporateUserRow }>('/api/orgauth/corporate-users/get', {
       params: { id: userId },
     }),
 
-  /** POST corporate-users/create — create user. */
   createCorporateUser: (userData: Partial<CorporateUserRow>) =>
-    gatewayClient.post<{ message: string }>('/corporate-users/create', userData),
+    gatewayClient.post<{ message: string }>('/api/orgauth/corporate-users/create', userData),
 
-  /** POST corporate-users/update — update user. */
   updateCorporateUser: (userId: string, userData: Partial<CorporateUserRow>) =>
-    gatewayClient.post<{ message: string }>('/corporate-users/update', {
+    gatewayClient.post<{ message: string }>('/api/orgauth/corporate-users/update', {
       id: userId,
       ...userData,
     }),
 
-  /** POST corporate-users/delete — delete user. */
   deleteCorporateUser: (userId: string) =>
-    gatewayClient.post<{ message: string }>('/corporate-users/delete', {
+    gatewayClient.post<{ message: string }>('/api/orgauth/corporate-users/delete', {
       id: userId,
     }),
 
-  /** POST corporate-users/suspend — suspend user. */
   suspendCorporateUser: (userId: string) =>
-    gatewayClient.post<{ message: string }>('/corporate-users/suspend', {
+    gatewayClient.post<{ message: string }>('/api/orgauth/corporate-users/suspend', {
       id: userId,
     }),
 
-  /** POST corporate-users/unsuspend — unsuspend user. */
   unsuspendCorporateUser: (userId: string) =>
-    gatewayClient.post<{ message: string }>('/corporate-users/unsuspend', {
+    gatewayClient.post<{ message: string }>('/api/orgauth/corporate-users/unsuspend', {
       id: userId,
     }),
 
-  /** POST corporate-users/approve — approve user (superuser only). */
   approveCorporateUser: (userId: string, approved: boolean) =>
-    gatewayClient.post<{ message: string }>('/corporate-users/approve', {
+    gatewayClient.post<{ message: string }>('/api/orgauth/corporate-users/approve', {
       id: userId,
       approved,
     }),
 
-  /** POST corporate-users/ban — ban user (superuser only). */
   banCorporateUser: (userId: string) =>
-    gatewayClient.post<{ message: string }>('/corporate-users/ban', {
+    gatewayClient.post<{ message: string }>('/api/orgauth/corporate-users/ban', {
       id: userId,
     }),
 
-  /** POST corporate-users/unban — unban user (superuser only). */
   unbanCorporateUser: (userId: string) =>
-    gatewayClient.post<{ message: string }>('/corporate-users/unban', {
+    gatewayClient.post<{ message: string }>('/api/orgauth/corporate-users/unban', {
       id: userId,
     }),
 
-  /** GET roles/ — list roles for dropdown. Returns { roles: RoleOption[] }. */
-  listRoles: () => gatewayClient.get<{ roles: RoleOption[] }>('/roles/'),
+  listRoles: () =>
+    gatewayClient.get<{ roles: RoleOption[] }>('/api/orgauth/roles/'),
 
-  /** POST logo/upload/ — body: { logo: base64DataUrl }. SUPERADMIN only. */
   uploadLogo: (logoBase64: string) =>
-    gatewayClient.post<{ message?: string }>('/logo/upload/', { logo: logoBase64 }),
+    gatewayClient.post<{ message?: string }>('/api/auth/logo/upload/', { logo: logoBase64 }),
 
-  /** GET logo/get/ — returns logo URL or base64. */
-  getLogo: () => gatewayClient.get<{ logo?: string }>('/logo/get/'),
+  getLogo: () =>
+    gatewayClient.get<{ logo?: string }>('/api/auth/logo/get/'),
 
-  /** POST logo/delete/ — remove corporate logo. */
-  deleteLogo: () => gatewayClient.post<{ message?: string }>('/logo/delete/', {}),
+  deleteLogo: () =>
+    gatewayClient.post<{ message?: string }>('/api/auth/logo/delete/', {}),
 };
 
 export default orgAdminService;

@@ -17,7 +17,7 @@ async function refreshAccessToken(): Promise<string | null> {
       if (!refresh) return null;
 
       const res = await axios.post<{ access: string }>(
-        `${GATEWAY_URL}/token/refresh/`,
+        `${GATEWAY_URL}/api/auth/token/refresh/`,
         { refresh },
         { headers: { 'Content-Type': 'application/json' } }
       );
@@ -56,22 +56,26 @@ function getCorporateId(): string | null {
 
 // List of endpoints that should NOT have corporate_id auto-injected
 const EXCLUDED_ENDPOINTS = [
-  '/login/',
-  '/register/',
-  '/register-individual/',
-  '/register-individual-email/',
-  '/activate-account/',
-  '/resend-activation/',
-  '/token/refresh/',
-  '/logout/',
-  '/password-forgot/',
-  '/verify-pass-otp/',
-  '/reset-password/',
-  '/verify-otp/',
-  '/health/',
-  '/get_profile/',
-  '/menu/',
-  '/plans/',
+  '/api/auth/login/',
+  '/api/auth/register/',
+  '/api/auth/register-individual/',
+  '/api/auth/register-individual-email/',
+  '/api/auth/activate-account/',
+  '/api/auth/resend-activation/',
+  '/api/auth/token/refresh/',
+  '/api/auth/logout/',
+  '/api/auth/password-forgot/',
+  '/api/auth/verify-pass-otp/',
+  '/api/auth/reset-password/',
+  '/api/auth/verify-otp/',
+  '/api/auth/health/',
+  '/api/auth/get_profile/',
+  '/api/auth/menu/',
+  '/api/auth/plans/',
+  '/api/auth/payment/',
+  '/api/billing/plans/',
+  '/api/billing/promotions/',
+  '/api/orgauth/corporate/register/',
   '/validate-promotion/',
 ];
 
@@ -137,8 +141,8 @@ function createServiceClient(baseURL: string, isGateway = false): AxiosInstance 
         typeof window !== 'undefined' &&
         !originalRequest._retry &&
         originalRequest.url &&
-        !originalRequest.url.includes('/token/refresh/') &&
-        !originalRequest.url.includes('/login/')
+        !originalRequest.url.includes('/api/auth/token/refresh/') &&
+        !originalRequest.url.includes('/api/auth/login/')
       ) {
         originalRequest._retry = true;
         const newToken = await refreshAccessToken();

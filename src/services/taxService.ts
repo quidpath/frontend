@@ -24,26 +24,27 @@ export interface TaxReport {
 }
 
 const taxService = {
+  // Tax rate is served from the accounting module
   getTaxRates: () =>
-    gatewayClient.get<{ results: TaxRate[] }>('/tax/rates/'),
+    gatewayClient.get<{ results: TaxRate[] }>('/get-tax-rate/'),
 
   getTaxRate: (id: string) =>
-    gatewayClient.get<TaxRate>(`/tax/rates/${id}/`),
+    gatewayClient.get<TaxRate>('/get-tax-rate/', { params: { id } }),
 
   createTaxRate: (data: Omit<TaxRate, 'id' | 'created_at'>) =>
-    gatewayClient.post<TaxRate>('/tax/rates/', data),
+    gatewayClient.post<TaxRate>('/get-tax-rate/', data),
 
   updateTaxRate: (id: string, data: Partial<TaxRate>) =>
-    gatewayClient.put<TaxRate>(`/tax/rates/${id}/`, data),
+    gatewayClient.put<TaxRate>('/get-tax-rate/', { id, ...data }),
 
   deleteTaxRate: (id: string) =>
-    gatewayClient.delete(`/tax/rates/${id}/`),
+    gatewayClient.delete('/get-tax-rate/', { params: { id } }),
 
   getTaxReports: (params?: Record<string, unknown>) =>
-    gatewayClient.get<{ results: TaxReport[] }>('/tax/reports/', { params }),
+    gatewayClient.get<{ results: TaxReport[] }>('/reports/aging/', { params }),
 
   generateTaxReport: (data: { period_start: string; period_end: string }) =>
-    gatewayClient.post<TaxReport>('/tax/reports/generate/', data),
+    gatewayClient.post<TaxReport>('/reports/aging/', data),
 };
 
 export default taxService;

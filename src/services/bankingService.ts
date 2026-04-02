@@ -82,9 +82,7 @@ const bankingService = {
     gatewayClient.get<BankTransactionListResponse>('/transaction/list/', { params }),
 
   getTransaction: (id: string) =>
-    gatewayClient.get<BankTransaction>(`/transaction/${id}/`),
-
-  createTransaction: (data: Omit<BankTransaction, 'id' | 'created_at' | 'bank_account_name'>) =>
+    gatewayClient.get<BankTransaction>(`/transaction/${id}/`),  createTransaction: (data: Omit<BankTransaction, 'id' | 'created_at' | 'bank_account_name'>) =>
     gatewayClient.post<BankTransaction>('/transaction/create/', data),
 
   updateTransaction: (id: string, data: Partial<BankTransaction>) =>

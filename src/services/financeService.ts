@@ -120,7 +120,6 @@ const financeService = {
   updateInvoice: (d: Record<string, unknown>) => gatewayClient.put<Invoice>('/invoice/update/', d),
   deleteInvoice: (id: string) => gatewayClient.delete('/invoice/delete/', { params: { id } }),
   sendInvoice: (id: string) => gatewayClient.post(`/invoice/${id}/send/`),
-
   // Quotations
   getQuotations: (p?: Record<string, string>) => gatewayClient.get<QuotationListResponse>('/quotation/list/', { params: p }),
   getQuotation: (id: string) => gatewayClient.get<Quotation>('/quotation/get/', { params: { id } }),

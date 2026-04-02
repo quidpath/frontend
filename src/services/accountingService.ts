@@ -111,7 +111,7 @@ const accountingService = {
     gatewayClient.delete(`/invoice/delete/${id}/`),
 
   sendInvoice: (id: string) =>
-    gatewayClient.post(`/invoice/send/${id}/`),
+    gatewayClient.post(`/invoice/${id}/send/`),
 
   voidInvoice: (id: string) =>
     gatewayClient.post(`/invoice/void/${id}/`),
@@ -132,7 +132,7 @@ const accountingService = {
     gatewayClient.delete(`/journal/delete/${id}/`),
 
   postJournalEntry: (id: string) =>
-    gatewayClient.post(`/journal/post/${id}/`),
+    gatewayClient.post('/journal/post/', { id }),
 
   // Expenses
   getExpenses: (params?: Record<string, string>) =>

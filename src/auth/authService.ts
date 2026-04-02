@@ -32,23 +32,23 @@ export interface AuthTokens {
 
 
 const authService = {
-  /** POST /login/ with username + password. Returns tokens; may include otp_required. */
+  /** POST /api/auth/login/ */
   login: (username: string, password: string) =>
-    gatewayClient.post<LoginResponse>('/login/', { username, password }),
+    gatewayClient.post<LoginResponse>('/api/auth/login/', { username, password }),
 
-  /** POST /verify-otp/ with OTP code when backend returned otp_required. */
+  /** POST /api/auth/verify-otp/ */
   verifyOtp: (code: string) =>
-    gatewayClient.post<LoginResponse>('/verify-otp/', { otp: code }),
+    gatewayClient.post<LoginResponse>('/api/auth/verify-otp/', { otp: code }),
 
-  /** POST /resend-activation/ to resend OTP code. */
+  /** POST /api/auth/resend-activation/ */
   resendActivation: (email: string) =>
-    gatewayClient.post<{ message: string }>('/resend-activation/', { email }),
+    gatewayClient.post<{ message: string }>('/api/auth/resend-activation/', { email }),
 
   refresh: (refresh: string) =>
-    gatewayClient.post<{ access: string }>('/token/refresh/', { refresh }),
+    gatewayClient.post<{ access: string }>('/api/auth/token/refresh/', { refresh }),
 
-  /** GET /get_profile/ with Bearer. Returns full user + menu. */
-  getProfile: () => gatewayClient.get<GetProfileResponse>('/get_profile/'),
+  /** GET /api/auth/get_profile/ */
+  getProfile: () => gatewayClient.get<GetProfileResponse>('/api/auth/get_profile/'),
 
   logout: () => {
     if (typeof window !== 'undefined') {
@@ -74,15 +74,15 @@ const authService = {
     }
   },
 
-  /** POST /register/ — username, email, password. Returns message, otp_required. */
+  /** POST /api/auth/register/ */
   register: (username: string, email: string, password: string) =>
-    gatewayClient.post<{ message: string; otp_required?: boolean }>('/register/', {
+    gatewayClient.post<{ message: string; otp_required?: boolean }>('/api/auth/register/', {
       username,
       email,
       password,
     }),
 
-  /** POST /api/auth/register-individual/ — creates user + org (SUPERADMIN). plan_tier and plan_id optional. */
+  /** POST /api/auth/register-individual/ */
   registerIndividual: (payload: {
     username: string;
     email: string;
@@ -103,7 +103,7 @@ const authService = {
       subscription_required?: boolean;
     }>('/api/auth/register-individual/', payload),
 
-  /** POST corporate/create — create organisation (pending approval). */
+  /** POST /api/orgauth/corporate/create */
   createCorporate: (payload: {
     name: string;
     email: string;
@@ -118,7 +118,7 @@ const authService = {
     zip_code?: string;
     description?: string;
   }) =>
-    gatewayClient.post<{ message: string; id?: string }>('/corporate/create', payload),
+    gatewayClient.post<{ message: string; id?: string }>('/api/orgauth/corporate/create', payload),
 };
 
 export default authService;

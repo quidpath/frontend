@@ -24,26 +24,22 @@ export interface UnreadCountResponse {
 }
 
 const notificationService = {
-  /** GET /notifications/ - List notifications with pagination */
   getNotifications: (params?: {
     is_read?: boolean;
     notification_type?: string;
     page?: number;
     page_size?: number;
   }) =>
-    gatewayClient.get<NotificationListResponse>('/notifications/', { params }),
+    gatewayClient.get<NotificationListResponse>('/api/auth/notifications/', { params }),
 
-  /** GET /notifications/unread-count/ - Get count of unread notifications */
   getUnreadCount: () =>
-    gatewayClient.get<UnreadCountResponse>('/notifications/unread-count/'),
+    gatewayClient.get<UnreadCountResponse>('/api/auth/notifications/unread-count/'),
 
-  /** POST /notifications/<id>/mark-read/ - Mark a notification as read */
   markAsRead: (notificationId: string) =>
-    gatewayClient.post<{ message: string }>(`/notifications/${notificationId}/mark-read/`),
+    gatewayClient.post<{ message: string }>(`/api/auth/notifications/${notificationId}/mark-read/`),
 
-  /** POST /notifications/mark-all-read/ - Mark all notifications as read */
   markAllAsRead: () =>
-    gatewayClient.post<{ message: string; count: number }>('/notifications/mark-all-read/'),
+    gatewayClient.post<{ message: string; count: number }>('/api/auth/notifications/mark-all-read/'),
 };
 
 export default notificationService;

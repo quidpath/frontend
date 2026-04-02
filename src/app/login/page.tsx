@@ -127,7 +127,7 @@ function LoginForm() {
     setError(null);
     setLoading(true);
     try {
-      await gatewayClient.post('/password-forgot/', { username: fpUsername });
+      await gatewayClient.post('/api/auth/password-forgot/', { username: fpUsername });
       setSuccess('OTP sent to your registered email address.');
       setStep('forgot-otp');
     } catch (err) {
@@ -145,10 +145,9 @@ function LoginForm() {
     setLoading(true);
     try {
       const { data } = await gatewayClient.post<{ message: { forgot_password_id: string } | string }>(
-        '/verify-pass-otp/',
+        '/api/auth/verify-pass-otp/',
         { otp: fpOtp }
       );
-      // backend returns { message: { message: "...", forgot_password_id: "..." } }
       const msg = data.message;
       const fpId = typeof msg === 'object' ? msg.forgot_password_id : '';
       setFpForgotPasswordId(fpId);
@@ -176,7 +175,7 @@ function LoginForm() {
     }
     setLoading(true);
     try {
-      await gatewayClient.post('/reset-password/', { new_password: fpNewPassword });
+      await gatewayClient.post('/api/auth/reset-password/', { new_password: fpNewPassword });
       setSuccess('Password reset successfully. You can now sign in.');
       setTimeout(resetToLogin, 2000);
     } catch (err) {
