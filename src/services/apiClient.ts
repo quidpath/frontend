@@ -76,6 +76,7 @@ const EXCLUDED_ENDPOINTS = [
   '/api/billing/plans/',
   '/api/billing/promotions/',
   '/api/orgauth/corporate/register/',
+  '/api/orgauth/roles/',
   '/validate-promotion/',
 ];
 
@@ -157,10 +158,11 @@ function createServiceClient(baseURL: string, isGateway = false): AxiosInstance 
         window.location.href = '/unauthorized';
       }
 
-      // 402 = billing middleware blocked — parse JSON even if responseType was blob
+      // 402 = billing middleware blocked
       if (error.response?.status === 402 && typeof window !== 'undefined') {
         const currentPath = window.location.pathname;
-        if (!currentPath.startsWith('/billing-setup') && !currentPath.startsWith('/payment-required')) {
+        const blockedPaths = ['/account', '/billing-setup', '/payment-required', '/login'];
+        if (!blockedPaths.some(p => currentPath.startsWith(p))) {
           let payload: Record<string, unknown> = {};
           try {
             const raw = error.response.data;
@@ -171,12 +173,24 @@ function createServiceClient(baseURL: string, isGateway = false): AxiosInstance 
               payload = raw as Record<string, unknown>;
             }
           } catch {}
-          if (payload?.requires_phone) {
+
+          if (payload?.requires_payment || payload?.subscription_expired) {
+            // Check role from localStorage to decide where to send them
+            try {
+              const userStr = localStorage.getItem('quidpath-user');
+              const role = JSON.parse(userStr || '{}')?.state?.user?.role?.name ?? '';
+              if (role === 'SUPERADMIN') {
+                window.location.href = '/account?tab=billing&expired=1';
+              } else {
+                window.location.href = '/payment-required';
+              }
+            } catch {
+              window.location.href = '/payment-required';
+            }
+          } else if (payload?.requires_phone) {
             window.location.href = '/billing-setup';
-          } else if (payload?.requires_payment) {
-            window.location.href = '/payment-required';
           } else {
-            window.location.href = '/billing-setup';
+            window.location.href = '/account?tab=billing';
           }
         }
       }

@@ -41,7 +41,6 @@ export default function OrgAdminUsersPage() {
     username: '',
     email: '',
     role: '',
-    password: '',
   });
 
   const { data, isLoading } = useQuery({
@@ -168,7 +167,7 @@ export default function OrgAdminUsersPage() {
   const roles = rolesData?.roles ?? [];
 
   const resetForm = () => {
-    setFormData({ username: '', email: '', role: '', password: '' });
+    setFormData({ username: '', email: '', role: '' });
   };
 
   const handleEdit = (user: CorporateUserRow) => {
@@ -177,7 +176,6 @@ export default function OrgAdminUsersPage() {
       username: user.username,
       email: user.email,
       role: user.role,
-      password: '',
     });
   };
 
@@ -469,14 +467,9 @@ export default function OrgAdminUsersPage() {
           </TextField>
 
           {!editUser && (
-            <TextField
-              fullWidth
-              label="Password"
-              type="password"
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              sx={{ mb: 2 }}
-            />
+            <Typography variant="caption" color="text.secondary">
+              A secure password will be auto-generated and sent to the user's email.
+            </Typography>
           )}
 
           <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', mt: 3 }}>

@@ -83,12 +83,20 @@ function LoginForm() {
       const { data } = await authService.login(username, password);
       authService.setTokens(data.access, data.refresh);
       if (data.otp_required) { setStep('otp'); setLoading(false); return; }
-      if (data.payment_required && data.corporate_id) {
-        router.replace(`/settings/billing?corporate_id=${data.corporate_id}&setup=1`);
+      // Subscription expired — SUPERADMIN goes to account page to renew
+      if ((data as any).subscription_expired) {
+        await fetchProfileAndRedirect('/account?tab=billing&expired=1');
         return;
       }
       await fetchProfileAndRedirect();
-    } catch (err) {
+    } catch (err: unknown) {
+      const res = (err as { response?: { data?: Record<string, unknown> } })?.response?.data;
+      // Non-SUPERADMIN blocked at login due to expired subscription
+      if (res?.subscription_expired) {
+        setError(typeof res.message === 'string' ? res.message : 'Subscription expired. Contact your administrator.');
+        setLoading(false);
+        return;
+      }
       setError(extractMsg(err, 'Login failed. Check username and password.'));
     } finally {
       setLoading(false);
@@ -114,9 +122,10 @@ function LoginForm() {
     }
   };
 
-  async function fetchProfileAndRedirect() {
+  async function fetchProfileAndRedirect(destination?: string) {
     const { data } = await authService.getProfile();
     setUser(profileToStoredUser(data));
+    if (destination) { router.replace(destination); return; }
     const next = searchParams.get('next');
     router.replace(next && next.startsWith('/') ? next : '/dashboard');
   }

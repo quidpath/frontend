@@ -36,8 +36,9 @@ export function usePlans(planType?: string) {
     queryKey: BILLING_KEYS.plans(planType),
     queryFn: async () => {
       const res = await billingService.getPlans(planType);
-      // gateway: { success, data: { plans, count } }
-      return res.data?.data?.plans ?? res.data?.plans ?? [];
+      // proxy returns: { success, data: { plans, count } }
+      const d = res.data as any;
+      return d?.data?.plans ?? d?.plans ?? [];
     },
     staleTime: 300_000,
   });
@@ -49,9 +50,9 @@ export function useSubscription() {
     queryKey: BILLING_KEYS.subscription(),
     queryFn: async () => {
       const res = await billingService.getSubscriptionStatus();
-      // gateway: { success, data: { subscription } }
-      const data = res.data as any;
-      return data?.data?.subscription ?? data?.subscription ?? null;
+      // billing svc returns: { success, data: { subscription } }
+      const d = res.data as any;
+      return d?.data?.subscription ?? d?.subscription ?? null;
     },
     staleTime: 60_000,
     retry: false,
@@ -64,9 +65,9 @@ export function useInvoices() {
     queryKey: BILLING_KEYS.invoices(),
     queryFn: async () => {
       const res = await billingService.getInvoices();
-      // gateway: { success, data: { invoices, corporate_id } }
-      const data = res.data as any;
-      return data?.data?.invoices ?? data?.invoices ?? [];
+      // billing svc returns: { success, data: { invoices, corporate_id } }
+      const d = res.data as any;
+      return d?.data?.invoices ?? d?.invoices ?? [];
     },
     staleTime: 30_000,
   });
@@ -78,9 +79,9 @@ export function usePaymentHistory() {
     queryKey: BILLING_KEYS.payments(),
     queryFn: async () => {
       const res = await billingService.getPaymentHistory();
-      // gateway: { success, data: { payments } }
-      const data = res.data as any;
-      return data?.data?.payments ?? data?.payments ?? [];
+      // billing svc returns: { success, data: { payments } }
+      const d = res.data as any;
+      return d?.data?.payments ?? d?.payments ?? [];
     },
     staleTime: 30_000,
   });
@@ -92,7 +93,8 @@ export function useAccessCheck() {
     queryKey: BILLING_KEYS.access(),
     queryFn: async () => {
       const res = await billingService.checkAccess();
-      // gateway: { success, has_access, access_type, trial, ... }
+      // billing svc returns the access object directly at top level:
+      // { success, has_access, access_type, trial, subscription, message, ... }
       return res.data as AccessCheckResponse;
     },
     staleTime: 30_000,
@@ -106,8 +108,9 @@ export function useTrialStatus() {
     queryKey: BILLING_KEYS.trialStatus(),
     queryFn: async () => {
       const res = await billingService.getTrialStatus();
-      // gateway: { success, data: { has_trial, trial } }
-      return res.data?.data ?? null;
+      // billing svc returns: { success, data: { has_trial, trial } }
+      const d = res.data as any;
+      return d?.data ?? d ?? null;
     },
     staleTime: 60_000,
     retry: false,

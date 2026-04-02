@@ -1,58 +1,45 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  Box,
-  Tab,
-  Tabs,
-  Card,
-  CardContent,
-  Typography,
-  Avatar,
-  Grid,
-  Divider,
-  Chip,
-  Button,
-  TextField,
-  Alert,
-  CircularProgress,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  MenuItem,
+  Box, Tab, Tabs, Card, CardContent, Typography, Avatar, Grid, Divider,
+  Chip, Button, TextField, Alert, CircularProgress, Table, TableBody,
+  TableCell, TableHead, TableRow, MenuItem,
 } from '@mui/material';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import PaymentIcon from '@mui/icons-material/Payment';
 import BusinessIcon from '@mui/icons-material/Business';
 import ReceiptIcon from '@mui/icons-material/Receipt';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import PageHeader from '@/components/ui/PageHeader';
 import { useUserStore } from '@/store/userStore';
 import {
-  useAccessCheck,
-  useSubscription,
-  useInvoices,
-  usePlans,
-  useInitiatePayment,
-  usePaymentHistory,
+  useAccessCheck, useSubscription, useInvoices, usePlans,
+  useInitiatePayment, usePaymentHistory, BILLING_KEYS,
 } from '@/hooks/useBilling';
+import { useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
 import { formatCurrency } from '@/utils/formatters';
 import { useCurrencyStore } from '@/store/currencyStore';
-
 import { usePaystack } from '@/hooks/usePaystack';
 
 export default function AccountPage() {
-  const [tab, setTab] = useState(0);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
+
+  // Open billing tab automatically if redirected here after expiry
+  const expiredParam = searchParams.get('expired');
+  const tabParam = searchParams.get('tab');
+  const [tab, setTab] = useState(tabParam === 'billing' ? 1 : 0);
+
   const [email, setEmail] = useState('');
   const [selectedPlanId, setSelectedPlanId] = useState('');
   const [paymentResult, setPaymentResult] = useState<string | null>(null);
-  const [paymentAmount, setPaymentAmount] = useState(0);
   
   const user = useUserStore((s) => s.user);
-  const currency = useCurrencyStore((s) => s.currency);
   const { data: access, isLoading: accessLoading } = useAccessCheck();
   const { data: subscription, isLoading: subscriptionLoading } = useSubscription();
   const { data: invoices = [], isLoading: invoicesLoading } = useInvoices();
@@ -76,7 +63,6 @@ export default function AccountPage() {
     }
 
     const amount = selectedPlan.price_monthly || 0;
-    setPaymentAmount(amount);
     setPaystackBusy(true);
 
     try {
@@ -102,6 +88,8 @@ export default function AccountPage() {
         onSuccess: (transaction) => {
           setPaystackBusy(false);
           setPaymentResult(`Payment successful! Reference: ${transaction.reference}`);
+          // Immediately refresh all billing data so access is restored
+          queryClient.invalidateQueries({ queryKey: BILLING_KEYS.all });
         },
         onCancel: () => {
           setPaystackBusy(false);
@@ -315,6 +303,14 @@ export default function AccountPage() {
       {/* Billing & Subscription Tab */}
       {tab === 1 && (
         <Grid container spacing={2.5}>
+          {/* Expiry banner when redirected here after subscription expired */}
+          {expiredParam && (
+            <Grid size={{ xs: 12 }}>
+              <Alert severity="error" icon={<WarningAmberIcon />} sx={{ fontWeight: 600 }}>
+                Your subscription has expired. Renew below to restore full access for all users in your organisation.
+              </Alert>
+            </Grid>
+          )}
           {/* Access Status & Trial Info */}
           <Grid size={{ xs: 12, md: 6 }}>
             <Card>
