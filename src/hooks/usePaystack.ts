@@ -2,51 +2,38 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-// ─── Paystack v2 InlineJS types ──────────────────────────────────────────────
+// ─── Paystack v2 inline.js types ─────────────────────────────────────────────
+// The script exposes window.PaystackPop as a constructor (new PaystackPop())
 interface PaystackTransaction {
+  id: number;
   reference: string;
-  trans: string;
-  status: string;
   message: string;
-  transaction: string;
-  trxref: string;
 }
 
-interface PaystackNewTransactionOptions {
-  key: string;
-  email: string;
-  amount: number;
-  currency?: string;
-  reference?: string;
-  metadata?: Record<string, unknown>;
+interface PaystackCallbacks {
   onSuccess?: (transaction: PaystackTransaction) => void;
   onLoad?: (response: unknown) => void;
   onCancel?: () => void;
   onError?: (error: { message: string }) => void;
 }
 
-interface PaystackInstance {
-  newTransaction: (options: PaystackNewTransactionOptions) => void;
-  resumeTransaction: (accessCode: string, callbacks?: {
-    onSuccess?: (transaction: PaystackTransaction) => void;
-    onLoad?: (response: unknown) => void;
-    onCancel?: () => void;
-    onError?: (error: { message: string }) => void;
+interface PaystackPopInstance {
+  newTransaction: (options: PaystackCallbacks & {
+    key: string;
+    email: string;
+    amount: number;
+    currency?: string;
+    reference?: string;
+    metadata?: Record<string, unknown>;
   }) => void;
+  resumeTransaction: (accessCode: string, callbacks?: PaystackCallbacks) => void;
+  isLoaded: () => boolean;
 }
 
 declare global {
   interface Window {
-    // v2 inline.js exposes a constructor
-    Paystack?: new () => PaystackInstance;
+    PaystackPop?: new () => PaystackPopInstance;
   }
-}
-
-// ─── Hook options ─────────────────────────────────────────────────────────────
-export interface UsePaystackOptions {
-  onSuccess?: (transaction: PaystackTransaction) => void;
-  onCancel?: () => void;
-  onError?: (message: string) => void;
 }
 
 export interface UsePaystackReturn {
@@ -61,40 +48,43 @@ export interface UsePaystackReturn {
   ) => void;
 }
 
-// ─── Hook ─────────────────────────────────────────────────────────────────────
 export function usePaystack(): UsePaystackReturn {
   const [isLoaded, setIsLoaded] = useState(false);
-  const instanceRef = useRef<PaystackInstance | null>(null);
+  const instanceRef = useRef<PaystackPopInstance | null>(null);
 
   useEffect(() => {
-    // Already loaded
-    if (window.Paystack) {
-      instanceRef.current = new window.Paystack();
-      setIsLoaded(true);
-      return;
-    }
-
-    const existing = document.querySelector('script[src*="js.paystack.co/v2"]');
-    if (existing) {
-      existing.addEventListener('load', () => {
-        if (window.Paystack) {
-          instanceRef.current = new window.Paystack();
-          setIsLoaded(true);
-        }
-      });
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src = 'https://js.paystack.co/v2/inline.js';
-    script.async = true;
-    script.onload = () => {
-      if (window.Paystack) {
-        instanceRef.current = new window.Paystack();
+    const init = () => {
+      if (window.PaystackPop) {
+        instanceRef.current = new window.PaystackPop();
         setIsLoaded(true);
       }
     };
+
+    // Already available
+    if (window.PaystackPop) {
+      init();
+      return;
+    }
+
+    // Script already in DOM but not yet executed
+    const existing = document.querySelector<HTMLScriptElement>(
+      'script[src="https://js.paystack.co/v2/inline.js"]'
+    );
+    if (existing) {
+      existing.addEventListener('load', init);
+      return () => existing.removeEventListener('load', init);
+    }
+
+    // Inject script
+    const script = document.createElement('script');
+    script.src = 'https://js.paystack.co/v2/inline.js';
+    script.async = true;
+    script.onload = init;
     document.head.appendChild(script);
+
+    return () => {
+      script.onload = null;
+    };
   }, []);
 
   const resumeTransaction: UsePaystackReturn['resumeTransaction'] = (accessCode, callbacks) => {
@@ -105,7 +95,7 @@ export function usePaystack(): UsePaystackReturn {
     instanceRef.current.resumeTransaction(accessCode, {
       onSuccess: callbacks.onSuccess,
       onCancel: callbacks.onCancel,
-      onError: (err) => callbacks.onError(err.message),
+      onError: (err) => callbacks.onError(err?.message || 'Payment failed'),
     });
   };
 
