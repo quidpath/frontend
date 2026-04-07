@@ -23,12 +23,16 @@ export function useCreateInvoice() {
 
   return useMutation({
     mutationFn: (data: {
-      customer_id: string;
+      customer: string;
+      customer_id?: string;
       lines: Omit<InvoiceLine, 'id'>[];
-      date?: string;
-      due_date?: string;
+      date: string;
+      due_date: string;
+      number?: string;
       terms?: string;
       notes?: string;
+      comments?: string;
+      purchase_order?: string;
     }) =>
       accountingService.createInvoice(data),
     onSuccess: () => {
@@ -72,20 +76,6 @@ export function useSendInvoice() {
   return useMutation({
     mutationFn: (id: string) =>
       accountingService.sendInvoice(id),
-  });
-}
-
-/** Void invoice */
-export function useVoidInvoice() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: string) =>
-      accountingService.voidInvoice(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['accounting', 'invoices'] });
-      queryClient.invalidateQueries({ queryKey: ['accounting', 'summary'] });
-    },
   });
 }
 

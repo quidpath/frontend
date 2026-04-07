@@ -49,9 +49,9 @@ export default function InvoiceModal({
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { data: taxRatesData } = useTaxRates();
-  const { data: contactsData } = useContacts();
+  const { data: customersData } = useCustomers();
   const taxRates = (taxRatesData as any)?.results ?? (taxRatesData as any)?.tax_rates ?? [];
-  const contacts = (contactsData as any)?.results ?? (contactsData as any)?.contacts ?? [];
+  const customers = (customersData as any)?.customers ?? [];
   const [formData, setFormData] = useState({
     customer: '',
     customer_id: '',
@@ -262,17 +262,17 @@ export default function InvoiceModal({
             label="Customer"
             value={formData.customer_id || formData.customer}
             onChange={(e) => {
-              const contact = contacts.find((c: any) => c.id === e.target.value);
+              const customer = customers.find((c: any) => c.id === e.target.value);
               handleChange('customer_id', e.target.value);
-              handleChange('customer', contact?.name ?? e.target.value);
+              handleChange('customer', customer?.name ?? e.target.value);
             }}
             error={!!errors.customer}
             helperText={errors.customer}
             required
           >
-            {contacts.length === 0
-              ? <MenuItem disabled value="">No contacts found</MenuItem>
-              : contacts.map((c: any) => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)
+            {customers.length === 0
+              ? <MenuItem disabled value="">No customers found</MenuItem>
+              : customers.map((c: any) => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)
             }
           </TextField>
         </Grid>
