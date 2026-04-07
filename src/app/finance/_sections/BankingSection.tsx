@@ -10,8 +10,10 @@ import ActionMenu, { commonActions } from '@/components/ui/ActionMenu';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { TableColumn } from '@/types';
 import { useBankAccounts, useCreateBankAccount, useUpdateBankAccount, useDeleteBankAccount, useTransactions, useDeleteTransaction, useInternalTransfers, useCreateTransfer, useDeleteTransfer } from '@/hooks/useFinance';
-import type { BankAccount, BankTransaction, InternalTransfer } from '@/services/financeService';
+import financeService from '@/services/financeService';
+import type { BankAccount, BankTransaction, InternalTransfer, BankReconciliation } from '@/services/financeService';
 import type { SectionProps } from './_shared';
+
 
 function BankAccountModal({ open, onClose, record, onSuccess }: { open: boolean; onClose: () => void; record?: BankAccount | null; onSuccess: (m: string, s?: 'success' | 'error') => void }) {
   const create = useCreateBankAccount(); const update = useUpdateBankAccount(); const saving = create.isPending || update.isPending;
@@ -53,14 +55,90 @@ function TransferModal({ open, onClose, accounts, onSuccess }: { open: boolean; 
   );
 }
 
+function ReconciliationModal({ open, onClose, accounts, onSuccess }: { open: boolean; onClose: () => void; accounts: BankAccount[]; onSuccess: (m: string, s?: 'success' | 'error') => void }) {
+  const [form, setForm] = useState({ bank_account_id: '', period_start: '', period_end: '', opening_balance: '', closing_balance: '', statement_balance: '', book_balance: '' });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
+    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().slice(0, 10);
+    setForm({ bank_account_id: '', period_start: firstDay, period_end: lastDay, opening_balance: '', closing_balance: '', statement_balance: '', book_balance: '' });
+  }, [open]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await financeService.createBankReconciliation({
+        bank_account_id: form.bank_account_id,
+        period_start: form.period_start,
+        period_end: form.period_end,
+        opening_balance: Number(form.opening_balance),
+        closing_balance: Number(form.closing_balance),
+        statement_balance: Number(form.statement_balance),
+        book_balance: Number(form.book_balance)
+      });
+      onSuccess('Reconciliation created');
+      onClose();
+    } catch { onSuccess('Failed to create reconciliation', 'error'); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center' }}>New Bank Reconciliation<IconButton size="small" sx={{ ml: 'auto' }} onClick={onClose}><CloseIcon /></IconButton></DialogTitle>
+      <DialogContent dividers><Stack spacing={2}>
+        <FormControl fullWidth size="small"><InputLabel>Bank Account</InputLabel><Select value={form.bank_account_id} label="Bank Account" onChange={e => setForm(p => ({ ...p, bank_account_id: e.target.value }))}>{accounts.map(a => <MenuItem key={a.id} value={a.id}>{a.account_name} – {a.bank_name}</MenuItem>)}</Select></FormControl>
+        <Grid container spacing={2}>
+          <Grid size={6}><TextField label="Period Start" type="date" size="small" fullWidth value={form.period_start} onChange={e => setForm(p => ({ ...p, period_start: e.target.value }))} InputLabelProps={{ shrink: true }} /></Grid>
+          <Grid size={6}><TextField label="Period End" type="date" size="small" fullWidth value={form.period_end} onChange={e => setForm(p => ({ ...p, period_end: e.target.value }))} InputLabelProps={{ shrink: true }} /></Grid>
+        </Grid>
+        <Grid container spacing={2}>
+          <Grid size={6}><TextField label="Opening Balance" size="small" type="number" fullWidth value={form.opening_balance} onChange={e => setForm(p => ({ ...p, opening_balance: e.target.value }))} /></Grid>
+          <Grid size={6}><TextField label="Closing Balance" size="small" type="number" fullWidth value={form.closing_balance} onChange={e => setForm(p => ({ ...p, closing_balance: e.target.value }))} /></Grid>
+        </Grid>
+        <Grid container spacing={2}>
+          <Grid size={6}><TextField label="Statement Balance" size="small" type="number" fullWidth value={form.statement_balance} onChange={e => setForm(p => ({ ...p, statement_balance: e.target.value }))} /></Grid>
+          <Grid size={6}><TextField label="Book Balance" size="small" type="number" fullWidth value={form.book_balance} onChange={e => setForm(p => ({ ...p, book_balance: e.target.value }))} /></Grid>
+        </Grid>
+      </Stack></DialogContent>
+      <DialogActions sx={{ px: 3, py: 2 }}><Button onClick={onClose} variant="outlined">Cancel</Button><Button variant="contained" onClick={handleSave} disabled={saving} startIcon={saving ? <CircularProgress size={14} color="inherit" /> : undefined}>Create</Button></DialogActions>
+    </Dialog>
+  );
+}
+
 export default function BankingSection({ subTab, notify, addOpen, setAddOpen }: SectionProps) {
   const [page, setPage] = useState(0); const [editAcc, setEditAcc] = useState<BankAccount | null>(null);
+  const [reconciliations, setReconciliations] = useState<BankReconciliation[]>([]);
   const { data: accData, isLoading: accLoading } = useBankAccounts();
   const { data: txnData, isLoading: txnLoading } = useTransactions();
   const { data: trfData, isLoading: trfLoading } = useInternalTransfers();
   const delAcc = useDeleteBankAccount(); const delTxn = useDeleteTransaction(); const delTrf = useDeleteTransfer();
   const accounts = accData?.results ?? []; const txns = txnData?.results ?? []; const transfers = trfData?.results ?? [];
   const isAccounts = subTab === 'bank-accounts'; const isRecon = subTab === 'reconciliation'; const isTransfers = subTab === 'transfers';
+
+  useEffect(() => {
+    if (isRecon) {
+      financeService.getBankReconciliations().then(r => setReconciliations(r.data?.reconciliations ?? [])).catch(() => setReconciliations([]));
+    }
+  }, [isRecon]);
+
+  const handleDeleteRecon = async (id: string) => {
+    try {
+      await financeService.deleteBankReconciliation(id);
+      notify('Reconciliation deleted');
+      financeService.getBankReconciliations().then(r => setReconciliations(r.data?.reconciliations ?? []));
+    } catch { notify('Failed to delete', 'error'); }
+  };
+
+  const handleCompleteRecon = async (id: string) => {
+    try {
+      await financeService.completeBankReconciliation(id);
+      notify('Reconciliation completed');
+      financeService.getBankReconciliations().then(r => setReconciliations(r.data?.reconciliations ?? []));
+    } catch { notify('Failed to complete', 'error'); }
+  };
   const ACC_COLS: TableColumn<BankAccount>[] = [
     { id: 'account_name', label: 'Account Name', sortable: true, minWidth: 160 },
     { id: 'bank_name', label: 'Bank', sortable: true },
@@ -84,6 +162,20 @@ export default function BankingSection({ subTab, notify, addOpen, setAddOpen }: 
     { id: 'amount', label: 'Amount', align: 'right', format: v => formatCurrency(Number(v)) },
     { id: 'actions', label: 'Actions', align: 'right', format: (_, row) => <ActionMenu actions={[commonActions.delete(() => delTrf.mutate(row.id, { onSuccess: () => notify('Transfer deleted'), onError: () => notify('Failed to delete', 'error') }))]} /> },
   ];
+
+  const RECON_COLS: TableColumn<BankReconciliation>[] = [
+    { id: 'period_start', label: 'Period Start', sortable: true, format: v => formatDate(v as string) },
+    { id: 'period_end', label: 'Period End', format: v => formatDate(v as string) },
+    { id: 'opening_balance', label: 'Opening', align: 'right', format: v => formatCurrency(Number(v)) },
+    { id: 'closing_balance', label: 'Closing', align: 'right', format: v => formatCurrency(Number(v)) },
+    { id: 'status', label: 'Status', format: v => <StatusChip status={v as string} /> },
+    { id: 'actions', label: 'Actions', align: 'right', format: (_, row) => (
+      <ActionMenu actions={[
+        ...(row.status === 'IN_PROGRESS' ? [{ label: 'Complete', onClick: () => handleCompleteRecon(row.id), icon: 'check' as const }] : []),
+        commonActions.delete(() => handleDeleteRecon(row.id))
+      ]} />
+    )},
+  ];
   return (
     <>
       <Grid container spacing={2.5} sx={{ mb: 3 }}>
@@ -93,10 +185,11 @@ export default function BankingSection({ subTab, notify, addOpen, setAddOpen }: 
         <Grid size={{ xs: 12, sm: 6, md: 3 }}><MetricCard label="Transfers" value={transfers.length} trend="neutral" color="#7B1FA2" loading={trfLoading} /></Grid>
       </Grid>
       {isAccounts && <DataTable columns={ACC_COLS} rows={accounts} loading={accLoading} total={accounts.length} page={page} pageSize={25} onPageChange={setPage} onSearch={() => {}} searchPlaceholder="Search accounts..." getRowId={r => r.id} emptyMessage="No bank accounts yet." />}
-      {isRecon && <Typography color="text.secondary" sx={{ p: 4, textAlign: 'center' }}>Select an account and period to start reconciliation.</Typography>}
+      {isRecon && <DataTable columns={RECON_COLS} rows={reconciliations} loading={false} total={reconciliations.length} page={page} pageSize={25} onPageChange={setPage} onSearch={() => {}} searchPlaceholder="Search reconciliations..." getRowId={r => r.id} emptyMessage="No reconciliations yet." />}
       {isTransfers && <DataTable columns={TRF_COLS} rows={transfers} loading={trfLoading} total={transfers.length} page={page} pageSize={25} onPageChange={setPage} onSearch={() => {}} searchPlaceholder="Search transfers..." getRowId={r => r.id} emptyMessage="No transfers yet." />}
       <BankAccountModal open={(addOpen && isAccounts) || !!editAcc} onClose={() => { setAddOpen(false); setEditAcc(null); }} record={editAcc} onSuccess={(m, s) => { notify(m, s); setAddOpen(false); setEditAcc(null); }} />
       <TransferModal open={addOpen && isTransfers} onClose={() => setAddOpen(false)} accounts={accounts} onSuccess={(m, s) => { notify(m, s); setAddOpen(false); }} />
+      <ReconciliationModal open={addOpen && isRecon} onClose={() => setAddOpen(false)} accounts={accounts} onSuccess={(m, s) => { notify(m, s); setAddOpen(false); financeService.getBankReconciliations().then(r => setReconciliations(r.data?.reconciliations ?? [])); }} />
     </>
   );
 }

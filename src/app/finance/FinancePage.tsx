@@ -39,9 +39,8 @@ const SUB_ACTION: Record<string, { label: string }> = {
   'all-expenses': { label: 'Log Expense' },
   'pending-approval': { label: 'Log Expense' },
   reimbursements: { label: 'Log Expense' },
-  'cash-log': { label: 'Add Entry' },
-  receipts: { label: 'Upload Receipt' },
-  reconcile: { label: 'Reconcile' },
+  funds: { label: 'Create Fund' },
+  'tax-rates': { label: 'Add Tax Rate' },
   'sales-tax-report': { label: 'Generate Report' },
   'filing-history': { label: 'File Return' },
 };

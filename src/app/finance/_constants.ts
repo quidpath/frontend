@@ -38,11 +38,11 @@ export const SECONDARY_TABS: Record<PrimaryTab, { id: string; label: string }[]>
     { id: 'reimbursements', label: 'Reimbursements' },
   ],
   pettycash: [
-    { id: 'cash-log', label: 'Cash Log' },
-    { id: 'receipts', label: 'Receipts' },
-    { id: 'reconcile', label: 'Reconcile' },
+    { id: 'funds', label: 'Funds' },
+    { id: 'transactions', label: 'Transactions' },
   ],
   tax: [
+    { id: 'tax-rates', label: 'Tax Rates' },
     { id: 'sales-tax-report', label: 'Sales Tax Report' },
     { id: 'filing-history', label: 'Filing History' },
   ],
@@ -85,6 +85,10 @@ export const STATUS_COLORS: Record<string, { bg: string; color: string; label: s
   open: { bg: '#FEF3C7', color: '#D97706', label: 'Open' },
   reconciled: { bg: '#D1FAE5', color: '#059669', label: 'Reconciled' },
   discrepancy: { bg: '#FEE2E2', color: '#DC2626', label: 'Discrepancy' },
+  IN_PROGRESS: { bg: '#FEF3C7', color: '#D97706', label: 'In Progress' },
+  REVIEWED: { bg: '#DBEAFE', color: '#2563EB', label: 'Reviewed' },
+  active: { bg: '#D1FAE5', color: '#059669', label: 'Active' },
+  inactive: { bg: '#F1F5F9', color: '#64748B', label: 'Inactive' },
 };
 
 export const ROWS_PER_PAGE_OPTIONS = [25, 50, 100];
