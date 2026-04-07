@@ -14,12 +14,10 @@ import { TableColumn } from '@/types';
 import { useJournalEntries } from '@/hooks/useAccounting';
 import { useCreateJournalEntry, useDeleteJournalEntry } from '@/hooks/useAccountingMutations';
 import { useAccounts } from '@/hooks/useFinance';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import financeService from '@/services/financeService';
 import type { Account } from '@/services/financeService';
 import type { SectionProps } from '../_shared';
-
-const ACCOUNT_TYPES = ['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE'];
 
 function AccountModal({ open, onClose, record, onSuccess }: {
   open: boolean; onClose: () => void; record?: Account | null;
@@ -30,13 +28,33 @@ function AccountModal({ open, onClose, record, onSuccess }: {
   const create = useMutation({ mutationFn: (d: Record<string, unknown>) => financeService.createAccount(d), onSuccess: inv });
   const update = useMutation({ mutationFn: (d: Record<string, unknown>) => financeService.updateAccount(d), onSuccess: inv });
   const saving = create.isPending || update.isPending;
-  const [form, setForm] = useState({ code: '', name: '', account_type: 'ASSET', account_sub_type: '', description: '', is_active: true });
+  
+  // Fetch account types from backend
+  const { data: accountTypesData, isLoading: loadingTypes } = useQuery({
+    queryKey: ['account-types'],
+    queryFn: () => financeService.getAccountTypes(),
+  });
+  const accountTypes = (accountTypesData?.data?.account_types ?? []) as Array<{ id: string; name: string; description: string }>;
+  
+  const [form, setForm] = useState({ code: '', name: '', account_type_id: '', account_sub_type: '', description: '', is_active: true });
 
   useEffect(() => {
     if (!open) return;
-    if (record) setForm({ code: record.code, name: record.name, account_type: record.account_type ?? 'ASSET', account_sub_type: record.account_sub_type ?? '', description: record.description ?? '', is_active: record.is_active });
-    else setForm({ code: '', name: '', account_type: 'ASSET', account_sub_type: '', description: '', is_active: true });
-  }, [record, open]);
+    if (record) {
+      // For edit mode, we need to find the account_type_id from the account_type name
+      const accountTypeId = accountTypes.find(t => t.name === record.account_type)?.id ?? '';
+      setForm({ 
+        code: record.code, 
+        name: record.name, 
+        account_type_id: accountTypeId, 
+        account_sub_type: record.account_sub_type ?? '', 
+        description: record.description ?? '', 
+        is_active: record.is_active 
+      });
+    } else {
+      setForm({ code: '', name: '', account_type_id: '', account_sub_type: '', description: '', is_active: true });
+    }
+  }, [record, open, accountTypes]);
 
   const handleSave = async () => {
     try {
@@ -57,9 +75,15 @@ function AccountModal({ open, onClose, record, onSuccess }: {
           <TextField label="Name" size="small" fullWidth value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} />
         </Stack>
         <Stack direction="row" spacing={2}>
-          <FormControl fullWidth size="small"><InputLabel>Type</InputLabel>
-            <Select value={form.account_type} label="Type" onChange={e => setForm(p => ({ ...p, account_type: e.target.value }))}>
-              {ACCOUNT_TYPES.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}
+          <FormControl fullWidth size="small">
+            <InputLabel>Type</InputLabel>
+            <Select 
+              value={form.account_type_id} 
+              label="Type" 
+              onChange={e => setForm(p => ({ ...p, account_type_id: e.target.value }))}
+              disabled={loadingTypes}
+            >
+              {accountTypes.map(t => <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>)}
             </Select>
           </FormControl>
           <FormControl fullWidth size="small"><InputLabel>Status</InputLabel>

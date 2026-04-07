@@ -225,6 +225,35 @@ const financeService = {
   getBalanceSheet: (p?: Record<string, string>) => gatewayClient.get('/reports/balance-sheet/', { params: p }),
   getProfitAndLoss: (p?: Record<string, string>) => gatewayClient.get('/reports/profit-and-loss/', { params: p }),
   getTaxRate: () => gatewayClient.get('/get-tax-rate/'),
+
+  // Account Types
+  getAccountTypes: () => gatewayClient.get('/account-types/list/'),
+
+  // Corporate Users (for salesperson dropdown)
+  getCorporateUsers: () => gatewayClient.get('/api/orgauth/corporate-users/list'),
+
+  // Petty Cash
+  getPettyCashFunds: (p?: Record<string, unknown>) => gatewayClient.get('/petty-cash/funds/list/', { params: p }),
+  createPettyCashFund: (d: Record<string, unknown>) => gatewayClient.post('/petty-cash/funds/create/', d),
+  getPettyCashTransactions: (p?: Record<string, unknown>) => gatewayClient.get('/petty-cash/transactions/list/', { params: p }),
+  createPettyCashTransaction: (d: Record<string, unknown>) => gatewayClient.post('/petty-cash/transactions/create/', d),
+  approvePettyCashTransaction: (id: string) => gatewayClient.post('/petty-cash/transactions/approve/', { transaction_id: id }),
+  deletePettyCashTransaction: (id: string) => gatewayClient.delete('/petty-cash/transactions/delete/', { params: { id } }),
+
+  // Bank Reconciliation
+  getBankReconciliations: (p?: Record<string, unknown>) => gatewayClient.get('/bank-reconciliation/list/', { params: p }),
+  getBankReconciliation: (id: string) => gatewayClient.get('/bank-reconciliation/get/', { params: { id } }),
+  createBankReconciliation: (d: Record<string, unknown>) => gatewayClient.post('/bank-reconciliation/create/', d),
+  addReconciliationItem: (d: Record<string, unknown>) => gatewayClient.post('/bank-reconciliation/add-item/', d),
+  completeBankReconciliation: (id: string) => gatewayClient.post('/bank-reconciliation/complete/', { reconciliation_id: id }),
+  deleteBankReconciliation: (id: string) => gatewayClient.delete('/bank-reconciliation/delete/', { params: { id } }),
+
+  // Tax Rates
+  getTaxRates: (p?: Record<string, unknown>) => gatewayClient.get('/tax-rates/list/', { params: p }),
+  getTaxRateDetail: (id: string) => gatewayClient.get('/tax-rates/get/', { params: { id } }),
+  createTaxRate: (d: Record<string, unknown>) => gatewayClient.post('/tax-rates/create/', d),
+  updateTaxRate: (d: Record<string, unknown>) => gatewayClient.put('/tax-rates/update/', d),
+  deleteTaxRate: (id: string) => gatewayClient.delete('/tax-rates/delete/', { params: { id } }),
 };
 
 export default financeService;

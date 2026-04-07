@@ -17,6 +17,8 @@ import {
   useQuotations, useCreateQuotation, useUpdateQuotation, useDeleteQuotation,
   useCustomers, useCreateCustomer, useDeleteCustomer,
 } from '@/hooks/useFinance';
+import { useQuery } from '@tanstack/react-query';
+import financeService from '@/services/financeService';
 import type { Invoice, Quotation, Customer, InvoiceLine } from '@/services/financeService';
 import type { SectionProps } from './_shared';
 
@@ -27,6 +29,14 @@ function InvoiceModal({ open, onClose, record, customers, onSuccess }: {
   const create = useCreateInvoice();
   const update = useUpdateInvoice();
   const saving = create.isPending || update.isPending;
+  
+  // Fetch corporate users for salesperson dropdown
+  const { data: usersData, isLoading: loadingUsers } = useQuery({
+    queryKey: ['corporate-users'],
+    queryFn: () => financeService.getCorporateUsers(),
+  });
+  const users = (usersData?.data?.users ?? []) as Array<{ id: string; username: string; email: string; role: string }>;
+  
   const [form, setForm] = useState({ customer_id: '', date: '', due_date: '', number: '', salesperson: '' });
   const [lines, setLines] = useState<InvoiceLine[]>([{ description: '', quantity: 1, unit_price: 0 }]);
 
@@ -154,13 +164,22 @@ function InvoiceModal({ open, onClose, record, customers, onSuccess }: {
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 4 }}>
-              <TextField
-                label="Salesperson"
-                size="small"
-                fullWidth
-                value={form.salesperson}
-                onChange={e => setForm(p => ({ ...p, salesperson: e.target.value }))}
-              />
+              <FormControl fullWidth size="small">
+                <InputLabel>Salesperson (optional)</InputLabel>
+                <Select
+                  value={form.salesperson}
+                  label="Salesperson (optional)"
+                  onChange={e => setForm(p => ({ ...p, salesperson: e.target.value }))}
+                  disabled={loadingUsers}
+                >
+                  <MenuItem value="">Auto (Current User)</MenuItem>
+                  {users.map(u => (
+                    <MenuItem key={u.id} value={u.id}>
+                      {u.username} ({u.email})
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </Grid>
           </Grid>
 
@@ -249,6 +268,14 @@ function QuoteModal({ open, onClose, record, customers, onSuccess }: {
   const create = useCreateQuotation();
   const update = useUpdateQuotation();
   const saving = create.isPending || update.isPending;
+  
+  // Fetch corporate users for salesperson dropdown
+  const { data: usersData, isLoading: loadingUsers } = useQuery({
+    queryKey: ['corporate-users'],
+    queryFn: () => financeService.getCorporateUsers(),
+  });
+  const users = (usersData?.data?.users ?? []) as Array<{ id: string; username: string; email: string; role: string }>;
+  
   const [form, setForm] = useState({ customer_id: '', date: '', valid_until: '', number: '', salesperson: '' });
   const [lines, setLines] = useState<InvoiceLine[]>([{ description: '', quantity: 1, unit_price: 0 }]);
 
@@ -372,13 +399,22 @@ function QuoteModal({ open, onClose, record, customers, onSuccess }: {
               />
             </Grid>
             <Grid size={{ xs: 12, sm: 4 }}>
-              <TextField
-                label="Salesperson"
-                size="small"
-                fullWidth
-                value={form.salesperson}
-                onChange={e => setForm(p => ({ ...p, salesperson: e.target.value }))}
-              />
+              <FormControl fullWidth size="small">
+                <InputLabel>Salesperson (optional)</InputLabel>
+                <Select
+                  value={form.salesperson}
+                  label="Salesperson (optional)"
+                  onChange={e => setForm(p => ({ ...p, salesperson: e.target.value }))}
+                  disabled={loadingUsers}
+                >
+                  <MenuItem value="">Auto (Current User)</MenuItem>
+                  {users.map(u => (
+                    <MenuItem key={u.id} value={u.id}>
+                      {u.username} ({u.email})
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </Grid>
           </Grid>
 
