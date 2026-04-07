@@ -96,11 +96,46 @@ const inventoryService = {
   getProduct: (id: string) =>
     inventoryClient.get<Product>(`/api/inventory/products/${id}/`),
 
-  createProduct: (data: Omit<Product, 'id' | 'created_at' | 'quantity_on_hand'>) =>
-    inventoryClient.post<Product>('/api/inventory/products/', data),
+  createProduct: (data: Omit<Product, 'id' | 'created_at' | 'quantity_on_hand'>) => {
+    // Map frontend fields to backend model fields
+    const backendData = {
+      name: data.name,
+      internal_reference: data.sku, // Map sku to internal_reference
+      barcode: data.barcode,
+      category_id: data.category, // Assuming category is already a UUID
+      description: data.description,
+      list_price: data.unit_price, // Map unit_price to list_price
+      standard_price: data.cost_price, // Map cost_price to standard_price
+      min_qty: data.reorder_point, // Map reorder_point to min_qty
+      reorder_qty: data.reorder_point, // Use same value for reorder_qty
+      uom_id: data.unit_of_measure, // Map unit_of_measure to uom_id (assuming it's a UUID)
+      is_active: data.is_active,
+      product_type: 'storable', // Default product type
+      costing_method: 'avco', // Default costing method (Average Cost)
+      can_be_sold: true, // Default to true
+      can_be_purchased: true, // Default to true
+    };
+    return inventoryClient.post<Product>('/api/inventory/products/', backendData);
+  },
 
-  updateProduct: (id: string, data: Partial<Product>) =>
-    inventoryClient.put<Product>(`/api/inventory/products/${id}/`, data),
+  updateProduct: (id: string, data: Partial<Product>) => {
+    // Map frontend fields to backend model fields for update
+    const backendData: Record<string, unknown> = {};
+    if (data.name !== undefined) backendData.name = data.name;
+    if (data.sku !== undefined) backendData.internal_reference = data.sku;
+    if (data.barcode !== undefined) backendData.barcode = data.barcode;
+    if (data.category !== undefined) backendData.category_id = data.category;
+    if (data.description !== undefined) backendData.description = data.description;
+    if (data.unit_price !== undefined) backendData.list_price = data.unit_price;
+    if (data.cost_price !== undefined) backendData.standard_price = data.cost_price;
+    if (data.reorder_point !== undefined) {
+      backendData.min_qty = data.reorder_point;
+      backendData.reorder_qty = data.reorder_point;
+    }
+    if (data.unit_of_measure !== undefined) backendData.uom_id = data.unit_of_measure;
+    if (data.is_active !== undefined) backendData.is_active = data.is_active;
+    return inventoryClient.put<Product>(`/api/inventory/products/${id}/`, backendData);
+  },
 
   deleteProduct: (id: string) =>
     inventoryClient.delete(`/api/inventory/products/${id}/`),

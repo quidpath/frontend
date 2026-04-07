@@ -22,7 +22,7 @@ import UniversalModal from '@/components/ui/UniversalModal';
 import { Invoice, InvoiceLine } from '@/services/accountingService';
 import accountingService from '@/services/accountingService';
 import { useTaxRates } from '@/hooks/useTax';
-import { useContacts } from '@/hooks/useContacts';
+import { useCustomers } from '@/hooks/useFinance';
 import { formatCurrency } from '@/utils/formatters';
 
 interface InvoiceModalProps {
@@ -181,18 +181,39 @@ export default function InvoiceModal({
     setLoading(true);
     try {
       const totals = calculateTotals();
+      const processedLines = lines
+        .filter(line => line.description && Number(line.quantity) > 0)
+        .map(line => {
+          const qty = Number(line.quantity) || 0;
+          const price = Number(line.unit_price) || 0;
+          const discountPct = Number(line.discount) || 0;
+          const taxPct = Number(line.tax_amount) || 0;
+          const amount = qty * price;
+          const discountAmt = amount * (discountPct / 100);
+          const afterDiscount = amount - discountAmt;
+          const taxAmt = afterDiscount * (taxPct / 100);
+          const total = afterDiscount + taxAmt;
+          return {
+            description: line.description,
+            quantity: qty,
+            unit_price: price,
+            amount,
+            discount: discountAmt,
+            tax_amount: taxAmt,
+            sub_total: afterDiscount,
+            total,
+          };
+        });
+
       const payload = {
-        customer_id: formData.customer_id || formData.customer,
+        customer: formData.customer_id || formData.customer,
         date: formData.date,
         due_date: formData.due_date,
+        number: invoice?.number || `INV-${Date.now()}`,
         terms: formData.terms,
         purchase_order: formData.purchase_order,
         comments: formData.comments,
-        lines: lines.filter(line => line.description && Number(line.quantity) > 0),
-        sub_total: totals.subtotal - totals.totalDiscount,
-        tax_total: totals.taxTotal,
-        total: totals.total,
-        total_discount: totals.totalDiscount,
+        lines: processedLines,
       };
 
       if (invoice) {

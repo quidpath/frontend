@@ -65,13 +65,31 @@ function InvoiceModal({ open, onClose, record, customers, onSuccess }: {
   const handleSave = async () => {
     try {
       const payload = {
-        ...form,
         customer: form.customer_id,
-        lines: lines.map(l => ({
-          description: l.description,
-          quantity: l.quantity,
-          unit_price: l.unit_price,
-        })),
+        date: form.date,
+        due_date: form.due_date,
+        number: form.number,
+        salesperson: form.salesperson || undefined,
+        lines: lines.map(l => {
+          const qty = l.quantity;
+          const price = l.unit_price;
+          const amount = qty * price;
+          const discount = 0;
+          const taxRate = 0.16;
+          const taxAmount = (amount - discount) * taxRate;
+          const subTotal = amount - discount;
+          const total = subTotal + taxAmount;
+          return {
+            description: l.description,
+            quantity: qty,
+            unit_price: price,
+            amount,
+            discount,
+            tax_amount: taxAmount,
+            sub_total: subTotal,
+            total,
+          };
+        }),
       };
       if (record) await update.mutateAsync({ id: record.id, ...payload });
       else await create.mutateAsync(payload);
@@ -269,13 +287,27 @@ function QuoteModal({ open, onClose, record, customers, onSuccess }: {
   const handleSave = async () => {
     try {
       const payload = {
-        ...form,
         customer: form.customer_id,
-        lines: lines.map(l => ({
-          description: l.description,
-          quantity: l.quantity,
-          unit_price: l.unit_price,
-        })),
+        date: form.date,
+        valid_until: form.valid_until,
+        number: form.number,
+        salesperson: form.salesperson || undefined,
+        ship_date: form.valid_until, // default to valid_until if not set
+        ship_via: 'TBD',
+        terms: 'Net 30',
+        fob: 'Origin',
+        lines: lines.map(l => {
+          const qty = l.quantity;
+          const price = l.unit_price;
+          const discount = 0;
+          return {
+            description: l.description,
+            quantity: qty,
+            unit_price: price,
+            discount,
+            taxable: 'exempt', // will be resolved by backend
+          };
+        }),
       };
       if (record) await update.mutateAsync({ id: record.id, ...payload });
       else await create.mutateAsync(payload);
@@ -432,7 +464,11 @@ function CustomerModal({ open, onClose, onSuccess }: {
   open: boolean; onClose: () => void; onSuccess: (m: string, s?: 'success' | 'error') => void;
 }) {
   const create = useCreateCustomer();
-  const [form, setForm] = useState({ name: '', email: '', phone: '', address: '', city: '', country: '', tax_id: '' });
+  const [form, setForm] = useState({
+    category: 'individual',
+    first_name: '', last_name: '', company_name: '',
+    email: '', phone: '', address: '', city: '', country: '', tax_id: ''
+  });
   const f = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) => setForm(p => ({ ...p, [k]: e.target.value }));
 
   const handleSave = async () => {
@@ -453,7 +489,18 @@ function CustomerModal({ open, onClose, onSuccess }: {
       </DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2}>
-          <TextField label="Name" size="small" fullWidth value={form.name} onChange={f('name')} />
+          <FormControl fullWidth size="small">
+            <InputLabel>Category</InputLabel>
+            <Select value={form.category} label="Category" onChange={e => setForm(p => ({ ...p, category: e.target.value }))}>
+              <MenuItem value="individual">Individual</MenuItem>
+              <MenuItem value="company">Company</MenuItem>
+            </Select>
+          </FormControl>
+          {form.category === 'company' && <TextField label="Company Name" size="small" fullWidth value={form.company_name} onChange={f('company_name')} />}
+          <Stack direction="row" spacing={2}>
+            <TextField label="First Name" size="small" fullWidth value={form.first_name} onChange={f('first_name')} />
+            <TextField label="Last Name" size="small" fullWidth value={form.last_name} onChange={f('last_name')} />
+          </Stack>
           <TextField label="Email" size="small" fullWidth value={form.email} onChange={f('email')} />
           <TextField label="Phone" size="small" fullWidth value={form.phone} onChange={f('phone')} />
           <TextField label="Address" size="small" fullWidth value={form.address} onChange={f('address')} />
@@ -493,7 +540,10 @@ export default function SalesSection({ subTab, notify, addOpen, setAddOpen }: Se
 
   const invoices = invoiceData?.invoices ?? [];
   const quotes = quoteData?.quotations ?? [];
-  const customers = customerData?.customers ?? [];
+  const customers = (customerData?.customers ?? []).map(c => ({
+    ...c,
+    name: c.name ?? (c.company_name || `${c.first_name ?? ''} ${c.last_name ?? ''}`.trim()),
+  }));
 
   const isInvoices = subTab === 'invoices';
   const isQuotes = subTab === 'quotes';

@@ -20,16 +20,11 @@ interface ExpenseModalProps {
 }
 
 const EXPENSE_CATEGORIES = [
-  'Office Supplies',
-  'Travel',
-  'Meals & Entertainment',
-  'Utilities',
-  'Rent',
-  'Insurance',
-  'Marketing',
-  'Professional Services',
-  'Software & Subscriptions',
-  'Other',
+  { value: 'OPERATING', label: 'Operating Expenses' },
+  { value: 'ADMINISTRATIVE', label: 'Administrative' },
+  { value: 'SELLING', label: 'Selling & Marketing' },
+  { value: 'FINANCIAL', label: 'Financial' },
+  { value: 'OTHER', label: 'Other' },
 ];
 
 const PAYMENT_METHODS = [
@@ -211,8 +206,8 @@ export default function ExpenseModal({
             required
           >
             {EXPENSE_CATEGORIES.map((cat) => (
-              <MenuItem key={cat} value={cat}>
-                {cat}
+              <MenuItem key={cat.value} value={cat.value}>
+                {cat.label}
               </MenuItem>
             ))}
           </TextField>

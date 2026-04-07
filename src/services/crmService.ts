@@ -119,11 +119,45 @@ const crmService = {
   getContact: (id: string) =>
     crmClient.get<Contact>(`/api/crm/contacts/${id}/`),
 
-  createContact: (data: Omit<Contact, 'id' | 'created_at' | 'updated_at'>) =>
-    crmClient.post<Contact>('/api/crm/contacts/', data),
+  createContact: (data: Omit<Contact, 'id' | 'created_at' | 'updated_at'>) => {
+    // Parse name into first_name and last_name
+    const nameParts = data.name.trim().split(' ');
+    const firstName = nameParts[0];
+    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : firstName;
+    
+    // Map frontend fields to backend model fields
+    const backendData = {
+      first_name: firstName,
+      last_name: lastName,
+      email: data.email,
+      phone: data.phone,
+      // company: data.company, // May need to be company_id (FK)
+      is_active: data.status === 'active', // Map status to is_active boolean
+      description: data.notes, // Map notes to description
+      // Note: 'type' and 'source' fields may not exist in backend Contact model
+    };
+    return crmClient.post<Contact>('/api/crm/contacts/', backendData);
+  },
 
-  updateContact: (id: string, data: Partial<Contact>) =>
-    crmClient.put<Contact>(`/api/crm/contacts/${id}/`, data),
+  updateContact: (id: string, data: Partial<Contact>) => {
+    // Map frontend fields to backend model fields for update
+    const backendData: Record<string, unknown> = {};
+    
+    // Handle name if provided
+    if (data.name) {
+      const nameParts = data.name.trim().split(' ');
+      backendData.first_name = nameParts[0];
+      backendData.last_name = nameParts.length > 1 ? nameParts.slice(1).join(' ') : nameParts[0];
+    }
+    
+    if (data.email !== undefined) backendData.email = data.email;
+    if (data.phone !== undefined) backendData.phone = data.phone;
+    if (data.status !== undefined) backendData.is_active = data.status === 'active';
+    if (data.notes !== undefined) backendData.description = data.notes;
+    if (data.assigned_to !== undefined) backendData.assigned_to = data.assigned_to;
+    
+    return crmClient.put<Contact>(`/api/crm/contacts/${id}/`, backendData);
+  },
 
   deleteContact: (id: string) =>
     crmClient.delete(`/api/crm/contacts/${id}/`),

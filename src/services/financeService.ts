@@ -18,6 +18,8 @@ export interface Invoice {
   comments?: string; purchase_order?: string;
   sub_total: number; tax_total: number; total: number; total_discount?: number;
   lines: InvoiceLine[];
+  // Draft/Post fields
+  drafted_at?: string; posted_at?: string; posted_by?: string;
 }
 export interface InvoiceListResponse { invoices: Invoice[]; total: number; status_counts: Record<string, number> }
 
@@ -28,6 +30,8 @@ export interface Quotation {
   date: string; valid_until: string; status: string; salesperson?: string;
   comments?: string; T_and_C?: string; ship_date?: string; ship_via?: string; terms?: string; fob?: string;
   sub_total?: number; tax_total?: number; total?: number; lines?: InvoiceLine[];
+  // Draft/Post fields
+  drafted_at?: string; posted_at?: string; posted_by?: string;
 }
 export interface QuotationListResponse { quotations: Quotation[]; total: number }
 
@@ -37,6 +41,8 @@ export interface VendorBill {
   id: string; number?: string; vendor: string; vendor_id?: string;
   date: string; due_date?: string; status: string;
   sub_total?: number; tax_total?: number; total?: number; lines?: InvoiceLine[];
+  // Draft/Post fields
+  drafted_at?: string; posted_at?: string; posted_by?: string;
 }
 export interface VendorBillListResponse { vendor_bills: VendorBill[]; total: number }
 
@@ -46,6 +52,8 @@ export interface PurchaseOrder {
   id: string; number?: string; vendor: string; vendor_id?: string;
   date: string; expected_delivery?: string; status: string;
   sub_total?: number; tax_total?: number; total?: number; lines?: InvoiceLine[];
+  // Draft/Post fields
+  drafted_at?: string; posted_at?: string; posted_by?: string;
 }
 export interface PurchaseOrderListResponse { purchase_orders: PurchaseOrder[]; total: number }
 
@@ -62,14 +70,20 @@ export interface ExpenseListResponse { expenses: Expense[]; total: number }
 // ─── Customers & Vendors ──────────────────────────────────────────────────────
 
 export interface Customer {
-  id: string; name: string; email?: string; phone?: string;
+  id: string;
+  name?: string; // computed: first_name + last_name or company_name
+  first_name?: string; last_name?: string; company_name?: string;
+  category?: string; email?: string; phone?: string;
   address?: string; city?: string; country?: string; tax_id?: string;
 }
 export interface CustomerListResponse { customers: Customer[]; total: number }
 
 export interface Vendor {
-  id: string; name: string; email?: string; phone?: string;
-  address?: string; city?: string; country?: string; tax_id?: string; category?: string;
+  id: string;
+  name?: string; // computed: first_name + last_name or company_name
+  first_name?: string; last_name?: string; company_name?: string;
+  category?: string; email?: string; phone?: string;
+  address?: string; city?: string; country?: string; tax_id?: string;
 }
 export interface VendorListResponse { vendors: Vendor[]; total: number }
 
@@ -120,13 +134,22 @@ const financeService = {
   updateInvoice: (d: Record<string, unknown>) => gatewayClient.put<Invoice>('/invoice/update/', d),
   deleteInvoice: (id: string) => gatewayClient.delete('/invoice/delete/', { params: { id } }),
   sendInvoice: (id: string) => gatewayClient.post(`/invoice/${id}/send/`),
+  // New draft/post endpoints
+  postInvoice: (id: string) => gatewayClient.post(`/invoice/${id}/post/`),
+  autoSaveInvoice: (id: string, d: Record<string, unknown>) => gatewayClient.patch(`/invoice/${id}/auto-save/`, d),
+  getDraftInvoices: () => gatewayClient.get<InvoiceListResponse>('/invoice/drafts/'),
   // Quotations
   getQuotations: (p?: Record<string, string>) => gatewayClient.get<QuotationListResponse>('/quotation/list/', { params: p }),
   getQuotation: (id: string) => gatewayClient.get<Quotation>('/quotation/get/', { params: { id } }),
   createQuotation: (d: Record<string, unknown>) => gatewayClient.post<Quotation>('/quotation/create-and-post/', d),
+  saveDraftQuotation: (d: Record<string, unknown>) => gatewayClient.post<Quotation>('/quotation/save-draft/', d),
   updateQuotation: (d: Record<string, unknown>) => gatewayClient.put<Quotation>('/quotation/update/', d),
   deleteQuotation: (id: string) => gatewayClient.delete('/quotation/delete/', { params: { id } }),
   convertQuoteToInvoice: (id: string) => gatewayClient.post('/quotation/invoice-quote/', { quotation_id: id }),
+  // New draft/post endpoints
+  postQuotation: (id: string) => gatewayClient.post(`/quotation/${id}/post/`),
+  autoSaveQuotation: (id: string, d: Record<string, unknown>) => gatewayClient.patch(`/quotation/${id}/auto-save/`, d),
+  getDraftQuotations: () => gatewayClient.get<QuotationListResponse>('/quotation/drafts/'),
 
   // Vendor Bills
   getVendorBills: (p?: Record<string, string>) => gatewayClient.get<VendorBillListResponse>('/vendor-bill/list/', { params: p }),
@@ -134,13 +157,22 @@ const financeService = {
   createVendorBill: (d: Record<string, unknown>) => gatewayClient.post<VendorBill>('/vendor-bill/create/', d),
   updateVendorBill: (d: Record<string, unknown>) => gatewayClient.put<VendorBill>('/vendor-bill/update/', d),
   deleteVendorBill: (id: string) => gatewayClient.delete('/vendor-bill/delete/', { params: { id } }),
+  // New draft/post endpoints
+  postVendorBill: (id: string) => gatewayClient.post(`/vendor-bill/${id}/post/`),
+  autoSaveVendorBill: (id: string, d: Record<string, unknown>) => gatewayClient.patch(`/vendor-bill/${id}/auto-save/`, d),
+  getDraftVendorBills: () => gatewayClient.get<VendorBillListResponse>('/vendor-bill/drafts/'),
 
   // Purchase Orders
   getPurchaseOrders: (p?: Record<string, string>) => gatewayClient.get<PurchaseOrderListResponse>('/purchase-orders/list/', { params: p }),
   getPurchaseOrder: (id: string) => gatewayClient.get<PurchaseOrder>('/purchase-orders/get/', { params: { id } }),
   createPurchaseOrder: (d: Record<string, unknown>) => gatewayClient.post<PurchaseOrder>('/purchase-orders/create-and-post/', d),
+  saveDraftPurchaseOrder: (d: Record<string, unknown>) => gatewayClient.post<PurchaseOrder>('/purchase-orders/save-draft/', d),
   updatePurchaseOrder: (d: Record<string, unknown>) => gatewayClient.put<PurchaseOrder>('/purchase-orders/update/', d),
   deletePurchaseOrder: (id: string) => gatewayClient.delete('/purchase-orders/delete/', { params: { id } }),
+  // New draft/post endpoints
+  postPurchaseOrder: (id: string) => gatewayClient.post(`/purchase-orders/${id}/post/`),
+  autoSavePurchaseOrder: (id: string, d: Record<string, unknown>) => gatewayClient.patch(`/purchase-orders/${id}/auto-save/`, d),
+  getDraftPurchaseOrders: () => gatewayClient.get<PurchaseOrderListResponse>('/purchase-orders/drafts/'),
 
   // Expenses
   getExpenses: (p?: Record<string, string>) => gatewayClient.get<ExpenseListResponse>('/expense/list/', { params: p }),

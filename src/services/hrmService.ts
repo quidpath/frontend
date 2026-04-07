@@ -127,11 +127,49 @@ const hrmService = {
   getEmployee: (id: string) =>
     hrmClient.get<Employee>(`/api/hrm/employees/${id}/`),
 
-  createEmployee: (data: { full_name: string; email: string; phone?: string; department_id?: string; position?: string; join_date?: string; employee_id?: string }) =>
-    hrmClient.post<Employee>('/api/hrm/employees/', data),
+  createEmployee: (data: { full_name: string; email: string; phone?: string; department_id?: string; position?: string; join_date?: string; employee_id?: string }) => {
+    // Parse full name into first_name and last_name
+    const nameParts = data.full_name.trim().split(' ');
+    const firstName = nameParts[0];
+    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : firstName;
+    
+    // Map frontend fields to backend model fields
+    const backendData = {
+      first_name: firstName,
+      last_name: lastName,
+      employee_number: data.employee_id || '', // Map employee_id to employee_number
+      work_email: data.email, // Map email to work_email
+      phone: data.phone,
+      department: data.department_id, // FK to Department
+      position: data.position, // FK to Position
+      date_joined: data.join_date || new Date().toISOString().split('T')[0], // Map join_date to date_joined
+      employment_status: 'active', // Default status
+    };
+    return hrmClient.post<Employee>('/api/hrm/employees/', backendData);
+  },
 
-  updateEmployee: (id: string, data: Partial<Employee>) =>
-    hrmClient.put<Employee>(`/api/hrm/employees/${id}/`, data),
+  updateEmployee: (id: string, data: Partial<Employee>) => {
+    // Map frontend fields to backend model fields for update
+    const backendData: Record<string, unknown> = {};
+    
+    // Handle full_name if provided
+    if (data.full_name) {
+      const nameParts = data.full_name.trim().split(' ');
+      backendData.first_name = nameParts[0];
+      backendData.last_name = nameParts.length > 1 ? nameParts.slice(1).join(' ') : nameParts[0];
+    }
+    
+    if (data.employee_id !== undefined) backendData.employee_number = data.employee_id;
+    if (data.email !== undefined) backendData.work_email = data.email;
+    if (data.phone !== undefined) backendData.phone = data.phone;
+    if (data.department_id !== undefined) backendData.department = data.department_id;
+    if (data.position !== undefined) backendData.position = data.position;
+    if (data.join_date !== undefined) backendData.date_joined = data.join_date;
+    if (data.status !== undefined) backendData.employment_status = data.status;
+    if (data.salary !== undefined) backendData.salary = data.salary;
+    
+    return hrmClient.put<Employee>(`/api/hrm/employees/${id}/`, backendData);
+  },
 
   deleteEmployee: (id: string) =>
     hrmClient.delete(`/api/hrm/employees/${id}/`),

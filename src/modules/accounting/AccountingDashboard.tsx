@@ -71,9 +71,9 @@ export default function AccountingDashboard() {
   // Context-aware button configuration
   const buttonContexts = {
     0: { label: 'New Invoice', onClick: () => { setSelectedItem(null); setInvoiceModalOpen(true); } },
-    1: { label: 'New Quote', onClick: () => showError('Quote feature coming soon') },
-    2: { label: 'New Bill', onClick: () => showError('Bill feature coming soon') },
-    3: { label: 'New Purchase Order', onClick: () => showError('PO feature coming soon') },
+    1: { label: 'New Quote', onClick: () => { window.location.href = '/finance?section=sales&sub=quotes'; } },
+    2: { label: 'New Bill', onClick: () => { window.location.href = '/finance?section=purchases&sub=bills'; } },
+    3: { label: 'New Purchase Order', onClick: () => { window.location.href = '/finance?section=purchases&sub=purchase-orders'; } },
     4: { label: 'New Expense', onClick: () => { setSelectedItem(null); setExpenseModalOpen(true); } },
     5: { label: 'New Journal Entry', onClick: () => { setSelectedItem(null); setJournalModalOpen(true); } },
   };
@@ -468,21 +468,30 @@ export default function AccountingDashboard() {
       {/* Quotes Tab */}
       {tab === 1 && (
         <Box sx={{ py: 4, textAlign: 'center' }}>
-          <Typography color="text.secondary">Quotes feature coming soon. Create and send quotes to customers.</Typography>
+          <Typography color="text.secondary" gutterBottom>Manage quotes in the Finance module.</Typography>
+          <Button variant="contained" size="small" onClick={() => window.location.href = '/finance?section=sales&sub=quotes'}>
+            Go to Quotes
+          </Button>
         </Box>
       )}
 
       {/* Bills Tab */}
       {tab === 2 && (
         <Box sx={{ py: 4, textAlign: 'center' }}>
-          <Typography color="text.secondary">Vendor bills feature coming soon. Track bills from suppliers.</Typography>
+          <Typography color="text.secondary" gutterBottom>Manage vendor bills in the Finance module.</Typography>
+          <Button variant="contained" size="small" onClick={() => window.location.href = '/finance?section=purchases&sub=bills'}>
+            Go to Vendor Bills
+          </Button>
         </Box>
       )}
 
       {/* Purchase Orders Tab */}
       {tab === 3 && (
         <Box sx={{ py: 4, textAlign: 'center' }}>
-          <Typography color="text.secondary">Purchase orders feature coming soon. Manage procurement.</Typography>
+          <Typography color="text.secondary" gutterBottom>Manage purchase orders in the Finance module.</Typography>
+          <Button variant="contained" size="small" onClick={() => window.location.href = '/finance?section=purchases&sub=purchase-orders'}>
+            Go to Purchase Orders
+          </Button>
         </Box>
       )}
 

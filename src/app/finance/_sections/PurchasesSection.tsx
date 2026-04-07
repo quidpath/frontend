@@ -46,8 +46,27 @@ function BillModal({ open, onClose, record, vendors, onSuccess }: {
   
   const handleSave = async () => {
     try {
-      if (record) await update.mutateAsync({ id: record.id, ...form, lines });
-      else await create.mutateAsync({ ...form, lines });
+      const billPayload = {
+        vendor: form.vendor_id,
+        date: form.date,
+        due_date: form.due_date,
+        number: `BILL-${Date.now()}`,
+        status: 'DRAFT',
+        lines: lines.map(l => {
+          const qty = l.quantity;
+          const price = l.unit_price;
+          const discount = 0;
+          return {
+            description: l.description,
+            quantity: qty,
+            unit_price: price,
+            discount,
+            taxable_id: 'exempt',
+          };
+        }),
+      };
+      if (record) await update.mutateAsync({ id: record.id, ...billPayload });
+      else await create.mutateAsync(billPayload);
       onSuccess(record ? 'Bill updated' : 'Bill created'); onClose();
     } catch { onSuccess('Failed to save bill', 'error'); }
   };
@@ -114,8 +133,28 @@ function POModal({ open, onClose, vendors, onSuccess }: {
   const total = subtotal + taxAmount;
   
   const handleSave = async () => {
-    try { await create.mutateAsync({ ...form, lines }); onSuccess('Purchase order created'); onClose(); }
-    catch { onSuccess('Failed to create PO', 'error'); }
+    try {
+      const poPayload = {
+        vendor: form.vendor_id,
+        date: form.date,
+        expected_delivery: form.expected_delivery,
+        number: `PO-${Date.now()}`,
+        created_by: undefined, // will be resolved from auth token on backend
+        lines: lines.map(l => {
+          const qty = l.quantity;
+          const price = l.unit_price;
+          const discount = 0;
+          return {
+            description: l.description,
+            quantity: qty,
+            unit_price: price,
+            discount,
+            taxable_id: 'exempt',
+          };
+        }),
+      };
+      await create.mutateAsync(poPayload); onSuccess('Purchase order created'); onClose();
+    } catch { onSuccess('Failed to create PO', 'error'); }
   };
   
   return (
@@ -192,7 +231,10 @@ export default function PurchasesSection({ subTab, notify, addOpen, setAddOpen }
   const delPO = useDeletePurchaseOrder();
   const bills = billData?.vendor_bills ?? [];
   const pos = poData?.purchase_orders ?? [];
-  const vendors = vendData?.vendors ?? [];
+  const vendors = (vendData?.vendors ?? []).map(v => ({
+    ...v,
+    name: v.name ?? (v.company_name || `${v.first_name ?? ''} ${v.last_name ?? ''}`.trim()),
+  }));
   const isBills = subTab === 'bills';
   const isPO = subTab === 'purchase-orders';
   const isVendors = subTab === 'suppliers';

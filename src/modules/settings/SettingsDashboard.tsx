@@ -1,12 +1,23 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Box, Tab, Tabs, Card, CardContent, Grid, Alert, Chip,
   TextField, MenuItem, FormControlLabel, Checkbox, Typography,
   Dialog, DialogTitle, DialogContent, DialogActions, Button,
+  Divider, Stack, Switch, Slider, Paper, IconButton, Tooltip,
+  ToggleButton, ToggleButtonGroup, CircularProgress,
 } from '@mui/material';
 import SettingsIcon from '@mui/icons-material/Settings';
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
+import ColorLensOutlinedIcon from '@mui/icons-material/ColorLensOutlined';
+import FormatAlignLeftIcon from '@mui/icons-material/FormatAlignLeft';
+import FormatAlignCenterIcon from '@mui/icons-material/FormatAlignCenter';
+import FormatAlignRightIcon from '@mui/icons-material/FormatAlignRight';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
+import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import PageHeader from '@/components/ui/PageHeader';
 import CrudTable from '@/components/ui/CrudTable';
@@ -22,7 +33,7 @@ import taxService, { TaxRate } from '@/services/taxService';
 import bankingService, { BankAccount } from '@/services/bankingService';
 import { useCurrencyStore, SUPPORTED_CURRENCIES, CurrencyCode } from '@/store/currencyStore';
 import { useCurrencyRates } from '@/hooks/useCurrency';
-import roleService, { RoleWithPermissions, Permission } from '@/services/roleService';
+import roleService, { RoleWithPermissions, Permission, CorporateOption } from '@/services/roleService';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 type RoleRow = Omit<RoleWithPermissions, 'id'> & { id: string };
@@ -259,8 +270,12 @@ function TaxRatesPanel({ can }: { can: boolean }) {
 }
 
 // ─── Roles & Permissions ──────────────────────────────────────────────────────
-function RolesPanel() {
+// Props: isSuperuser = Django is_superuser; isSuperAdmin = SUPERADMIN role
+function RolesPanel({ isSuperuser, isSuperAdmin }: { isSuperuser: boolean; isSuperAdmin: boolean }) {
   const qc = useQueryClient();
+
+  // SUPERUSER: corporate dropdown to filter roles across all orgs
+  const [selectedCorp, setSelectedCorp] = useState<string>('');
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<RoleRow | null>(null);
   const [form, setForm] = useState({ name: '', description: '', permission_ids: [] as number[] });
@@ -268,61 +283,60 @@ function RolesPanel() {
   const [permDialogOpen, setPermDialogOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<RoleRow | null>(null);
 
+  // SUPERUSER only: fetch all corporates for the dropdown
+  const { data: corpsData } = useQuery({
+    queryKey: ['roles-corporates'],
+    queryFn: () => roleService.listCorporates().then(r => r.data),
+    enabled: isSuperuser,
+  });
+  const corporates = corpsData?.corporates ?? [];
+
+  // Fetch roles — SUPERUSER can filter by corporate; SUPERADMIN gets their own
   const { data: rolesData, isLoading: rolesLoading } = useQuery({
-    queryKey: ['roles-all'],
-    queryFn: async () => {
-      const res = await roleService.listAllRoles();
-      return res.data;
-    },
+    queryKey: ['roles-all', selectedCorp],
+    queryFn: () => roleService.listAllRoles(selectedCorp || undefined).then(r => r.data),
   });
 
-  const { data: permsData, isLoading: permsLoading } = useQuery({
+  const { data: permsData } = useQuery({
     queryKey: ['permissions-all'],
-    queryFn: async () => {
-      const res = await roleService.listAllPermissions();
-      return res.data;
-    },
+    queryFn: () => roleService.listAllPermissions().then(r => r.data),
   });
 
-  const roles: RoleRow[] = (rolesData?.roles || []).map((r: RoleWithPermissions) => ({ ...r, id: String(r.id) }));
-  const permissions = permsData?.permissions || [];
+  const roles: RoleRow[] = (rolesData?.roles ?? []).map((r: RoleWithPermissions) => ({ ...r, id: String(r.id) }));
+  const permissions = permsData?.permissions ?? [];
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['roles-all'] });
 
   const createMutation = useMutation({
-    mutationFn: (data: { name: string; description: string; permission_ids: number[] }) =>
-      roleService.createRole(data),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['roles-all'] });
-      setOpen(false);
-    },
-    onError: (e: any) => setErr(e?.response?.data?.error || 'Failed to create role'),
+    mutationFn: (d: { name: string; description: string; permission_ids: number[]; corporate_id?: string }) =>
+      roleService.createRole(d),
+    onSuccess: () => { invalidate(); setOpen(false); },
+    onError: (e: any) => setErr(e?.response?.data?.error ?? 'Failed to create role'),
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data: { role_id: number; name: string; description: string; permission_ids: number[] }) =>
-      roleService.updateRole(data),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['roles-all'] });
-      setOpen(false);
-    },
-    onError: (e: any) => setErr(e?.response?.data?.error || 'Failed to update role'),
+    mutationFn: (d: { role_id: number; name?: string; description?: string; permission_ids?: number[] }) =>
+      roleService.updateRole(d),
+    onSuccess: () => { invalidate(); setOpen(false); },
+    onError: (e: any) => setErr(e?.response?.data?.error ?? 'Failed to update role'),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (roleId: number) => roleService.deleteRole(roleId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['roles-all'] }),
-    onError: (e: any) => alert(e?.response?.data?.error || 'Failed to delete role'),
+    onSuccess: invalidate,
+    onError: (e: any) => alert(e?.response?.data?.error ?? 'Failed to delete role'),
   });
 
   const addPermMutation = useMutation({
     mutationFn: ({ roleId, permId }: { roleId: number; permId: number }) =>
       roleService.addPermission(roleId, permId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['roles-all'] }),
+    onSuccess: invalidate,
   });
 
   const removePermMutation = useMutation({
     mutationFn: ({ roleId, permId }: { roleId: number; permId: number }) =>
       roleService.removePermission(roleId, permId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['roles-all'] }),
+    onSuccess: invalidate,
   });
 
   const openAdd = () => {
@@ -336,7 +350,7 @@ function RolesPanel() {
     setEditing(role);
     setForm({
       name: role.name,
-      description: role.description || '',
+      description: role.description ?? '',
       permission_ids: role.permissions.map((p: Permission) => p.id),
     });
     setErr('');
@@ -344,46 +358,75 @@ function RolesPanel() {
   };
 
   const handleSave = () => {
-    if (!form.name.trim()) {
-      setErr('Role name is required');
-      return;
-    }
+    if (!form.name.trim()) { setErr('Role name is required'); return; }
     if (editing) {
       updateMutation.mutate({ role_id: Number(editing.id), ...form });
     } else {
-      createMutation.mutate(form);
+      const payload: any = { ...form };
+      if (isSuperuser && selectedCorp) payload.corporate_id = selectedCorp;
+      createMutation.mutate(payload);
     }
   };
 
   const openPermDialog = (role: RoleRow) => {
-    setSelectedRole(role);
+    setSelectedRole(roles.find(r => r.id === role.id) ?? role);
     setPermDialogOpen(true);
   };
 
   const togglePermission = (permId: number) => {
     if (!selectedRole) return;
     const hasIt = selectedRole.permissions.some((p: Permission) => p.id === permId);
+    const roleId = Number(selectedRole.id);
     if (hasIt) {
-      removePermMutation.mutate({ roleId: Number(selectedRole.id), permId });
+      removePermMutation.mutate({ roleId, permId });
+      setSelectedRole(prev => prev ? { ...prev, permissions: prev.permissions.filter(p => p.id !== permId) } : null);
     } else {
-      addPermMutation.mutate({ roleId: Number(selectedRole.id), permId });
+      addPermMutation.mutate({ roleId, permId });
+      const perm = permissions.find(p => p.id === permId);
+      if (perm) setSelectedRole(prev => prev ? { ...prev, permissions: [...prev.permissions, perm] } : null);
     }
   };
 
-  // Group permissions by module
   const permsByModule: Record<string, Permission[]> = {};
   permissions.forEach((p: Permission) => {
     if (!permsByModule[p.module_slug]) permsByModule[p.module_slug] = [];
     permsByModule[p.module_slug].push(p);
   });
 
+  const isSystemRole = (name: string) => ['SUPERADMIN', 'SUPERUSER'].includes(name.toUpperCase());
+
   return (
     <>
+      {isSuperuser && (
+        <Box sx={{ mb: 2.5 }}>
+          <Alert severity="info" sx={{ mb: 1.5 }}>
+            As a system superuser you can view and manage roles for any organisation.
+          </Alert>
+          <TextField
+            select size="small" label="Filter by Organisation"
+            value={selectedCorp} onChange={e => setSelectedCorp(e.target.value)}
+            sx={{ minWidth: 280 }}
+          >
+            <MenuItem value="">All organisations</MenuItem>
+            {corporates.map(c => (
+              <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
+            ))}
+          </TextField>
+        </Box>
+      )}
+
+      {!isSuperuser && isSuperAdmin && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          You can create and manage roles for your organisation. System roles cannot be modified.
+        </Alert>
+      )}
+
       <CrudTable
         title="Roles & Permissions"
-        subtitle="Manage user roles and their module access permissions"
+        subtitle={isSuperuser ? 'All organisation roles — select an organisation above to filter' : 'Roles for your organisation'}
         columns={[
           { key: 'name', label: 'Role Name' },
+          { key: 'corporate_name', label: 'Organisation' },
           { key: 'description', label: 'Description' },
           {
             key: 'permissions',
@@ -396,82 +439,65 @@ function RolesPanel() {
                 {r.permissions.length > 3 && (
                   <Chip label={`+${r.permissions.length - 3} more`} size="small" color="primary" />
                 )}
-                <Chip
-                  label="Manage"
-                  size="small"
-                  color="secondary"
-                  onClick={() => openPermDialog(r)}
-                  sx={{ cursor: 'pointer' }}
-                />
+                {!isSystemRole(r.name) && (
+                  <Chip label="Manage" size="small" color="secondary"
+                    onClick={() => openPermDialog(r)} sx={{ cursor: 'pointer' }} />
+                )}
               </Box>
             ),
           },
         ]}
         rows={roles}
         loading={rolesLoading}
-        canAdd
+        canAdd={isSuperAdmin && !isSuperuser ? true : (isSuperuser && !!selectedCorp)}
         canEdit
         canDelete
         onAdd={openAdd}
-        onEdit={openEdit}
+        onEdit={(r: RoleRow) => { if (!isSystemRole(r.name)) openEdit(r); }}
         onDelete={(r: RoleRow) => {
+          if (isSystemRole(r.name)) { alert('Cannot delete system roles'); return; }
           if (confirm(`Delete role "${r.name}"? This cannot be undone.`)) {
             deleteMutation.mutate(Number(r.id));
           }
         }}
-        emptyMessage="No roles yet"
+        emptyMessage={isSuperuser && !selectedCorp ? 'Select an organisation to view its roles' : 'No roles yet'}
       />
 
-      {/* Create/Edit Role Modal */}
       <FormModal
-        open={open}
-        onClose={() => setOpen(false)}
-        title={editing ? 'Edit Role' : 'Create Role'}
+        open={open} onClose={() => setOpen(false)}
+        title={editing ? `Edit Role: ${editing.name}` : 'Create Role'}
         onSubmit={handleSave}
         loading={createMutation.isPending || updateMutation.isPending}
       >
         <Err msg={err} />
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <TextField
-            label="Role Name"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            required
-            fullWidth
-            disabled={editing?.name === 'SUPERUSER'}
-          />
-          <TextField
-            label="Description"
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-            fullWidth
-            multiline
-            rows={2}
-          />
+          <TextField label="Role Name" value={form.name}
+            onChange={e => setForm({ ...form, name: e.target.value })}
+            required fullWidth helperText="Cannot use SUPERADMIN or SUPERUSER" />
+          <TextField label="Description" value={form.description}
+            onChange={e => setForm({ ...form, description: e.target.value })}
+            fullWidth multiline rows={2} />
           <Box>
             <Typography variant="subtitle2" gutterBottom>
-              Select Permissions ({form.permission_ids.length} selected)
+              Permissions ({form.permission_ids.length} selected)
             </Typography>
-            <Box sx={{ maxHeight: 300, overflowY: 'auto', border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 1 }}>
+            <Box sx={{ maxHeight: 280, overflowY: 'auto', border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 1 }}>
               {Object.entries(permsByModule).map(([module, perms]) => (
                 <Box key={module} sx={{ mb: 1 }}>
-                  <Typography variant="caption" fontWeight={600} color="primary" sx={{ textTransform: 'uppercase' }}>
+                  <Typography variant="caption" fontWeight={700} color="primary" sx={{ textTransform: 'uppercase' }}>
                     {module}
                   </Typography>
                   {perms.map((p: Permission) => (
-                    <FormControlLabel
-                      key={p.id}
+                    <FormControlLabel key={p.id}
                       control={
-                        <Checkbox
+                        <Checkbox size="small"
                           checked={form.permission_ids.includes(p.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setForm({ ...form, permission_ids: [...form.permission_ids, p.id] });
-                            } else {
-                              setForm({ ...form, permission_ids: form.permission_ids.filter((id) => id !== p.id) });
-                            }
-                          }}
-                          size="small"
+                          onChange={e => setForm({
+                            ...form,
+                            permission_ids: e.target.checked
+                              ? [...form.permission_ids, p.id]
+                              : form.permission_ids.filter(id => id !== p.id),
+                          })}
                         />
                       }
                       label={<Typography variant="body2">{p.name}</Typography>}
@@ -485,26 +511,20 @@ function RolesPanel() {
         </Box>
       </FormModal>
 
-      {/* Manage Permissions Dialog */}
       <Dialog open={permDialogOpen} onClose={() => setPermDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>
-          Manage Permissions: {selectedRole?.name}
-        </DialogTitle>
+        <DialogTitle>Manage Permissions — {selectedRole?.name}</DialogTitle>
         <DialogContent>
           {selectedRole && (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
               {Object.entries(permsByModule).map(([module, perms]) => (
                 <Box key={module}>
-                  <Typography variant="subtitle2" fontWeight={600} color="primary" sx={{ mb: 1, textTransform: 'uppercase' }}>
-                    {module}
-                  </Typography>
+                  <Typography variant="subtitle2" fontWeight={700} color="primary"
+                    sx={{ mb: 1, textTransform: 'uppercase' }}>{module}</Typography>
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                     {perms.map((p: Permission) => {
                       const hasIt = selectedRole.permissions.some((rp: Permission) => rp.id === p.id);
                       return (
-                        <Chip
-                          key={p.id}
-                          label={p.name}
+                        <Chip key={p.id} label={p.name}
                           color={hasIt ? 'success' : 'default'}
                           variant={hasIt ? 'filled' : 'outlined'}
                           onClick={() => togglePermission(p.id)}
@@ -577,6 +597,343 @@ function BankAccountsPanel({ can }: { can: boolean }) {
   );
 }
 
+// ─── Document Templates ───────────────────────────────────────────────────────
+const ACCENT_PRESETS = ['#1565C0', '#2E7D32', '#6A1B9A', '#C62828', '#E65100', '#00695C', '#37474F'];
+const FONT_OPTIONS = ['Inter', 'Roboto', 'Open Sans', 'Lato', 'Poppins', 'Montserrat'];
+const DOC_TYPES = [
+  { key: 'quotation', label: 'Quotation' },
+  { key: 'invoice', label: 'Invoice' },
+  { key: 'purchase_order', label: 'Purchase Order' },
+  { key: 'vendor_bill', label: 'Vendor Bill' },
+];
+
+interface DocTemplate {
+  accentColor: string;
+  font: string;
+  logoAlign: 'left' | 'center' | 'right';
+  showLogo: boolean;
+  showTagline: boolean;
+  tagline: string;
+  footerText: string;
+  showBankDetails: boolean;
+  showSignatureLine: boolean;
+  showStamp: boolean;
+  borderStyle: 'none' | 'thin' | 'thick';
+  headerBg: boolean;
+}
+
+const DEFAULT_TEMPLATE: DocTemplate = {
+  accentColor: '#1565C0',
+  font: 'Inter',
+  logoAlign: 'left',
+  showLogo: true,
+  showTagline: false,
+  tagline: '',
+  footerText: 'Thank you for your business.',
+  showBankDetails: true,
+  showSignatureLine: true,
+  showStamp: false,
+  borderStyle: 'thin',
+  headerBg: true,
+};
+
+const STORAGE_KEY = 'qp_doc_templates';
+
+function loadTemplates(): Record<string, DocTemplate> {
+  if (typeof window === 'undefined') return {};
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch { return {}; }
+}
+function saveTemplates(t: Record<string, DocTemplate>) {
+  if (typeof window !== 'undefined') localStorage.setItem(STORAGE_KEY, JSON.stringify(t));
+}
+
+function DocPreview({ tpl, docType }: { tpl: DocTemplate; docType: string }) {
+  const label = DOC_TYPES.find(d => d.key === docType)?.label ?? 'Document';
+  return (
+    <Paper variant="outlined" sx={{
+      p: 2.5, fontFamily: tpl.font, fontSize: 11,
+      border: tpl.borderStyle === 'none' ? '1px solid #e0e0e0' :
+              tpl.borderStyle === 'thin' ? `2px solid ${tpl.accentColor}33` :
+              `4px solid ${tpl.accentColor}`,
+      borderRadius: 1.5, minHeight: 320, position: 'relative', overflow: 'hidden',
+    }}>
+      {/* Header */}
+      <Box sx={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        mb: 2, pb: 1.5,
+        ...(tpl.headerBg ? { bgcolor: `${tpl.accentColor}12`, mx: -2.5, mt: -2.5, px: 2.5, pt: 2, borderBottom: `2px solid ${tpl.accentColor}` } : { borderBottom: `1px solid #e0e0e0` }),
+        flexDirection: tpl.logoAlign === 'right' ? 'row-reverse' : tpl.logoAlign === 'center' ? 'column' : 'row',
+        gap: 1,
+      }}>
+        {tpl.showLogo && (
+          <Box sx={{ width: 48, height: 24, bgcolor: tpl.accentColor, borderRadius: 0.5, opacity: 0.85,
+            display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Typography sx={{ color: '#fff', fontSize: 8, fontWeight: 700, fontFamily: tpl.font }}>LOGO</Typography>
+          </Box>
+        )}
+        <Box sx={{ textAlign: tpl.logoAlign }}>
+          <Typography sx={{ fontWeight: 700, fontSize: 13, color: tpl.accentColor, fontFamily: tpl.font }}>
+            Your Company Name
+          </Typography>
+          {tpl.showTagline && tpl.tagline && (
+            <Typography sx={{ fontSize: 9, color: 'text.secondary', fontFamily: tpl.font }}>{tpl.tagline}</Typography>
+          )}
+        </Box>
+        <Box sx={{ textAlign: 'right' }}>
+          <Typography sx={{ fontWeight: 800, fontSize: 15, color: tpl.accentColor, fontFamily: tpl.font, textTransform: 'uppercase' }}>
+            {label}
+          </Typography>
+          <Typography sx={{ fontSize: 9, color: 'text.secondary', fontFamily: tpl.font }}>#QT-2026-001</Typography>
+        </Box>
+      </Box>
+
+      {/* Body rows */}
+      <Box sx={{ display: 'flex', gap: 2, mb: 1.5 }}>
+        <Box sx={{ flex: 1 }}>
+          <Typography sx={{ fontSize: 8, fontWeight: 600, color: tpl.accentColor, textTransform: 'uppercase', mb: 0.3, fontFamily: tpl.font }}>Bill To</Typography>
+          <Typography sx={{ fontSize: 9, fontFamily: tpl.font }}>Customer Name</Typography>
+          <Typography sx={{ fontSize: 9, color: 'text.secondary', fontFamily: tpl.font }}>customer@email.com</Typography>
+        </Box>
+        <Box sx={{ flex: 1, textAlign: 'right' }}>
+          <Typography sx={{ fontSize: 9, fontFamily: tpl.font }}>Date: 05 Apr 2026</Typography>
+          <Typography sx={{ fontSize: 9, fontFamily: tpl.font }}>Due: 05 May 2026</Typography>
+        </Box>
+      </Box>
+
+      {/* Line items table */}
+      <Box sx={{ mb: 1.5 }}>
+        <Box sx={{ display: 'flex', bgcolor: tpl.accentColor, color: '#fff', px: 1, py: 0.5, borderRadius: '4px 4px 0 0' }}>
+          {['Description', 'Qty', 'Unit Price', 'Total'].map((h, i) => (
+            <Typography key={h} sx={{ flex: i === 0 ? 3 : 1, fontSize: 8, fontWeight: 600, fontFamily: tpl.font, textAlign: i > 0 ? 'right' : 'left' }}>{h}</Typography>
+          ))}
+        </Box>
+        {[['Professional Services', '5', '200.00', '1,000.00'], ['Consulting Fee', '2', '150.00', '300.00']].map((row, i) => (
+          <Box key={i} sx={{ display: 'flex', px: 1, py: 0.4, bgcolor: i % 2 === 0 ? `${tpl.accentColor}08` : 'transparent', borderBottom: '1px solid #f0f0f0' }}>
+            {row.map((cell, j) => (
+              <Typography key={j} sx={{ flex: j === 0 ? 3 : 1, fontSize: 8, fontFamily: tpl.font, textAlign: j > 0 ? 'right' : 'left' }}>{cell}</Typography>
+            ))}
+          </Box>
+        ))}
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 0.5, gap: 2 }}>
+          <Typography sx={{ fontSize: 9, fontFamily: tpl.font, color: 'text.secondary' }}>Total:</Typography>
+          <Typography sx={{ fontSize: 10, fontWeight: 700, color: tpl.accentColor, fontFamily: tpl.font }}>KES 1,300.00</Typography>
+        </Box>
+      </Box>
+
+      {/* Footer */}
+      <Box sx={{ borderTop: `1px solid ${tpl.accentColor}33`, pt: 1, mt: 'auto' }}>
+        {tpl.showBankDetails && (
+          <Typography sx={{ fontSize: 8, color: 'text.secondary', fontFamily: tpl.font, mb: 0.3 }}>
+            Bank: Your Bank · A/C: 1234567890 · Branch: Main
+          </Typography>
+        )}
+        {tpl.showSignatureLine && (
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+            <Box sx={{ borderTop: `1px solid #999`, width: 80, textAlign: 'center', pt: 0.3 }}>
+              <Typography sx={{ fontSize: 7, color: 'text.secondary', fontFamily: tpl.font }}>Authorised Signature</Typography>
+            </Box>
+          </Box>
+        )}
+        <Typography sx={{ fontSize: 8, color: 'text.secondary', fontFamily: tpl.font, mt: 0.5, textAlign: 'center' }}>
+          {tpl.footerText}
+        </Typography>
+      </Box>
+    </Paper>
+  );
+}
+
+function DocumentTemplatesPanel() {
+  const [activeDoc, setActiveDoc] = useState('quotation');
+  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const allTemplates = loadTemplates();
+  const [templates, setTemplates] = useState<Record<string, DocTemplate>>(() => {
+    const stored = loadTemplates();
+    const result: Record<string, DocTemplate> = {};
+    DOC_TYPES.forEach(d => { result[d.key] = stored[d.key] ?? { ...DEFAULT_TEMPLATE }; });
+    return result;
+  });
+
+  const tpl = templates[activeDoc] ?? { ...DEFAULT_TEMPLATE };
+  const set = (patch: Partial<DocTemplate>) => {
+    setTemplates(prev => ({ ...prev, [activeDoc]: { ...prev[activeDoc], ...patch } }));
+    setSaved(false);
+  };
+
+  const handleSave = () => {
+    setSaving(true);
+    setTimeout(() => {
+      saveTemplates(templates);
+      setSaving(false);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    }, 600);
+  };
+
+  const handleReset = () => {
+    setTemplates(prev => ({ ...prev, [activeDoc]: { ...DEFAULT_TEMPLATE } }));
+    setSaved(false);
+  };
+
+  return (
+    <Box>
+      {/* Header row */}
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5 }}>
+        <Box>
+          <Typography variant="h6" fontWeight={700} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <DescriptionOutlinedIcon sx={{ color: '#607D8B' }} />
+            Document Templates
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Customise how your documents look when printed or sent to clients.
+          </Typography>
+        </Box>
+        <Stack direction="row" spacing={1}>
+          <Tooltip title="Reset to defaults">
+            <IconButton size="small" onClick={handleReset} sx={{ color: 'text.secondary' }}>
+              <RestartAltIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Button
+            variant="contained"
+            size="small"
+            startIcon={saving ? <CircularProgress size={14} color="inherit" /> : <SaveOutlinedIcon />}
+            onClick={handleSave}
+            disabled={saving}
+            sx={{ bgcolor: '#607D8B', '&:hover': { bgcolor: '#546E7A' }, minWidth: 100 }}
+          >
+            {saved ? 'Saved ✓' : 'Save'}
+          </Button>
+        </Stack>
+      </Box>
+
+      {/* Doc type selector */}
+      <Box sx={{ display: 'flex', gap: 1, mb: 3, flexWrap: 'wrap' }}>
+        {DOC_TYPES.map(d => (
+          <Chip
+            key={d.key}
+            label={d.label}
+            onClick={() => setActiveDoc(d.key)}
+            variant={activeDoc === d.key ? 'filled' : 'outlined'}
+            color={activeDoc === d.key ? 'primary' : 'default'}
+            sx={{ fontWeight: activeDoc === d.key ? 700 : 400 }}
+          />
+        ))}
+      </Box>
+
+      <Grid container spacing={3}>
+        {/* Controls */}
+        <Grid size={{ xs: 12, md: 5 }}>
+          <Stack spacing={2.5}>
+
+            {/* Branding */}
+            <Card variant="outlined">
+              <CardContent sx={{ pb: '12px !important' }}>
+                <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <ColorLensOutlinedIcon fontSize="small" sx={{ color: '#607D8B' }} /> Branding
+                </Typography>
+                <Stack spacing={2}>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" gutterBottom>Accent Colour</Typography>
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 0.5 }}>
+                      {ACCENT_PRESETS.map(c => (
+                        <Box key={c} onClick={() => set({ accentColor: c })} sx={{
+                          width: 28, height: 28, borderRadius: '50%', bgcolor: c, cursor: 'pointer',
+                          border: tpl.accentColor === c ? '3px solid #333' : '2px solid transparent',
+                          transition: 'transform 0.15s', '&:hover': { transform: 'scale(1.15)' },
+                        }} />
+                      ))}
+                      <Tooltip title="Custom colour">
+                        <Box sx={{ position: 'relative', width: 28, height: 28 }}>
+                          <Box component="input" type="color" value={tpl.accentColor}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => set({ accentColor: e.target.value })}
+                            sx={{ width: 28, height: 28, borderRadius: '50%', border: 'none', cursor: 'pointer', p: 0, opacity: 0, position: 'absolute', inset: 0 }} />
+                          <Box sx={{ width: 28, height: 28, borderRadius: '50%', bgcolor: tpl.accentColor, border: '2px dashed #999', pointerEvents: 'none' }} />
+                        </Box>
+                      </Tooltip>
+                    </Box>
+                  </Box>
+
+                  <TextField select size="small" label="Font" value={tpl.font} onChange={e => set({ font: e.target.value })} fullWidth>
+                    {FONT_OPTIONS.map(f => <MenuItem key={f} value={f} sx={{ fontFamily: f }}>{f}</MenuItem>)}
+                  </TextField>
+
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">Logo Alignment</Typography>
+                    <ToggleButtonGroup exclusive size="small" value={tpl.logoAlign}
+                      onChange={(_, v) => v && set({ logoAlign: v })} sx={{ mt: 0.5, display: 'flex' }}>
+                      <ToggleButton value="left" sx={{ flex: 1 }}><FormatAlignLeftIcon fontSize="small" /></ToggleButton>
+                      <ToggleButton value="center" sx={{ flex: 1 }}><FormatAlignCenterIcon fontSize="small" /></ToggleButton>
+                      <ToggleButton value="right" sx={{ flex: 1 }}><FormatAlignRightIcon fontSize="small" /></ToggleButton>
+                    </ToggleButtonGroup>
+                  </Box>
+                </Stack>
+              </CardContent>
+            </Card>
+
+            {/* Layout */}
+            <Card variant="outlined">
+              <CardContent sx={{ pb: '12px !important' }}>
+                <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1.5 }}>Layout</Typography>
+                <Stack spacing={1}>
+                  <TextField select size="small" label="Border Style" value={tpl.borderStyle}
+                    onChange={e => set({ borderStyle: e.target.value as DocTemplate['borderStyle'] })} fullWidth>
+                    <MenuItem value="none">None</MenuItem>
+                    <MenuItem value="thin">Thin accent border</MenuItem>
+                    <MenuItem value="thick">Thick accent border</MenuItem>
+                  </TextField>
+                  <FormControlLabel control={<Switch size="small" checked={tpl.headerBg} onChange={e => set({ headerBg: e.target.checked })} />}
+                    label={<Typography variant="body2">Coloured header background</Typography>} />
+                  <FormControlLabel control={<Switch size="small" checked={tpl.showLogo} onChange={e => set({ showLogo: e.target.checked })} />}
+                    label={<Typography variant="body2">Show company logo</Typography>} />
+                  <FormControlLabel control={<Switch size="small" checked={tpl.showTagline} onChange={e => set({ showTagline: e.target.checked })} />}
+                    label={<Typography variant="body2">Show tagline</Typography>} />
+                  {tpl.showTagline && (
+                    <TextField size="small" label="Tagline" value={tpl.tagline}
+                      onChange={e => set({ tagline: e.target.value })} fullWidth placeholder="e.g. Excellence in every transaction" />
+                  )}
+                </Stack>
+              </CardContent>
+            </Card>
+
+            {/* Footer */}
+            <Card variant="outlined">
+              <CardContent sx={{ pb: '12px !important' }}>
+                <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1.5 }}>Footer & Extras</Typography>
+                <Stack spacing={1}>
+                  <TextField size="small" label="Footer message" value={tpl.footerText}
+                    onChange={e => set({ footerText: e.target.value })} fullWidth multiline rows={2}
+                    placeholder="Thank you for your business." />
+                  <FormControlLabel control={<Switch size="small" checked={tpl.showBankDetails} onChange={e => set({ showBankDetails: e.target.checked })} />}
+                    label={<Typography variant="body2">Show bank details</Typography>} />
+                  <FormControlLabel control={<Switch size="small" checked={tpl.showSignatureLine} onChange={e => set({ showSignatureLine: e.target.checked })} />}
+                    label={<Typography variant="body2">Show signature line</Typography>} />
+                </Stack>
+              </CardContent>
+            </Card>
+
+          </Stack>
+        </Grid>
+
+        {/* Live Preview */}
+        <Grid size={{ xs: 12, md: 7 }}>
+          <Box sx={{ position: 'sticky', top: 80 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+              <VisibilityOutlinedIcon fontSize="small" sx={{ color: '#607D8B' }} />
+              <Typography variant="subtitle2" fontWeight={700} color="text.secondary">Live Preview</Typography>
+              <Chip label={DOC_TYPES.find(d => d.key === activeDoc)?.label} size="small" sx={{ ml: 'auto' }} />
+            </Box>
+            <DocPreview tpl={tpl} docType={activeDoc} />
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', textAlign: 'center' }}>
+              Preview is approximate. Actual documents may vary slightly.
+            </Typography>
+          </Box>
+        </Grid>
+      </Grid>
+    </Box>
+  );
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function SettingsDashboard() {
   const [tab, setTab] = useState(0);
@@ -608,7 +965,8 @@ export default function SettingsDashboard() {
         <Tab label="Tax" />
         <Tab label="Contacts" />
         <Tab label="HRM" />
-        {isSuperuser && <Tab label="Roles & Permissions" />}
+        {isSuperAdmin && <Tab label="Roles & Permissions" />}
+        {isSuperAdmin && <Tab label="Document Templates" />}
       </Tabs>
 
       {/* General */}
@@ -762,17 +1120,26 @@ export default function SettingsDashboard() {
         </Grid>
       )}
 
-      {/* Roles & Permissions (Superuser only) */}
-      {tab === 8 && isSuperuser && (
+      {/* Roles & Permissions (SUPERADMIN + SUPERUSER) */}
+      {tab === 8 && isSuperAdmin && (
         <Grid container spacing={2.5}>
           <Grid size={{ xs: 12 }}>
             <Card>
               <CardContent>
-                <RolesPanel />
+                <RolesPanel isSuperuser={isSuperuser} isSuperAdmin={isSuperAdmin} />
               </CardContent>
             </Card>
           </Grid>
         </Grid>
+      )}
+
+      {/* Document Templates (SUPERADMIN only) */}
+      {isSuperAdmin && tab === 9 && (
+        <Card>
+          <CardContent sx={{ p: { xs: 2, md: 3 } }}>
+            <DocumentTemplatesPanel />
+          </CardContent>
+        </Card>
       )}
     </Box>
   );
