@@ -34,6 +34,7 @@ import bankingService, { BankAccount } from '@/services/bankingService';
 import { useCurrencyStore, SUPPORTED_CURRENCIES, CurrencyCode } from '@/store/currencyStore';
 import { useCurrencyRates } from '@/hooks/useCurrency';
 import roleService, { RoleWithPermissions, Permission, CorporateOption } from '@/services/roleService';
+import { useUserStore } from '@/store/userStore';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 type RoleRow = Omit<RoleWithPermissions, 'id'> & { id: string };
@@ -670,15 +671,8 @@ async function saveTemplates(t: Record<string, DocTemplate>): Promise<void> {
 }
 
 function DocPreview({ tpl, docType }: { tpl: DocTemplate; docType: string }) {
-  const [logo, setLogo] = useState<string>('');
-  
-  // Fetch logo from localStorage or profile
-  useEffect(() => {
-    const storedLogo = localStorage.getItem('logo');
-    if (storedLogo) {
-      setLogo(storedLogo);
-    }
-  }, []);
+  const user = useUserStore((s) => s.user);
+  const logo = user?.corporate?.logo as string | undefined;
   
   const label = DOC_TYPES.find(d => d.key === docType)?.label ?? 'Document';
   return (
@@ -816,9 +810,10 @@ function DocumentTemplatesPanel() {
     // Check if logo exists when showLogo is enabled
     const hasLogoEnabled = Object.values(templates).some(t => t.showLogo);
     if (hasLogoEnabled) {
-      const storedLogo = localStorage.getItem('logo');
-      if (!storedLogo) {
-        alert('Please upload a company logo before saving templates with logo enabled. Go to Org Admin > Logo Settings to upload your logo, then log in again to refresh.');
+      const user = useUserStore.getState().user;
+      const corporateLogo = user?.corporate?.logo;
+      if (!corporateLogo || corporateLogo === '' || corporateLogo === 'null' || corporateLogo === 'undefined') {
+        alert('Please upload a company logo before saving templates with logo enabled. Go to Org Admin > Logo Settings to upload your logo.');
         return;
       }
     }
