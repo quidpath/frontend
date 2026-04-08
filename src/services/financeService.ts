@@ -257,6 +257,12 @@ const financeService = {
   deleteTaxRate: (id: string) => gatewayClient.delete('/tax-rates/delete/', { params: { id } }),
   seedDefaultTaxRates: () => gatewayClient.post('/tax-rates/seed-defaults/', {}),
 
+  // Trial Balance & Ledger
+  getTrialBalance: (params?: Record<string, string>) => gatewayClient.get('/trial-balance/', { params }),
+  downloadTrialBalance: (params?: Record<string, string>) => gatewayClient.get('/trial-balance/download/', { params, responseType: 'blob' }),
+  getLedger: (params?: Record<string, string>) => gatewayClient.get('/ledger/list/', { params }),
+  downloadLedger: (params?: Record<string, string>) => gatewayClient.get('/ledger/download/', { params, responseType: 'blob' }),
+
   // PDF Downloads
   downloadInvoicePDF: (id: string) => gatewayClient.get('/invoice/download-pdf/', { params: { id }, responseType: 'blob' }),
   downloadQuotationPDF: (id: string) => gatewayClient.get('/quotation/download-pdf/', { params: { id }, responseType: 'blob' }),

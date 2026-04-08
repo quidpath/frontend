@@ -5,6 +5,7 @@ import {
   Box, Stack, Button, TextField, FormControl, InputLabel, Select, MenuItem,
   CircularProgress, Grid, Typography, Divider, Chip,
 } from '@mui/material';
+import DownloadIcon from '@mui/icons-material/Download';
 import DataTable from '@/components/ui/DataTable';
 import StatusChip from '@/components/ui/StatusChip';
 import ActionMenu, { commonActions } from '@/components/ui/ActionMenu';
@@ -242,6 +243,261 @@ function ProfitLoss() {
   );
 }
 
+function TrialBalance({ notify }: { notify: (m: string, s?: 'success' | 'error') => void }) {
+  const [asOfDate, setAsOfDate] = useState(new Date().toISOString().slice(0, 10));
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleGenerate = async () => {
+    setLoading(true);
+    try {
+      const response = await financeService.getTrialBalance({ as_of_date: asOfDate });
+      setData(response.data);
+      notify('Trial balance generated successfully');
+    } catch (error) {
+      notify('Failed to generate trial balance', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDownload = async () => {
+    try {
+      const response = await financeService.downloadTrialBalance({ as_of_date: asOfDate });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `trial_balance_${asOfDate}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      notify('Trial balance downloaded successfully');
+    } catch (error) {
+      notify('Failed to download trial balance', 'error');
+    }
+  };
+
+  const entries = data?.entries ?? [];
+  const totals = data?.totals ?? { total_debit: 0, total_credit: 0, is_balanced: false };
+
+  type TrialBalanceEntry = { id: string; account_code: string; account_name: string; debit: string; credit: string; balance: string };
+  const TB_COLS: TableColumn<TrialBalanceEntry>[] = [
+    { id: 'account_code', label: 'Code', sortable: true, minWidth: 80 },
+    { id: 'account_name', label: 'Account', sortable: true, minWidth: 200 },
+    { id: 'debit', label: 'Debit', align: 'right', format: v => formatCurrency(Number(v)) },
+    { id: 'credit', label: 'Credit', align: 'right', format: v => formatCurrency(Number(v)) },
+    { id: 'balance', label: 'Balance', align: 'right', format: v => formatCurrency(Number(v)) },
+  ];
+
+  return (
+    <Stack spacing={3}>
+      <Box sx={{ p: 3, border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: 'background.paper' }}>
+        <Grid container spacing={2} alignItems="center">
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <TextField
+              label="As Of Date"
+              type="date"
+              size="small"
+              fullWidth
+              value={asOfDate}
+              onChange={e => setAsOfDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <Stack direction="row" spacing={1}>
+              <Button
+                variant="contained"
+                fullWidth
+                onClick={handleGenerate}
+                disabled={loading}
+                startIcon={loading ? <CircularProgress size={16} /> : undefined}
+              >
+                Generate
+              </Button>
+              {data && (
+                <Button
+                  variant="outlined"
+                  onClick={handleDownload}
+                  startIcon={<DownloadIcon />}
+                >
+                  PDF
+                </Button>
+              )}
+            </Stack>
+          </Grid>
+        </Grid>
+      </Box>
+
+      {data && (
+        <Box>
+          <DataTable
+            columns={TB_COLS}
+            rows={entries}
+            loading={false}
+            total={entries.length}
+            page={0}
+            pageSize={100}
+            onPageChange={() => {}}
+            getRowId={r => r.id}
+            emptyMessage="No trial balance data available."
+          />
+          <Box sx={{ mt: 2, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: totals.is_balanced ? 'rgba(46,125,50,0.08)' : 'rgba(198,40,40,0.08)' }}>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <Typography variant="body2" color="text.secondary">Total Debit</Typography>
+                <Typography variant="h6" fontWeight={700}>{formatCurrency(Number(totals.total_debit))}</Typography>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <Typography variant="body2" color="text.secondary">Total Credit</Typography>
+                <Typography variant="h6" fontWeight={700}>{formatCurrency(Number(totals.total_credit))}</Typography>
+              </Grid>
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <Typography variant="body2" color="text.secondary">Status</Typography>
+                <Chip label={totals.is_balanced ? 'Balanced' : 'Unbalanced'} color={totals.is_balanced ? 'success' : 'error'} />
+              </Grid>
+            </Grid>
+          </Box>
+        </Box>
+      )}
+    </Stack>
+  );
+}
+
+function Ledger({ notify }: { notify: (m: string, s?: 'success' | 'error') => void }) {
+  const [startDate, setStartDate] = useState(new Date(new Date().getFullYear(), 0, 1).toISOString().slice(0, 10));
+  const [endDate, setEndDate] = useState(new Date().toISOString().slice(0, 10));
+  const [accountId, setAccountId] = useState('');
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const { data: accData } = useAccounts();
+  const accounts = accData?.accounts ?? [];
+
+  const handleGenerate = async () => {
+    setLoading(true);
+    try {
+      const params: any = { start_date: startDate, end_date: endDate };
+      if (accountId) params.account_id = accountId;
+      const response = await financeService.getLedger(params);
+      setData(response.data?.entries ?? []);
+      notify('Ledger generated successfully');
+    } catch (error) {
+      notify('Failed to generate ledger', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDownload = async () => {
+    try {
+      const params: any = { start_date: startDate, end_date: endDate };
+      if (accountId) params.account_id = accountId;
+      const response = await financeService.downloadLedger(params);
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `ledger_${startDate}_${endDate}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      notify('Ledger downloaded successfully');
+    } catch (error) {
+      notify('Failed to download ledger', 'error');
+    }
+  };
+
+  type LedgerEntry = { id: string; date: string; account_code: string; account_name: string; journal_entry_reference: string; description: string; debit: string; credit: string; balance: string; status: string };
+  const LEDGER_COLS: TableColumn<LedgerEntry>[] = [
+    { id: 'date', label: 'Date', sortable: true, format: v => formatDate(v as string) },
+    { id: 'account_code', label: 'Code', minWidth: 80 },
+    { id: 'account_name', label: 'Account', minWidth: 160 },
+    { id: 'journal_entry_reference', label: 'Reference', minWidth: 100 },
+    { id: 'description', label: 'Description', minWidth: 200 },
+    { id: 'debit', label: 'Debit', align: 'right', format: v => formatCurrency(Number(v)) },
+    { id: 'credit', label: 'Credit', align: 'right', format: v => formatCurrency(Number(v)) },
+    { id: 'balance', label: 'Balance', align: 'right', format: v => formatCurrency(Number(v)) },
+    { id: 'status', label: 'Status', format: v => <StatusChip status={v as string} /> },
+  ];
+
+  return (
+    <Stack spacing={3}>
+      <Box sx={{ p: 3, border: '1px solid', borderColor: 'divider', borderRadius: 2, bgcolor: 'background.paper' }}>
+        <Grid container spacing={2} alignItems="center">
+          <Grid size={{ xs: 12, sm: 3 }}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Account (Optional)</InputLabel>
+              <Select value={accountId} label="Account (Optional)" onChange={e => setAccountId(e.target.value)}>
+                <MenuItem value="">All Accounts</MenuItem>
+                {accounts.map(a => <MenuItem key={a.id} value={a.id}>{a.code} – {a.name}</MenuItem>)}
+              </Select>
+            </FormControl>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 3 }}>
+            <TextField
+              label="Start Date"
+              type="date"
+              size="small"
+              fullWidth
+              value={startDate}
+              onChange={e => setStartDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 3 }}>
+            <TextField
+              label="End Date"
+              type="date"
+              size="small"
+              fullWidth
+              value={endDate}
+              onChange={e => setEndDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 3 }}>
+            <Stack direction="row" spacing={1}>
+              <Button
+                variant="contained"
+                fullWidth
+                onClick={handleGenerate}
+                disabled={loading}
+                startIcon={loading ? <CircularProgress size={16} /> : undefined}
+              >
+                Generate
+              </Button>
+              {data.length > 0 && (
+                <Button
+                  variant="outlined"
+                  onClick={handleDownload}
+                  startIcon={<DownloadIcon />}
+                >
+                  PDF
+                </Button>
+              )}
+            </Stack>
+          </Grid>
+        </Grid>
+      </Box>
+
+      {data.length > 0 && (
+        <DataTable
+          columns={LEDGER_COLS}
+          rows={data}
+          loading={false}
+          total={data.length}
+          page={0}
+          pageSize={100}
+          onPageChange={() => {}}
+          getRowId={r => r.id}
+          emptyMessage="No ledger entries found."
+        />
+      )}
+    </Stack>
+  );
+}
+
 export default function OverviewSection({ subTab, notify, addOpen, setAddOpen }: SectionProps) {
   const [page, setPage] = useState(0);
   const [editAccount, setEditAccount] = useState<Account | null>(null);
@@ -285,8 +541,8 @@ export default function OverviewSection({ subTab, notify, addOpen, setAddOpen }:
     <>
       {subTab === 'transactions' && <DataTable columns={JOURNAL_COLS} rows={entries as JournalEntry[]} loading={journalLoading} total={entries.length} page={page} pageSize={25} onPageChange={setPage} onSearch={() => {}} searchPlaceholder="Search journal entries..." getRowId={r => r.id} emptyMessage="No journal entries yet." />}
       {subTab === 'chart-of-accounts' && <DataTable columns={ACCOUNT_COLS} rows={accounts} loading={accLoading} total={accounts.length} page={page} pageSize={25} onPageChange={setPage} onSearch={() => {}} searchPlaceholder="Search accounts..." getRowId={r => r.id} emptyMessage="No accounts found." />}
-      {subTab === 'balance-sheet' && <BalanceSheet />}
-      {subTab === 'profit-loss' && <ProfitLoss />}
+      {subTab === 'trial-balance' && <TrialBalance notify={notify} />}
+      {subTab === 'ledger' && <Ledger notify={notify} />}
 
       <JournalModal open={addOpen && subTab === 'transactions'} onClose={() => setAddOpen(false)} onSuccess={(m, s) => { notify(m, s); setAddOpen(false); }} />
       <AccountModal

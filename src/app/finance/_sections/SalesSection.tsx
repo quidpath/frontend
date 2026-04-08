@@ -690,7 +690,7 @@ export default function SalesSection({ subTab, notify, addOpen, setAddOpen }: Se
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <MetricCard
             label="Total Invoiced"
-            value={formatCurrency(invoices.reduce((s, i) => s + (i.total ?? 0), 0))}
+            value={formatCurrency(invoices.filter(i => i.status === 'POSTED' || i.status === 'PAID' || i.status === 'posted' || i.status === 'paid').reduce((s, i) => s + (i.total ?? 0), 0))}
             trend="up"
             color="#2E7D32"
             loading={invoiceLoading}
@@ -699,7 +699,7 @@ export default function SalesSection({ subTab, notify, addOpen, setAddOpen }: Se
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <MetricCard
             label="Pending Invoices"
-            value={invoices.filter(i => i.status === 'PENDING' || i.status === 'pending').length}
+            value={invoices.filter(i => (i.status === 'POSTED' || i.status === 'posted') && !['PAID', 'paid'].includes(i.status as string)).length}
             trend="neutral"
             color="#F57C00"
             loading={invoiceLoading}
@@ -708,7 +708,7 @@ export default function SalesSection({ subTab, notify, addOpen, setAddOpen }: Se
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <MetricCard
             label="Active Quotes"
-            value={quotes.filter(q => q.status !== 'EXPIRED' && q.status !== 'expired').length}
+            value={quotes.filter(q => q.status !== 'EXPIRED' && q.status !== 'expired' && q.status !== 'DRAFT' && q.status !== 'draft').length}
             trend="neutral"
             color="#1565C0"
             loading={quoteLoading}

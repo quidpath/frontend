@@ -65,7 +65,7 @@ function BillModal({ open, onClose, record, vendors, onSuccess }: {
             quantity: qty,
             unit_price: price,
             discount,
-            taxable_id: 'exempt',
+            taxable_id: null, // Changed from 'exempt' to null
           };
         }),
       };
@@ -153,7 +153,7 @@ function POModal({ open, onClose, vendors, onSuccess }: {
             quantity: qty,
             unit_price: price,
             discount,
-            taxable_id: 'exempt',
+            taxable_id: null, // Changed from 'exempt' to null
           };
         }),
       };
@@ -315,9 +315,9 @@ export default function PurchasesSection({ subTab, notify, addOpen, setAddOpen }
   return (
     <>
       <Grid container spacing={2.5} sx={{ mb: 3 }}>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}><MetricCard label="Total Bills" value={formatCurrency(bills.reduce((s, b) => s + (b.total ?? 0), 0))} trend="neutral" color="#C62828" loading={billLoading} /></Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}><MetricCard label="Unpaid Bills" value={formatCurrency(bills.filter(b => b.status !== 'PAID' && b.status !== 'paid').reduce((s, b) => s + (b.total ?? 0), 0))} trend="down" color="#F57C00" loading={billLoading} /></Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}><MetricCard label="Open POs" value={pos.filter(p => p.status !== 'completed' && p.status !== 'COMPLETED').length} trend="neutral" color="#1565C0" loading={poLoading} /></Grid>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}><MetricCard label="Total Bills" value={formatCurrency(bills.filter(b => b.status === 'POSTED' || b.status === 'PAID' || b.status === 'posted' || b.status === 'paid').reduce((s, b) => s + (b.total ?? 0), 0))} trend="neutral" color="#C62828" loading={billLoading} /></Grid>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}><MetricCard label="Unpaid Bills" value={formatCurrency(bills.filter(b => (b.status === 'POSTED' || b.status === 'posted') && !['PAID', 'paid'].includes(b.status as string)).reduce((s, b) => s + (b.total ?? 0), 0))} trend="down" color="#F57C00" loading={billLoading} /></Grid>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}><MetricCard label="Open POs" value={pos.filter(p => p.status !== 'completed' && p.status !== 'COMPLETED' && p.status !== 'DRAFT' && p.status !== 'draft').length} trend="neutral" color="#1565C0" loading={poLoading} /></Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}><MetricCard label="Vendors" value={vendors.length} trend="up" color="#2E7D32" loading={vendLoading} /></Grid>
       </Grid>
       {isBills && <DataTable columns={BILL_COLS} rows={bills} loading={billLoading} total={bills.length} page={page} pageSize={25} onPageChange={setPage} onSearch={() => {}} searchPlaceholder="Search bills..." getRowId={r => r.id} emptyMessage="No vendor bills yet." />}
