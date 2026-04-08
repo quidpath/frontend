@@ -670,6 +670,16 @@ async function saveTemplates(t: Record<string, DocTemplate>): Promise<void> {
 }
 
 function DocPreview({ tpl, docType }: { tpl: DocTemplate; docType: string }) {
+  const [logo, setLogo] = useState<string>('');
+  
+  // Fetch logo from localStorage or profile
+  useEffect(() => {
+    const storedLogo = localStorage.getItem('logo');
+    if (storedLogo) {
+      setLogo(storedLogo);
+    }
+  }, []);
+  
   const label = DOC_TYPES.find(d => d.key === docType)?.label ?? 'Document';
   return (
     <Paper variant="outlined" sx={{
@@ -688,10 +698,19 @@ function DocPreview({ tpl, docType }: { tpl: DocTemplate; docType: string }) {
         gap: 1,
       }}>
         {tpl.showLogo && (
-          <Box sx={{ width: 48, height: 24, bgcolor: tpl.accentColor, borderRadius: 0.5, opacity: 0.85,
-            display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Typography sx={{ color: '#fff', fontSize: 8, fontWeight: 700, fontFamily: tpl.font }}>LOGO</Typography>
-          </Box>
+          logo ? (
+            <Box
+              component="img"
+              src={logo}
+              alt="Company Logo"
+              sx={{ maxWidth: 80, maxHeight: 40, objectFit: 'contain' }}
+            />
+          ) : (
+            <Box sx={{ width: 48, height: 24, bgcolor: tpl.accentColor, borderRadius: 0.5, opacity: 0.85,
+              display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Typography sx={{ color: '#fff', fontSize: 8, fontWeight: 700, fontFamily: tpl.font }}>LOGO</Typography>
+            </Box>
+          )
         )}
         <Box sx={{ textAlign: tpl.logoAlign }}>
           <Typography sx={{ fontWeight: 700, fontSize: 13, color: tpl.accentColor, fontFamily: tpl.font }}>
@@ -794,6 +813,16 @@ function DocumentTemplatesPanel() {
   };
 
   const handleSave = async () => {
+    // Check if logo exists when showLogo is enabled
+    const hasLogoEnabled = Object.values(templates).some(t => t.showLogo);
+    if (hasLogoEnabled) {
+      const storedLogo = localStorage.getItem('logo');
+      if (!storedLogo) {
+        alert('Please upload a company logo before saving templates with logo enabled. Go to Org Admin > Logo Settings to upload your logo, then log in again to refresh.');
+        return;
+      }
+    }
+    
     setSaving(true);
     try {
       await saveTemplates(templates);

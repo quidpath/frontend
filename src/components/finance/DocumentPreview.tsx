@@ -85,15 +85,16 @@ export default function DocumentPreview({
   onClose,
   document,
   documentType,
-  companyInfo,
+  companyInfo: propCompanyInfo,
   onDownload,
   onPrint,
 }: DocumentPreviewProps) {
   const [downloading, setDownloading] = useState(false);
   const [template, setTemplate] = useState<DocumentTemplate | null>(null);
   const [loadingTemplate, setLoadingTemplate] = useState(true);
+  const [companyInfo, setCompanyInfo] = useState<CompanyInfo | undefined>(propCompanyInfo);
 
-  // Fetch template for this document type
+  // Fetch template and company profile (with logo) for this document type
   useEffect(() => {
     if (!open) return;
     
@@ -105,12 +106,32 @@ export default function DocumentPreview({
     };
     
     setLoadingTemplate(true);
-    gatewayClient.get('/api/orgauth/document-templates/get-for-document/', {
-      params: { document_type: docTypeMap[documentType] }
-    }).then(response => {
-      setTemplate(response.data?.template || null);
+    
+    // Fetch both template and profile in parallel
+    Promise.all([
+      gatewayClient.get('/api/orgauth/document-templates/get-for-document/', {
+        params: { document_type: docTypeMap[documentType] }
+      }),
+      gatewayClient.get('/api/auth/get-profile/')
+    ]).then(([templateResponse, profileResponse]) => {
+      setTemplate(templateResponse.data?.template || null);
+      
+      // Extract company info from profile
+      const profile = profileResponse.data;
+      setCompanyInfo({
+        name: profile?.corporate?.name || profile?.company_name || 'Company Name',
+        logo_url: profile?.logo || profile?.corporate?.logo || '',
+        address: profile?.corporate?.address || '',
+        city: profile?.corporate?.city || '',
+        country: profile?.corporate?.country || '',
+        phone: profile?.corporate?.phone || profile?.phone || '',
+        email: profile?.corporate?.email || profile?.email || '',
+        tax_id: profile?.corporate?.tax_id || '',
+      });
+      
       setLoadingTemplate(false);
-    }).catch(() => {
+    }).catch((error) => {
+      console.error('Failed to load template or profile:', error);
       setLoadingTemplate(false);
     });
   }, [open, documentType]);
