@@ -6,6 +6,7 @@ import {
   TextField, FormControl, InputLabel, Select, MenuItem, IconButton, CircularProgress, Grid,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import DataTable from '@/components/ui/DataTable';
 import MetricCard from '@/components/ui/MetricCard';
 import StatusChip from '@/components/ui/StatusChip';
@@ -19,6 +20,9 @@ import {
 } from '@/hooks/useFinance';
 import type { VendorBill, PurchaseOrder, Vendor } from '@/services/financeService';
 import type { SectionProps } from './_shared';
+import BillModalNew from '@/components/finance/BillModalNew';
+import DocumentPreview from '@/components/finance/DocumentPreview';
+import financeService from '@/services/financeService';
 
 function BillModal({ open, onClose, record, vendors, onSuccess }: {
   open: boolean; onClose: () => void; record?: VendorBill | null;
@@ -224,6 +228,9 @@ function VendorModal({ open, onClose, onSuccess }: { open: boolean; onClose: () 
 export default function PurchasesSection({ subTab, notify, addOpen, setAddOpen }: SectionProps) {
   const [page, setPage] = useState(0);
   const [editBill, setEditBill] = useState<VendorBill | null>(null);
+  const [previewBill, setPreviewBill] = useState<VendorBill | null>(null);
+  const [previewPO, setPreviewPO] = useState<PurchaseOrder | null>(null);
+  
   const { data: billData, isLoading: billLoading } = useVendorBills();
   const { data: poData, isLoading: poLoading } = usePurchaseOrders();
   const { data: vendData, isLoading: vendLoading } = useVendors();
@@ -239,6 +246,38 @@ export default function PurchasesSection({ subTab, notify, addOpen, setAddOpen }
   const isPO = subTab === 'purchase-orders';
   const isVendors = subTab === 'suppliers';
 
+  const handleDownloadBillPDF = async (id: string) => {
+    try {
+      const response = await financeService.downloadBillPDF(id);
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `bill_${id}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      notify('Failed to download PDF', 'error');
+    }
+  };
+
+  const handleDownloadPOPDF = async (id: string) => {
+    try {
+      const response = await financeService.downloadPOPDF(id);
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `po_${id}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      notify('Failed to download PDF', 'error');
+    }
+  };
+
   const BILL_COLS: TableColumn<VendorBill>[] = [
     { id: 'number', label: 'Bill #', sortable: true, minWidth: 100 },
     { id: 'vendor', label: 'Vendor', sortable: true, minWidth: 160 },
@@ -246,7 +285,11 @@ export default function PurchasesSection({ subTab, notify, addOpen, setAddOpen }
     { id: 'due_date', label: 'Due Date', format: v => formatDate(v as string) },
     { id: 'status', label: 'Status', format: v => <StatusChip status={v as string} /> },
     { id: 'total', label: 'Total', align: 'right', format: v => formatCurrency(Number(v)) },
-    { id: 'actions', label: 'Actions', align: 'right', format: (_, row) => <ActionMenu actions={[commonActions.edit(() => setEditBill(row)), commonActions.delete(() => delBill.mutate(row.id, { onSuccess: () => notify('Bill deleted'), onError: () => notify('Failed to delete', 'error') }))]} /> },
+    { id: 'actions', label: 'Actions', align: 'right', format: (_, row) => <ActionMenu actions={[
+      { label: 'View', icon: <VisibilityIcon />, onClick: () => setPreviewBill(row) },
+      commonActions.edit(() => setEditBill(row)), 
+      commonActions.delete(() => delBill.mutate(row.id, { onSuccess: () => notify('Bill deleted'), onError: () => notify('Failed to delete', 'error') }))
+    ]} /> },
   ];
   const PO_COLS: TableColumn<PurchaseOrder>[] = [
     { id: 'number', label: 'PO #', sortable: true, minWidth: 100 },
@@ -255,7 +298,10 @@ export default function PurchasesSection({ subTab, notify, addOpen, setAddOpen }
     { id: 'expected_delivery', label: 'Expected Delivery', format: v => formatDate(v as string) },
     { id: 'status', label: 'Status', format: v => <StatusChip status={v as string} /> },
     { id: 'total', label: 'Total', align: 'right', format: v => formatCurrency(Number(v)) },
-    { id: 'actions', label: 'Actions', align: 'right', format: (_, row) => <ActionMenu actions={[commonActions.delete(() => delPO.mutate(row.id, { onSuccess: () => notify('PO deleted'), onError: () => notify('Failed to delete', 'error') }))]} /> },
+    { id: 'actions', label: 'Actions', align: 'right', format: (_, row) => <ActionMenu actions={[
+      { label: 'View', icon: <VisibilityIcon />, onClick: () => setPreviewPO(row) },
+      commonActions.delete(() => delPO.mutate(row.id, { onSuccess: () => notify('PO deleted'), onError: () => notify('Failed to delete', 'error') }))
+    ]} /> },
   ];
   const VENDOR_COLS: TableColumn<Vendor>[] = [
     { id: 'name', label: 'Name', sortable: true, minWidth: 160 },
@@ -277,9 +323,56 @@ export default function PurchasesSection({ subTab, notify, addOpen, setAddOpen }
       {isBills && <DataTable columns={BILL_COLS} rows={bills} loading={billLoading} total={bills.length} page={page} pageSize={25} onPageChange={setPage} onSearch={() => {}} searchPlaceholder="Search bills..." getRowId={r => r.id} emptyMessage="No vendor bills yet." />}
       {isPO && <DataTable columns={PO_COLS} rows={pos} loading={poLoading} total={pos.length} page={page} pageSize={25} onPageChange={setPage} onSearch={() => {}} searchPlaceholder="Search purchase orders..." getRowId={r => r.id} emptyMessage="No purchase orders yet." />}
       {isVendors && <DataTable columns={VENDOR_COLS} rows={vendors} loading={vendLoading} total={vendors.length} page={page} pageSize={25} onPageChange={setPage} onSearch={() => {}} searchPlaceholder="Search vendors..." getRowId={r => r.id} emptyMessage="No vendors yet." />}
-      <BillModal open={(addOpen && isBills) || !!editBill} onClose={() => { setAddOpen(false); setEditBill(null); }} record={editBill} vendors={vendors} onSuccess={(m, s) => { notify(m, s); setAddOpen(false); setEditBill(null); }} />
+      <BillModalNew open={(addOpen && isBills) || !!editBill} onClose={() => { setAddOpen(false); setEditBill(null); }} record={editBill} vendors={vendors} onSuccess={(m, s) => { notify(m, s); setAddOpen(false); setEditBill(null); }} />
       <POModal open={addOpen && isPO} onClose={() => setAddOpen(false)} vendors={vendors} onSuccess={(m, s) => { notify(m, s); setAddOpen(false); }} />
       <VendorModal open={addOpen && isVendors} onClose={() => setAddOpen(false)} onSuccess={(m, s) => { notify(m, s); setAddOpen(false); }} />
+
+      {/* Document Previews */}
+      {previewBill && (
+        <DocumentPreview
+          open={!!previewBill}
+          onClose={() => setPreviewBill(null)}
+          document={{
+            id: previewBill.id,
+            number: previewBill.number ?? '',
+            date: previewBill.date,
+            vendor: previewBill.vendor,
+            lines: previewBill.lines || [],
+            sub_total: previewBill.sub_total || 0,
+            tax_total: previewBill.tax_total || 0,
+            total: previewBill.total || 0,
+            status: previewBill.status,
+            due_date: previewBill.due_date,
+            comments: '',
+            terms: '',
+          }}
+          documentType="bill"
+          onDownload={() => handleDownloadBillPDF(previewBill.id)}
+        />
+      )}
+
+      {previewPO && (
+        <DocumentPreview
+          open={!!previewPO}
+          onClose={() => setPreviewPO(null)}
+          document={{
+            id: previewPO.id,
+            number: previewPO.number ?? '',
+            date: previewPO.date,
+            vendor: previewPO.vendor,
+            lines: previewPO.lines || [],
+            sub_total: previewPO.sub_total || 0,
+            tax_total: previewPO.tax_total || 0,
+            total: previewPO.total || 0,
+            status: previewPO.status,
+            expected_delivery: previewPO.expected_delivery,
+            comments: '',
+            terms: '',
+          }}
+          documentType="po"
+          onDownload={() => handleDownloadPOPDF(previewPO.id)}
+        />
+      )}
     </>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Box, Tab, Tabs, Card, CardContent, Grid, Alert, Chip,
   TextField, MenuItem, FormControlLabel, Checkbox, Typography,
@@ -639,12 +639,34 @@ const DEFAULT_TEMPLATE: DocTemplate = {
 
 const STORAGE_KEY = 'qp_doc_templates';
 
-function loadTemplates(): Record<string, DocTemplate> {
+async function loadTemplates(): Promise<Record<string, DocTemplate>> {
   if (typeof window === 'undefined') return {};
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch { return {}; }
+  try {
+    // Try to load from backend API
+    const { gatewayClient } = await import('@/services/apiClient');
+    const response = await gatewayClient.get('/api/orgauth/document-templates/get/');
+    return response.data?.templates || {};
+  } catch (error) {
+    console.error('Failed to load templates from API, falling back to localStorage:', error);
+    // Fallback to localStorage
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch { return {}; }
+  }
 }
-function saveTemplates(t: Record<string, DocTemplate>) {
-  if (typeof window !== 'undefined') localStorage.setItem(STORAGE_KEY, JSON.stringify(t));
+
+async function saveTemplates(t: Record<string, DocTemplate>): Promise<void> {
+  if (typeof window === 'undefined') return;
+  try {
+    // Save to backend API
+    const { gatewayClient } = await import('@/services/apiClient');
+    await gatewayClient.post('/api/orgauth/document-templates/save/', { templates: t });
+    // Also save to localStorage as backup
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(t));
+  } catch (error) {
+    console.error('Failed to save templates to API, saving to localStorage only:', error);
+    // Fallback to localStorage only
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(t));
+    throw error;
+  }
 }
 
 function DocPreview({ tpl, docType }: { tpl: DocTemplate; docType: string }) {
@@ -746,13 +768,24 @@ function DocumentTemplatesPanel() {
   const [activeDoc, setActiveDoc] = useState('quotation');
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
-  const allTemplates = loadTemplates();
-  const [templates, setTemplates] = useState<Record<string, DocTemplate>>(() => {
-    const stored = loadTemplates();
-    const result: Record<string, DocTemplate> = {};
-    DOC_TYPES.forEach(d => { result[d.key] = stored[d.key] ?? { ...DEFAULT_TEMPLATE }; });
-    return result;
-  });
+  const [loading, setLoading] = useState(true);
+  const [templates, setTemplates] = useState<Record<string, DocTemplate>>({});
+
+  // Load templates on mount
+  useEffect(() => {
+    loadTemplates().then(loaded => {
+      const result: Record<string, DocTemplate> = {};
+      DOC_TYPES.forEach(d => { result[d.key] = loaded[d.key] ?? { ...DEFAULT_TEMPLATE }; });
+      setTemplates(result);
+      setLoading(false);
+    }).catch(() => {
+      // If loading fails, use defaults
+      const result: Record<string, DocTemplate> = {};
+      DOC_TYPES.forEach(d => { result[d.key] = { ...DEFAULT_TEMPLATE }; });
+      setTemplates(result);
+      setLoading(false);
+    });
+  }, []);
 
   const tpl = templates[activeDoc] ?? { ...DEFAULT_TEMPLATE };
   const set = (patch: Partial<DocTemplate>) => {
@@ -760,20 +793,31 @@ function DocumentTemplatesPanel() {
     setSaved(false);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setSaving(true);
-    setTimeout(() => {
-      saveTemplates(templates);
-      setSaving(false);
+    try {
+      await saveTemplates(templates);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
-    }, 600);
+    } catch (error) {
+      alert('Failed to save templates. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleReset = () => {
     setTemplates(prev => ({ ...prev, [activeDoc]: { ...DEFAULT_TEMPLATE } }));
     setSaved(false);
   };
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <Box>

@@ -6,6 +6,7 @@ import {
   TextField, FormControl, InputLabel, Select, MenuItem, IconButton, CircularProgress, Grid,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import DataTable from '@/components/ui/DataTable';
 import MetricCard from '@/components/ui/MetricCard';
 import StatusChip from '@/components/ui/StatusChip';
@@ -21,6 +22,8 @@ import { useQuery } from '@tanstack/react-query';
 import financeService from '@/services/financeService';
 import type { Invoice, Quotation, Customer, InvoiceLine } from '@/services/financeService';
 import type { SectionProps } from './_shared';
+import InvoiceModalNew from '@/components/finance/InvoiceModalNew';
+import DocumentPreview from '@/components/finance/DocumentPreview';
 
 function InvoiceModal({ open, onClose, record, customers, onSuccess }: {
   open: boolean; onClose: () => void; record?: Invoice | null;
@@ -566,6 +569,8 @@ export default function SalesSection({ subTab, notify, addOpen, setAddOpen }: Se
   const [page, setPage] = useState(0);
   const [editInvoice, setEditInvoice] = useState<Invoice | null>(null);
   const [editQuote, setEditQuote] = useState<Quotation | null>(null);
+  const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
+  const [previewQuote, setPreviewQuote] = useState<Quotation | null>(null);
 
   const { data: invoiceData, isLoading: invoiceLoading } = useInvoices();
   const { data: quoteData, isLoading: quoteLoading } = useQuotations();
@@ -585,6 +590,38 @@ export default function SalesSection({ subTab, notify, addOpen, setAddOpen }: Se
   const isQuotes = subTab === 'quotes';
   const isCustomers = subTab === 'customers';
 
+  const handleDownloadInvoicePDF = async (id: string) => {
+    try {
+      const response = await financeService.downloadInvoicePDF(id);
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `invoice_${id}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      notify('Failed to download PDF', 'error');
+    }
+  };
+
+  const handleDownloadQuotePDF = async (id: string) => {
+    try {
+      const response = await financeService.downloadQuotationPDF(id);
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `quote_${id}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      notify('Failed to download PDF', 'error');
+    }
+  };
+
   const INVOICE_COLS: TableColumn<Invoice>[] = [
     { id: 'number', label: 'Invoice #', sortable: true, minWidth: 100 },
     { id: 'customer', label: 'Customer', sortable: true, minWidth: 160 },
@@ -595,6 +632,7 @@ export default function SalesSection({ subTab, notify, addOpen, setAddOpen }: Se
     {
       id: 'actions', label: 'Actions', align: 'right', format: (_, row) => (
         <ActionMenu actions={[
+          { label: 'View', icon: <VisibilityIcon />, onClick: () => setPreviewInvoice(row) },
           commonActions.edit(() => setEditInvoice(row)),
           commonActions.delete(() => delInvoice.mutate(row.id, {
             onSuccess: () => notify('Invoice deleted'),
@@ -615,6 +653,7 @@ export default function SalesSection({ subTab, notify, addOpen, setAddOpen }: Se
     {
       id: 'actions', label: 'Actions', align: 'right', format: (_, row) => (
         <ActionMenu actions={[
+          { label: 'View', icon: <VisibilityIcon />, onClick: () => setPreviewQuote(row) },
           commonActions.edit(() => setEditQuote(row)),
           commonActions.delete(() => delQuote.mutate(row.id, {
             onSuccess: () => notify('Quote deleted'),
@@ -734,7 +773,7 @@ export default function SalesSection({ subTab, notify, addOpen, setAddOpen }: Se
         />
       )}
 
-      <InvoiceModal
+      <InvoiceModalNew
         open={(addOpen && isInvoices) || !!editInvoice}
         onClose={() => { setAddOpen(false); setEditInvoice(null); }}
         record={editInvoice}
@@ -755,6 +794,53 @@ export default function SalesSection({ subTab, notify, addOpen, setAddOpen }: Se
         onClose={() => setAddOpen(false)}
         onSuccess={(m, s) => { notify(m, s); setAddOpen(false); }}
       />
+
+      {/* Document Previews */}
+      {previewInvoice && (
+        <DocumentPreview
+          open={!!previewInvoice}
+          onClose={() => setPreviewInvoice(null)}
+          document={{
+            id: previewInvoice.id,
+            number: previewInvoice.number,
+            date: previewInvoice.date,
+            customer: previewInvoice.customer,
+            lines: previewInvoice.lines || [],
+            sub_total: previewInvoice.sub_total || 0,
+            tax_total: previewInvoice.tax_total || 0,
+            total: previewInvoice.total || 0,
+            status: previewInvoice.status,
+            due_date: previewInvoice.due_date,
+            comments: previewInvoice.comments,
+            terms: previewInvoice.terms,
+          }}
+          documentType="invoice"
+          onDownload={() => handleDownloadInvoicePDF(previewInvoice.id)}
+        />
+      )}
+
+      {previewQuote && (
+        <DocumentPreview
+          open={!!previewQuote}
+          onClose={() => setPreviewQuote(null)}
+          document={{
+            id: previewQuote.id,
+            number: previewQuote.number,
+            date: previewQuote.date,
+            customer: previewQuote.customer,
+            lines: previewQuote.lines || [],
+            sub_total: previewQuote.sub_total || 0,
+            tax_total: previewQuote.tax_total || 0,
+            total: previewQuote.total || 0,
+            status: previewQuote.status,
+            valid_until: previewQuote.valid_until,
+            comments: previewQuote.comments,
+            terms: previewQuote.terms,
+          }}
+          documentType="quote"
+          onDownload={() => handleDownloadQuotePDF(previewQuote.id)}
+        />
+      )}
     </>
   );
 }

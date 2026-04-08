@@ -12,29 +12,31 @@ import financeService from '@/services/financeService';
 import type { SectionProps } from './_shared';
 
 interface TaxRate {
-  id: string; name: string; rate: number; description: string;
-  is_active: boolean; created_at: string;
+  id: string; name: string; rate: number;
+  sales_account_id?: string; sales_account_name?: string;
+  purchase_account_id?: string; purchase_account_name?: string;
+  created_at: string;
 }
 
 type SalesSummaryData = { total_invoiced?: number; total_paid?: number; total_overdue?: number; quotes_pending?: number };
 
 function TaxRateModal({ open, onClose, record, onSuccess }: { open: boolean; onClose: () => void; record?: TaxRate | null; onSuccess: (m: string, s?: 'success' | 'error') => void }) {
-  const [form, setForm] = useState({ name: '', rate: '', description: '' });
+  const [form, setForm] = useState({ name: 'exempt', rate: '' });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     if (record) {
-      setForm({ name: record.name, rate: String(record.rate), description: record.description });
+      setForm({ name: record.name, rate: String(record.rate) });
     } else {
-      setForm({ name: '', rate: '', description: '' });
+      setForm({ name: 'exempt', rate: '' });
     }
   }, [record, open]);
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      const data = { ...form, rate: Number(form.rate) };
+      const data = { name: form.name, rate: Number(form.rate) };
       if (record) {
         await financeService.updateTaxRate({ id: record.id, ...data });
         onSuccess('Tax rate updated');
@@ -51,9 +53,15 @@ function TaxRateModal({ open, onClose, record, onSuccess }: { open: boolean; onC
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle sx={{ display: 'flex', alignItems: 'center' }}>{record ? 'Edit Tax Rate' : 'Create Tax Rate'}<IconButton size="small" sx={{ ml: 'auto' }} onClick={onClose}><CloseIcon /></IconButton></DialogTitle>
       <DialogContent dividers><Stack spacing={2}>
-        <TextField label="Name" size="small" fullWidth value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g., VAT, Sales Tax" />
-        <TextField label="Rate (%)" size="small" type="number" fullWidth value={form.rate} onChange={e => setForm(p => ({ ...p, rate: e.target.value }))} inputProps={{ step: '0.01', min: '0', max: '100' }} />
-        <TextField label="Description" size="small" fullWidth multiline rows={2} value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
+        <FormControl size="small" fullWidth>
+          <InputLabel>Tax Type</InputLabel>
+          <Select value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} label="Tax Type">
+            <MenuItem value="exempt">Exempt (0%)</MenuItem>
+            <MenuItem value="zero_rated">Zero Rated (0%)</MenuItem>
+            <MenuItem value="general_rated">VAT (16%)</MenuItem>
+          </Select>
+        </FormControl>
+        <TextField label="Rate (%)" size="small" type="number" fullWidth value={form.rate} onChange={e => setForm(p => ({ ...p, rate: e.target.value }))} inputProps={{ step: '0.01', min: '0', max: '100' }} helperText="Rate will be auto-set based on tax type" />
       </Stack></DialogContent>
       <DialogActions sx={{ px: 3, py: 2 }}><Button onClick={onClose} variant="outlined">Cancel</Button><Button variant="contained" onClick={handleSave} disabled={saving} startIcon={saving ? <CircularProgress size={14} color="inherit" /> : undefined}>Save</Button></DialogActions>
     </Dialog>
@@ -69,7 +77,17 @@ export default function TaxSection({ subTab, notify, addOpen, setAddOpen }: Sect
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      financeService.getTaxRates().then(r => setTaxRates(r.data?.tax_rates ?? [])),
+      financeService.getTaxRates().then(r => {
+        const rates = r.data?.tax_rates ?? [];
+        setTaxRates(rates);
+        // If no tax rates exist, seed defaults
+        if (rates.length === 0) {
+          financeService.seedDefaultTaxRates()
+            .then(() => financeService.getTaxRates())
+            .then(r2 => setTaxRates(r2.data?.tax_rates ?? []))
+            .catch(() => notify('Failed to seed default tax rates', 'error'));
+        }
+      }),
       financeService.getSalesSummary().then(r => setData(r.data as SalesSummaryData))
     ]).finally(() => setLoading(false));
   }, []);
@@ -83,9 +101,17 @@ export default function TaxSection({ subTab, notify, addOpen, setAddOpen }: Sect
   };
 
   const TAX_RATE_COLS: TableColumn<TaxRate>[] = [
-    { id: 'name', label: 'Name', sortable: true, minWidth: 160 },
+    { id: 'name', label: 'Tax Type', sortable: true, minWidth: 160, format: v => {
+      const labels: Record<string, string> = {
+        'exempt': 'Exempt (0%)',
+        'zero_rated': 'Zero Rated (0%)',
+        'general_rated': 'VAT (16%)'
+      };
+      return labels[String(v)] || String(v);
+    }},
     { id: 'rate', label: 'Rate', align: 'right', format: v => `${Number(v).toFixed(2)}%` },
-    { id: 'description', label: 'Description', minWidth: 200 },
+    { id: 'sales_account_name', label: 'Sales Account', minWidth: 150, format: v => (v as string) || '—' },
+    { id: 'purchase_account_name', label: 'Purchase Account', minWidth: 150, format: v => (v as string) || '—' },
     { id: 'actions', label: 'Actions', align: 'right', format: (_, row) => (
       <ActionMenu actions={[
         commonActions.edit(() => setEditRate(row)),

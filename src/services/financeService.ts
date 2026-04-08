@@ -41,6 +41,7 @@ export interface VendorBill {
   id: string; number?: string; vendor: string; vendor_id?: string;
   date: string; due_date?: string; status: string;
   sub_total?: number; tax_total?: number; total?: number; lines?: InvoiceLine[];
+  comments?: string; terms?: string;
   // Draft/Post fields
   drafted_at?: string; posted_at?: string; posted_by?: string;
 }
@@ -254,6 +255,13 @@ const financeService = {
   createTaxRate: (d: Record<string, unknown>) => gatewayClient.post('/tax-rates/create/', d),
   updateTaxRate: (d: Record<string, unknown>) => gatewayClient.put('/tax-rates/update/', d),
   deleteTaxRate: (id: string) => gatewayClient.delete('/tax-rates/delete/', { params: { id } }),
+  seedDefaultTaxRates: () => gatewayClient.post('/tax-rates/seed-defaults/', {}),
+
+  // PDF Downloads
+  downloadInvoicePDF: (id: string) => gatewayClient.get('/invoice/download-pdf/', { params: { id }, responseType: 'blob' }),
+  downloadQuotationPDF: (id: string) => gatewayClient.get('/quotation/download-pdf/', { params: { id }, responseType: 'blob' }),
+  downloadPOPDF: (id: string) => gatewayClient.get('/purchase-orders/download-pdf/', { params: { id }, responseType: 'blob' }),
+  downloadBillPDF: (id: string) => gatewayClient.get('/vendor-bill/download-pdf/', { params: { id }, responseType: 'blob' }),
 };
 
 export default financeService;
