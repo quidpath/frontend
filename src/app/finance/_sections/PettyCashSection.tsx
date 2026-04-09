@@ -67,10 +67,12 @@ function FundModal({ open, onClose, onSuccess }: { open: boolean; onClose: () =>
 
 function TransactionModal({ open, onClose, funds, onSuccess }: { open: boolean; onClose: () => void; funds: PettyCashFund[]; onSuccess: (m: string, s?: 'success' | 'error') => void }) {
   const [form, setForm] = useState({ fund_id: '', transaction_type: 'DISBURSEMENT', date: new Date().toISOString().slice(0, 10), reference: '', description: '', category: '', amount: '', recipient: '', receipt_number: '' });
+  const [users, setUsers] = useState<CorporateUser[]>([]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
+    financeService.getCorporateUsers().then(r => setUsers(r.data?.users ?? [])).catch(() => setUsers([]));
     setForm({ fund_id: funds[0]?.id ?? '', transaction_type: 'DISBURSEMENT', date: new Date().toISOString().slice(0, 10), reference: '', description: '', category: '', amount: '', recipient: '', receipt_number: '' });
   }, [open, funds]);
 
@@ -101,7 +103,7 @@ function TransactionModal({ open, onClose, funds, onSuccess }: { open: boolean; 
         <TextField label="Description" size="small" fullWidth multiline rows={2} value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
         <TextField label="Category" size="small" fullWidth value={form.category} onChange={e => setForm(p => ({ ...p, category: e.target.value }))} />
         <TextField label="Amount" size="small" type="number" fullWidth value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} />
-        <TextField label="Recipient" size="small" fullWidth value={form.recipient} onChange={e => setForm(p => ({ ...p, recipient: e.target.value }))} />
+        <FormControl fullWidth size="small"><InputLabel>Recipient</InputLabel><Select value={form.recipient} label="Recipient" onChange={e => setForm(p => ({ ...p, recipient: e.target.value }))}><MenuItem value="">None</MenuItem>{users.map(u => <MenuItem key={u.id} value={u.username}>{u.username} ({u.email})</MenuItem>)}</Select></FormControl>
         <TextField label="Receipt Number" size="small" fullWidth value={form.receipt_number} onChange={e => setForm(p => ({ ...p, receipt_number: e.target.value }))} />
       </Stack></DialogContent>
       <DialogActions sx={{ px: 3, py: 2 }}><Button onClick={onClose} variant="outlined">Cancel</Button><Button variant="contained" onClick={handleSave} disabled={saving} startIcon={saving ? <CircularProgress size={14} color="inherit" /> : undefined}>Create</Button></DialogActions>

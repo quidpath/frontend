@@ -136,9 +136,12 @@ function TransactionModal({ open, onClose, accounts, onSuccess }: {
     setError('');
     try {
       await create.mutateAsync({
-        ...form,
+        bank_account_id: form.bank_account_id,
+        transaction_type: form.transaction_type,
         amount: Number(form.amount),
-        corporate: accounts.find(a => a.id === form.bank_account_id)?.id ?? '',
+        reference: form.reference,
+        narration: form.narration,
+        transaction_date: form.transaction_date,
       } as Record<string, unknown>);
       onSuccess(`${form.transaction_type === 'deposit' ? 'Deposit' : 'Withdrawal'} recorded`);
       onClose();
