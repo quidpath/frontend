@@ -209,7 +209,7 @@ export default function InvoiceModal({
         customer: formData.customer_id || formData.customer,
         date: formData.date,
         due_date: formData.due_date,
-        number: invoice?.number || `INV-${Date.now()}`,
+        number: invoice?.number || `INV-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`,
         terms: formData.terms,
         purchase_order: formData.purchase_order,
         comments: formData.comments,

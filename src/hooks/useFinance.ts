@@ -209,7 +209,10 @@ export function useRecordBillPayment() {
 
 export function useConvertQuoteToInvoice() {
   const inv = useInvalidate(['quotations', 'invoices', 'salesSummary']);
-  return useMutation({ mutationFn: (d: Record<string, unknown>) => financeService.convertQuoteToInvoice(d.id as string).then(r => r.data), onSuccess: inv });
+  return useMutation({
+    mutationFn: (d: Record<string, unknown>) => financeService.convertQuoteToInvoice(d).then(r => r.data),
+    onSuccess: inv,
+  });
 }
 
 export function useConvertPOToBill() {

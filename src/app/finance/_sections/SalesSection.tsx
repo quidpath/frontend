@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Stack, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, FormControl, InputLabel, Select, MenuItem, IconButton, CircularProgress,
-  Grid, Checkbox, FormControlLabel, Chip, Alert,
+  Grid, Checkbox, Alert,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -17,17 +17,25 @@ import ActionMenu, { commonActions } from '@/components/ui/ActionMenu';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { TableColumn } from '@/types';
 import {
-  useInvoices, useCreateInvoice, useUpdateInvoice, useDeleteInvoice,
-  useQuotations, useCreateQuotation, useUpdateQuotation, useDeleteQuotation,
+  useInvoices, useDeleteInvoice,
+  useQuotations, useDeleteQuotation,
   useCustomers, useCreateCustomer, useDeleteCustomer,
   useRecordInvoicePayment, useConvertQuoteToInvoice,
   useBankAccounts, useSalesSummary,
 } from '@/hooks/useFinance';
 import financeService from '@/services/financeService';
-import type { Invoice, Quotation, Customer, InvoiceLine } from '@/services/financeService';
+import type { Invoice, Quotation, Customer } from '@/services/financeService';
 import type { SectionProps } from './_shared';
 import InvoiceModalNew from '@/components/finance/InvoiceModalNew';
 import DocumentPreview from '@/components/finance/DocumentPreview';
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function genNumber(prefix: string) {
+  const d = new Date();
+  const ymd = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+  const seq = String(Math.floor(Math.random() * 9000) + 1000);
+  return `${prefix}-${ymd}-${seq}`;
+}
 
 // ─── Payment Modal ────────────────────────────────────────────────────────────
 interface PaymentItem { invoice_id: string; number: string; total: number; selected: boolean; amount: string }
@@ -48,13 +56,17 @@ function InvoicePaymentModal({ open, onClose, invoices, onSuccess }: {
   const [form, setForm] = useState({ payment_date: new Date().toISOString().slice(0, 10), payment_method: 'bank_transfer', account_id: '', reference: '', notes: '' });
   const [error, setError] = useState('');
 
-  // Reset when opened
-  useState(() => {
+  // Populate items whenever the modal opens or the invoice list changes
+  useEffect(() => {
     if (open) {
-      setItems(payableInvoices.map(i => ({ invoice_id: i.id, number: i.number, total: i.total ?? 0, selected: false, amount: String(i.total ?? 0) })));
+      setItems(payableInvoices.map(i => ({
+        invoice_id: i.id, number: i.number, total: i.total ?? 0,
+        selected: false, amount: String(i.total ?? 0),
+      })));
       setError('');
     }
-  });
+  }, [open, invoices.length]);
+
 
   const toggle = (id: string) => setItems(p => p.map(i => i.invoice_id === id ? { ...i, selected: !i.selected } : i));
   const setAmt = (id: string, v: string) => setItems(p => p.map(i => i.invoice_id === id ? { ...i, amount: v } : i));
@@ -177,12 +189,24 @@ function ConvertQuoteModal({ open, onClose, quote, onSuccess }: {
   });
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    if (open) {
+      setForm({
+        date: new Date().toISOString().slice(0, 10),
+        due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+        number: genNumber('INV'),
+      });
+      setError('');
+    }
+  }, [open]);
+
   const handleConvert = async () => {
     if (!quote) return;
     if (!form.date || !form.due_date) { setError('Date and due date are required'); return; }
     setError('');
     try {
-      await convert.mutateAsync({ id: quote.id, ...form, number: form.number || `INV-${Date.now()}` });
+      // Backend expects: quotation_id, date, number, due_date
+      await convert.mutateAsync({ id: quote.id, ...form });
       onSuccess('Quotation converted to invoice');
       onClose();
     } catch (e: any) {

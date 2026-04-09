@@ -146,7 +146,7 @@ const financeService = {
   saveDraftQuotation: (d: Record<string, unknown>) => gatewayClient.post<Quotation>('/quotation/save-draft/', d),
   updateQuotation: (d: Record<string, unknown>) => gatewayClient.put<Quotation>('/quotation/update/', d),
   deleteQuotation: (id: string) => gatewayClient.delete('/quotation/delete/', { params: { id } }),
-  convertQuoteToInvoice: (id: string) => gatewayClient.post('/quotation/invoice-quote/', { quotation_id: id }),
+  convertQuoteToInvoice: (d: Record<string, unknown>) => gatewayClient.post('/quotation/invoice-quote/', { quotation_id: d.id, date: d.date, number: d.number, due_date: d.due_date, comments: d.comments, terms: d.terms }),
   // New draft/post endpoints
   postQuotation: (id: string) => gatewayClient.post(`/quotation/${id}/post/`),
   autoSaveQuotation: (id: string, d: Record<string, unknown>) => gatewayClient.patch(`/quotation/${id}/auto-save/`, d),

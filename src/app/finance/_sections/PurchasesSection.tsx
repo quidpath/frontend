@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Stack, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, FormControl, InputLabel, Select, MenuItem, IconButton, CircularProgress,
@@ -17,8 +17,8 @@ import ActionMenu, { commonActions } from '@/components/ui/ActionMenu';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { TableColumn } from '@/types';
 import {
-  useVendorBills, useCreateVendorBill, useUpdateVendorBill, useDeleteVendorBill,
-  usePurchaseOrders, useCreatePurchaseOrder, useDeletePurchaseOrder,
+  useVendorBills, useDeleteVendorBill,
+  usePurchaseOrders, useDeletePurchaseOrder,
   useVendors, useCreateVendor,
   useRecordBillPayment, useConvertPOToBill,
   useBankAccounts, usePurchasesSummary,
@@ -28,6 +28,14 @@ import type { SectionProps } from './_shared';
 import BillModalNew from '@/components/finance/BillModalNew';
 import DocumentPreview from '@/components/finance/DocumentPreview';
 import financeService from '@/services/financeService';
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function genNumber(prefix: string) {
+  const d = new Date();
+  const ymd = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+  const seq = String(Math.floor(Math.random() * 9000) + 1000);
+  return `${prefix}-${ymd}-${seq}`;
+}
 
 // ─── Bill Payment Modal ───────────────────────────────────────────────────────
 interface BillPayItem { bill_id: string; number: string; total: number; selected: boolean; amount: string }
@@ -44,11 +52,20 @@ function BillPaymentModal({ open, onClose, bills, onSuccess }: {
     ['POSTED', 'PARTIALLY_PAID', 'OVERDUE'].includes((b.status ?? '').toUpperCase())
   );
 
-  const [items, setItems] = useState<BillPayItem[]>(
-    payableBills.map(b => ({ bill_id: b.id, number: b.number ?? '', total: b.total ?? 0, selected: false, amount: String(b.total ?? 0) }))
-  );
+  const [items, setItems] = useState<BillPayItem[]>([]);
   const [form, setForm] = useState({ payment_date: new Date().toISOString().slice(0, 10), payment_method: 'bank_transfer', account_id: '', reference: '', notes: '' });
   const [error, setError] = useState('');
+
+  // Populate items whenever the modal opens or the bill list changes
+  useEffect(() => {
+    if (open) {
+      setItems(payableBills.map(b => ({
+        bill_id: b.id, number: b.number ?? '', total: b.total ?? 0,
+        selected: false, amount: String(b.total ?? 0),
+      })));
+      setError('');
+    }
+  }, [open, bills.length]);
 
   const toggle = (id: string) => setItems(p => p.map(i => i.bill_id === id ? { ...i, selected: !i.selected } : i));
   const setAmt = (id: string, v: string) => setItems(p => p.map(i => i.bill_id === id ? { ...i, amount: v } : i));
@@ -153,8 +170,8 @@ function BillPaymentModal({ open, onClose, bills, onSuccess }: {
 }
 
 // ─── Convert PO to Bill Modal ─────────────────────────────────────────────────
-function ConvertPOModal({ open, onClose, po, onSuccess }: {
-  open: boolean; onClose: () => void; po: PurchaseOrder | null;
+function ConvertPOModal({ open, onClose, po, vendors, onSuccess }: {
+  open: boolean; onClose: () => void; po: PurchaseOrder | null; vendors: Vendor[];
   onSuccess: (m: string, s?: 'success' | 'error') => void;
 }) {
   const convert = useConvertPOToBill();
@@ -162,15 +179,39 @@ function ConvertPOModal({ open, onClose, po, onSuccess }: {
     date: new Date().toISOString().slice(0, 10),
     due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
     number: '',
+    vendor_id: '',
   });
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    if (open && po) {
+      // Pre-fill vendor from PO if available
+      const poVendorId = (po as any).vendor_id ?? '';
+      setForm({
+        date: new Date().toISOString().slice(0, 10),
+        due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+        number: genNumber('BILL'),
+        vendor_id: poVendorId,
+      });
+      setError('');
+    }
+  }, [open, po?.id]);
+
   const handleConvert = async () => {
     if (!po) return;
+    if (!form.vendor_id) { setError('Vendor is required'); return; }
     if (!form.date || !form.due_date) { setError('Date and due date are required'); return; }
     setError('');
     try {
-      await convert.mutateAsync({ purchase_order_id: po.id, ...form, number: form.number || `BILL-${Date.now()}` });
+      // Backend requires: purchase_order_id, vendor_id, date, number, due_date, created_by
+      // created_by is resolved from auth token on backend via corporate_users lookup
+      await convert.mutateAsync({
+        purchase_order_id: po.id,
+        vendor_id: form.vendor_id,
+        date: form.date,
+        number: form.number,
+        due_date: form.due_date,
+      });
       onSuccess('Purchase order converted to bill');
       onClose();
     } catch (e: any) {
@@ -188,8 +229,13 @@ function ConvertPOModal({ open, onClose, po, onSuccess }: {
         <Stack spacing={2}>
           {error && <Alert severity="error">{error}</Alert>}
           {po && <Typography variant="body2" color="text.secondary">Converting: <strong>{po.number}</strong></Typography>}
+          <FormControl fullWidth size="small">
+            <InputLabel>Vendor</InputLabel>
+            <Select value={form.vendor_id} label="Vendor" onChange={e => setForm(p => ({ ...p, vendor_id: e.target.value }))}>
+              {vendors.map(v => <MenuItem key={v.id} value={v.id}>{v.name}</MenuItem>)}
+            </Select>
+          </FormControl>
           <TextField label="Bill Number" size="small" fullWidth value={form.number}
-            placeholder={`BILL-${Date.now()}`}
             onChange={e => setForm(p => ({ ...p, number: e.target.value }))} />
           <TextField label="Bill Date" type="date" size="small" fullWidth value={form.date}
             onChange={e => setForm(p => ({ ...p, date: e.target.value }))} InputLabelProps={{ shrink: true }} />
@@ -431,6 +477,7 @@ export default function PurchasesSection({ subTab, notify, addOpen, setAddOpen }
         open={!!convertPO}
         onClose={() => setConvertPO(null)}
         po={convertPO}
+        vendors={vendors}
         onSuccess={(m, s) => { notify(m, s); setConvertPO(null); }}
       />
 

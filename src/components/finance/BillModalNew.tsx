@@ -62,7 +62,7 @@ export default function BillModalNew({
         vendor_id: record.vendor_id ?? '',
         date: record.date,
         due_date: record.due_date ?? '',
-        number: record.number ?? `BILL-${Date.now()}`,
+        number: record.number ?? `BILL-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}-${String(Math.floor(Math.random() * 10000)).padStart(4, '0')}`,
         comments: record.comments ?? '',
         terms: record.terms ?? '',
       });
@@ -79,7 +79,7 @@ export default function BillModalNew({
         due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
           .toISOString()
           .slice(0, 10),
-        number: `BILL-${Date.now()}`,
+        number: `BILL-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${String(Math.floor(Math.random()*9000)+1000)}`,
         comments: '',
         terms: 'Net 30',
       });

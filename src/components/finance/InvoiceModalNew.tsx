@@ -95,7 +95,7 @@ export default function InvoiceModalNew({
         due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
           .toISOString()
           .slice(0, 10),
-        number: `INV-${Date.now()}`,
+        number: `INV-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${String(Math.floor(Math.random()*9000)+1000)}`,
         salesperson: '',
         comments: '',
         terms: 'Net 30',
