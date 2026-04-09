@@ -1,12 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Stack, Typography, Button, Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, FormControl, InputLabel, Select, MenuItem, IconButton, CircularProgress, Grid,
+  TextField, FormControl, InputLabel, Select, MenuItem, IconButton, CircularProgress,
+  Grid, Checkbox, FormControlLabel, Chip, Alert,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import PaymentIcon from '@mui/icons-material/Payment';
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import DataTable from '@/components/ui/DataTable';
 import MetricCard from '@/components/ui/MetricCard';
 import StatusChip from '@/components/ui/StatusChip';
@@ -17,564 +20,258 @@ import {
   useInvoices, useCreateInvoice, useUpdateInvoice, useDeleteInvoice,
   useQuotations, useCreateQuotation, useUpdateQuotation, useDeleteQuotation,
   useCustomers, useCreateCustomer, useDeleteCustomer,
+  useRecordInvoicePayment, useConvertQuoteToInvoice,
+  useBankAccounts, useSalesSummary,
 } from '@/hooks/useFinance';
-import { useQuery } from '@tanstack/react-query';
 import financeService from '@/services/financeService';
 import type { Invoice, Quotation, Customer, InvoiceLine } from '@/services/financeService';
 import type { SectionProps } from './_shared';
 import InvoiceModalNew from '@/components/finance/InvoiceModalNew';
 import DocumentPreview from '@/components/finance/DocumentPreview';
 
-function InvoiceModal({ open, onClose, record, customers, onSuccess }: {
-  open: boolean; onClose: () => void; record?: Invoice | null;
-  customers: Customer[]; onSuccess: (m: string, s?: 'success' | 'error') => void;
+// ─── Payment Modal ────────────────────────────────────────────────────────────
+interface PaymentItem { invoice_id: string; number: string; total: number; selected: boolean; amount: string }
+
+function InvoicePaymentModal({ open, onClose, invoices, onSuccess }: {
+  open: boolean; onClose: () => void;
+  invoices: Invoice[]; onSuccess: (m: string, s?: 'success' | 'error') => void;
 }) {
-  const create = useCreateInvoice();
-  const update = useUpdateInvoice();
-  const saving = create.isPending || update.isPending;
-  
-  // Fetch corporate users for salesperson dropdown
-  const { data: usersData, isLoading: loadingUsers } = useQuery({
-    queryKey: ['corporate-users'],
-    queryFn: () => financeService.getCorporateUsers(),
-  });
-  const users = (usersData?.data?.users ?? []) as Array<{ id: string; username: string; email: string; role: string }>;
-  
-  const [form, setForm] = useState({ customer_id: '', date: '', due_date: '', number: '', salesperson: '' });
-  const [lines, setLines] = useState<InvoiceLine[]>([{ description: '', quantity: 1, unit_price: 0 }]);
+  const { data: bankData } = useBankAccounts();
+  const bankAccounts = bankData?.results ?? [];
+  const recordPayment = useRecordInvoicePayment();
 
-  useEffect(() => {
-    if (!open) return;
-    if (record) {
-      setForm({
-        customer_id: record.customer_id ?? '',
-        date: record.date,
-        due_date: record.due_date,
-        number: record.number,
-        salesperson: record.salesperson ?? ''
-      });
-      setLines(record.lines?.length ? record.lines : [{ description: '', quantity: 1, unit_price: 0 }]);
-    } else {
-      setForm({
-        customer_id: '',
-        date: new Date().toISOString().slice(0, 10),
-        due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-        number: `INV-${Date.now()}`,
-        salesperson: ''
-      });
-      setLines([{ description: '', quantity: 1, unit_price: 0 }]);
+  const payableInvoices = invoices.filter(i =>
+    ['POSTED', 'PARTIALLY_PAID', 'OVERDUE'].includes((i.status ?? '').toUpperCase())
+  );
+
+  const [items, setItems] = useState<PaymentItem[]>([]);
+  const [form, setForm] = useState({ payment_date: new Date().toISOString().slice(0, 10), payment_method: 'bank_transfer', account_id: '', reference: '', notes: '' });
+  const [error, setError] = useState('');
+
+  // Reset when opened
+  useState(() => {
+    if (open) {
+      setItems(payableInvoices.map(i => ({ invoice_id: i.id, number: i.number, total: i.total ?? 0, selected: false, amount: String(i.total ?? 0) })));
+      setError('');
     }
-  }, [record, open]);
+  });
 
-  const setLine = (i: number, k: keyof InvoiceLine, v: string | number) =>
-    setLines(p => p.map((l, idx) => idx === i ? { ...l, [k]: v } : l));
-
-  // Calculate totals
-  const subtotal = lines.reduce((sum, line) => sum + (line.quantity * line.unit_price), 0);
-  const taxRate = 0.16; // 16% tax
-  const taxAmount = subtotal * taxRate;
-  const total = subtotal + taxAmount;
+  const toggle = (id: string) => setItems(p => p.map(i => i.invoice_id === id ? { ...i, selected: !i.selected } : i));
+  const setAmt = (id: string, v: string) => setItems(p => p.map(i => i.invoice_id === id ? { ...i, amount: v } : i));
+  const selected = items.filter(i => i.selected);
+  const totalSelected = selected.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
 
   const handleSave = async () => {
+    if (!selected.length) { setError('Select at least one invoice'); return; }
+    if (!form.payment_date) { setError('Payment date is required'); return; }
+    setError('');
     try {
-      const payload = {
-        customer: form.customer_id,
-        date: form.date,
-        due_date: form.due_date,
-        number: form.number,
-        salesperson: form.salesperson || undefined,
-        lines: lines.map(l => {
-          const qty = l.quantity;
-          const price = l.unit_price;
-          const amount = qty * price;
-          const discount = 0;
-          const taxRate = 0.16;
-          const taxAmount = (amount - discount) * taxRate;
-          const subTotal = amount - discount;
-          const total = subTotal + taxAmount;
-          return {
-            description: l.description,
-            quantity: qty,
-            unit_price: price,
-            amount,
-            discount,
-            tax_amount: taxAmount,
-            sub_total: subTotal,
-            total,
-          };
-        }),
-      };
-      if (record) await update.mutateAsync({ id: record.id, ...payload });
-      else await create.mutateAsync(payload);
-      onSuccess(record ? 'Invoice updated' : 'Invoice created');
+      await recordPayment.mutateAsync({
+        ...form,
+        payments: selected.map(i => ({ invoice_id: i.invoice_id, amount: parseFloat(i.amount) || 0 })),
+      });
+      onSuccess('Payment recorded successfully');
       onClose();
-    } catch (error) {
-      console.error('Invoice save error:', error);
-      onSuccess('Failed to save invoice', 'error');
+    } catch (e: any) {
+      setError(e?.response?.data?.message || 'Failed to record payment');
     }
   };
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle sx={{ display: 'flex', alignItems: 'center' }}>
-        {record ? 'Edit Invoice' : 'New Invoice'}
+        Record Invoice Payment
         <IconButton size="small" sx={{ ml: 'auto' }} onClick={onClose}><CloseIcon /></IconButton>
       </DialogTitle>
       <DialogContent dividers>
-        <Stack spacing={2}>
+        <Stack spacing={2.5}>
+          {error && <Alert severity="error">{error}</Alert>}
+
           <Grid container spacing={2}>
-            <Grid size={{ xs: 12, sm: 6 }}>
+            <Grid size={{ xs: 6, sm: 3 }}>
+              <TextField label="Payment Date" type="date" size="small" fullWidth value={form.payment_date}
+                onChange={e => setForm(p => ({ ...p, payment_date: e.target.value }))} InputLabelProps={{ shrink: true }} />
+            </Grid>
+            <Grid size={{ xs: 6, sm: 3 }}>
               <FormControl fullWidth size="small">
-                <InputLabel>Customer</InputLabel>
-                <Select
-                  value={form.customer_id}
-                  label="Customer"
-                  onChange={e => setForm(p => ({ ...p, customer_id: e.target.value }))}
-                >
-                  {customers.map(c => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)}
+                <InputLabel>Method</InputLabel>
+                <Select value={form.payment_method} label="Method" onChange={e => setForm(p => ({ ...p, payment_method: e.target.value }))}>
+                  <MenuItem value="bank_transfer">Bank Transfer</MenuItem>
+                  <MenuItem value="cash">Cash</MenuItem>
+                  <MenuItem value="cheque">Cheque</MenuItem>
+                  <MenuItem value="mobile_money">Mobile Money</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField
-                label="Invoice Number"
-                size="small"
-                fullWidth
-                value={form.number}
-                onChange={e => setForm(p => ({ ...p, number: e.target.value }))}
-              />
-            </Grid>
-            <Grid size={{ xs: 6, sm: 4 }}>
-              <TextField
-                label="Date"
-                type="date"
-                size="small"
-                fullWidth
-                value={form.date}
-                onChange={e => setForm(p => ({ ...p, date: e.target.value }))}
-                InputLabelProps={{ shrink: true }}
-              />
-            </Grid>
-            <Grid size={{ xs: 6, sm: 4 }}>
-              <TextField
-                label="Due Date"
-                type="date"
-                size="small"
-                fullWidth
-                value={form.due_date}
-                onChange={e => setForm(p => ({ ...p, due_date: e.target.value }))}
-                InputLabelProps={{ shrink: true }}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, sm: 4 }}>
               <FormControl fullWidth size="small">
-                <InputLabel>Salesperson (optional)</InputLabel>
-                <Select
-                  value={form.salesperson}
-                  label="Salesperson (optional)"
-                  onChange={e => setForm(p => ({ ...p, salesperson: e.target.value }))}
-                  disabled={loadingUsers}
-                >
-                  <MenuItem value="">Auto (Current User)</MenuItem>
-                  {users.map(u => (
-                    <MenuItem key={u.id} value={u.id}>
-                      {u.username} ({u.email})
-                    </MenuItem>
-                  ))}
+                <InputLabel>Deposit Account</InputLabel>
+                <Select value={form.account_id} label="Deposit Account" onChange={e => setForm(p => ({ ...p, account_id: e.target.value }))}>
+                  <MenuItem value="">None</MenuItem>
+                  {bankAccounts.map(a => <MenuItem key={a.id} value={a.id}>{a.account_name} — {a.bank_name}</MenuItem>)}
                 </Select>
               </FormControl>
+            </Grid>
+            <Grid size={{ xs: 6 }}>
+              <TextField label="Reference" size="small" fullWidth value={form.reference}
+                onChange={e => setForm(p => ({ ...p, reference: e.target.value }))} />
+            </Grid>
+            <Grid size={{ xs: 6 }}>
+              <TextField label="Notes" size="small" fullWidth value={form.notes}
+                onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} />
             </Grid>
           </Grid>
 
-          <Typography variant="subtitle2" fontWeight={600}>Line Items</Typography>
-          {lines.map((l, i) => (
-            <Stack key={i} direction="row" spacing={1} alignItems="center">
+          <Typography variant="subtitle2" fontWeight={600}>Select Invoices to Pay</Typography>
+          {payableInvoices.length === 0 && (
+            <Typography variant="body2" color="text.secondary">No payable invoices (must be POSTED, PARTIALLY PAID, or OVERDUE)</Typography>
+          )}
+          {items.map(item => (
+            <Stack key={item.invoice_id} direction="row" alignItems="center" spacing={2}
+              sx={{ p: 1.5, border: '1px solid', borderColor: item.selected ? 'primary.main' : 'divider', borderRadius: 1 }}>
+              <Checkbox checked={item.selected} onChange={() => toggle(item.invoice_id)} size="small" />
+              <Typography variant="body2" sx={{ flex: 1 }}>{item.number}</Typography>
+              <Typography variant="body2" color="text.secondary">Total: {formatCurrency(item.total)}</Typography>
               <TextField
-                label="Description"
-                size="small"
-                value={l.description}
-                onChange={e => setLine(i, 'description', e.target.value)}
-                sx={{ flex: 3 }}
-              />
-              <TextField
-                label="Qty"
+                label="Amount to Pay"
                 size="small"
                 type="number"
-                value={l.quantity}
-                onChange={e => setLine(i, 'quantity', Number(e.target.value))}
-                sx={{ flex: 1 }}
+                value={item.amount}
+                onChange={e => setAmt(item.invoice_id, e.target.value)}
+                disabled={!item.selected}
+                sx={{ width: 140 }}
+                inputProps={{ min: 0, max: item.total, step: 0.01 }}
               />
-              <TextField
-                label="Unit Price"
-                size="small"
-                type="number"
-                value={l.unit_price}
-                onChange={e => setLine(i, 'unit_price', Number(e.target.value))}
-                sx={{ flex: 1 }}
-              />
-              <Typography variant="body2" sx={{ minWidth: 80, textAlign: 'right' }}>
-                {formatCurrency(l.quantity * l.unit_price)}
-              </Typography>
-              <IconButton
-                size="small"
-                onClick={() => setLines(p => p.filter((_, idx) => idx !== i))}
-                disabled={lines.length === 1}
-              >
-                <CloseIcon fontSize="small" />
-              </IconButton>
             </Stack>
           ))}
-          <Button
-            size="small"
-            onClick={() => setLines(p => [...p, { description: '', quantity: 1, unit_price: 0 }])}
-            sx={{ alignSelf: 'flex-start' }}
-          >
-            + Add Line
-          </Button>
 
-          {/* Totals Section */}
-          <Stack spacing={1} sx={{ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
-            <Stack direction="row" justifyContent="space-between">
-              <Typography variant="body2">Subtotal:</Typography>
-              <Typography variant="body2" fontWeight={500}>{formatCurrency(subtotal)}</Typography>
+          {selected.length > 0 && (
+            <Stack direction="row" justifyContent="flex-end" spacing={1}>
+              <Typography variant="subtitle2">Total Payment:</Typography>
+              <Typography variant="subtitle2" color="primary" fontWeight={700}>{formatCurrency(totalSelected)}</Typography>
             </Stack>
-            <Stack direction="row" justifyContent="space-between">
-              <Typography variant="body2">Tax (16%):</Typography>
-              <Typography variant="body2" fontWeight={500}>{formatCurrency(taxAmount)}</Typography>
-            </Stack>
-            <Stack direction="row" justifyContent="space-between" sx={{ pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
-              <Typography variant="subtitle1" fontWeight={600}>Total:</Typography>
-              <Typography variant="subtitle1" fontWeight={600} color="primary">{formatCurrency(total)}</Typography>
-            </Stack>
-          </Stack>
+          )}
         </Stack>
       </DialogContent>
       <DialogActions sx={{ px: 3, py: 2 }}>
         <Button onClick={onClose} variant="outlined">Cancel</Button>
-        <Button
-          variant="contained"
-          onClick={handleSave}
-          disabled={saving}
-          startIcon={saving ? <CircularProgress size={14} color="inherit" /> : undefined}
-        >
-          Save
+        <Button variant="contained" onClick={handleSave} disabled={recordPayment.isPending}
+          startIcon={recordPayment.isPending ? <CircularProgress size={14} color="inherit" /> : <PaymentIcon />}>
+          Record Payment
         </Button>
       </DialogActions>
     </Dialog>
   );
 }
 
-function QuoteModal({ open, onClose, record, customers, onSuccess }: {
-  open: boolean; onClose: () => void; record?: Quotation | null;
-  customers: Customer[]; onSuccess: (m: string, s?: 'success' | 'error') => void;
+// ─── Convert Quote to Invoice Modal ──────────────────────────────────────────
+function ConvertQuoteModal({ open, onClose, quote, onSuccess }: {
+  open: boolean; onClose: () => void; quote: Quotation | null;
+  onSuccess: (m: string, s?: 'success' | 'error') => void;
 }) {
-  const create = useCreateQuotation();
-  const update = useUpdateQuotation();
-  const saving = create.isPending || update.isPending;
-  
-  // Fetch corporate users for salesperson dropdown
-  const { data: usersData, isLoading: loadingUsers } = useQuery({
-    queryKey: ['corporate-users'],
-    queryFn: () => financeService.getCorporateUsers(),
-  });
-  const users = (usersData?.data?.users ?? []) as Array<{ id: string; username: string; email: string; role: string }>;
-  
-  const [form, setForm] = useState({ customer_id: '', date: '', valid_until: '', number: '', salesperson: '' });
-  const [lines, setLines] = useState<InvoiceLine[]>([{ description: '', quantity: 1, unit_price: 0 }]);
-
-  useEffect(() => {
-    if (!open) return;
-    if (record) {
-      setForm({
-        customer_id: record.customer_id ?? '',
-        date: record.date,
-        valid_until: record.valid_until,
-        number: record.number,
-        salesperson: record.salesperson ?? ''
-      });
-      setLines(record.lines?.length ? record.lines : [{ description: '', quantity: 1, unit_price: 0 }]);
-    } else {
-      setForm({
-        customer_id: '',
-        date: new Date().toISOString().slice(0, 10),
-        valid_until: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-        number: `QT-${Date.now()}`,
-        salesperson: ''
-      });
-      setLines([{ description: '', quantity: 1, unit_price: 0 }]);
-    }
-  }, [record, open]);
-
-  const setLine = (i: number, k: keyof InvoiceLine, v: string | number) =>
-    setLines(p => p.map((l, idx) => idx === i ? { ...l, [k]: v } : l));
-
-  // Calculate totals
-  const subtotal = lines.reduce((sum, line) => sum + (line.quantity * line.unit_price), 0);
-  const taxRate = 0.16;
-  const taxAmount = subtotal * taxRate;
-  const total = subtotal + taxAmount;
-
-  const handleSave = async () => {
-    try {
-      const payload = {
-        customer: form.customer_id,
-        date: form.date,
-        valid_until: form.valid_until,
-        number: form.number,
-        salesperson: form.salesperson || undefined,
-        ship_date: form.valid_until, // default to valid_until if not set
-        ship_via: 'TBD',
-        terms: 'Net 30',
-        fob: 'Origin',
-        lines: lines.map(l => {
-          const qty = l.quantity;
-          const price = l.unit_price;
-          const discount = 0;
-          return {
-            description: l.description,
-            quantity: qty,
-            unit_price: price,
-            discount,
-            taxable: 'exempt', // will be resolved by backend
-          };
-        }),
-      };
-      if (record) await update.mutateAsync({ id: record.id, ...payload });
-      else await create.mutateAsync(payload);
-      onSuccess(record ? 'Quote updated' : 'Quote created');
-      onClose();
-    } catch (error) {
-      console.error('Quote save error:', error);
-      onSuccess('Failed to save quote', 'error');
-    }
-  };
-
-  return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle sx={{ display: 'flex', alignItems: 'center' }}>
-        {record ? 'Edit Quote' : 'New Quote'}
-        <IconButton size="small" sx={{ ml: 'auto' }} onClick={onClose}><CloseIcon /></IconButton>
-      </DialogTitle>
-      <DialogContent dividers>
-        <Stack spacing={2}>
-          <Grid container spacing={2}>
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Customer</InputLabel>
-                <Select
-                  value={form.customer_id}
-                  label="Customer"
-                  onChange={e => setForm(p => ({ ...p, customer_id: e.target.value }))}
-                >
-                  {customers.map(c => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField
-                label="Quote Number"
-                size="small"
-                fullWidth
-                value={form.number}
-                onChange={e => setForm(p => ({ ...p, number: e.target.value }))}
-              />
-            </Grid>
-            <Grid size={{ xs: 6, sm: 4 }}>
-              <TextField
-                label="Date"
-                type="date"
-                size="small"
-                fullWidth
-                value={form.date}
-                onChange={e => setForm(p => ({ ...p, date: e.target.value }))}
-                InputLabelProps={{ shrink: true }}
-              />
-            </Grid>
-            <Grid size={{ xs: 6, sm: 4 }}>
-              <TextField
-                label="Valid Until"
-                type="date"
-                size="small"
-                fullWidth
-                value={form.valid_until}
-                onChange={e => setForm(p => ({ ...p, valid_until: e.target.value }))}
-                InputLabelProps={{ shrink: true }}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, sm: 4 }}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Salesperson (optional)</InputLabel>
-                <Select
-                  value={form.salesperson}
-                  label="Salesperson (optional)"
-                  onChange={e => setForm(p => ({ ...p, salesperson: e.target.value }))}
-                  disabled={loadingUsers}
-                >
-                  <MenuItem value="">Auto (Current User)</MenuItem>
-                  {users.map(u => (
-                    <MenuItem key={u.id} value={u.id}>
-                      {u.username} ({u.email})
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-          </Grid>
-
-          <Typography variant="subtitle2" fontWeight={600}>Line Items</Typography>
-          {lines.map((l, i) => (
-            <Stack key={i} direction="row" spacing={1} alignItems="center">
-              <TextField
-                label="Description"
-                size="small"
-                value={l.description}
-                onChange={e => setLine(i, 'description', e.target.value)}
-                sx={{ flex: 3 }}
-              />
-              <TextField
-                label="Qty"
-                size="small"
-                type="number"
-                value={l.quantity}
-                onChange={e => setLine(i, 'quantity', Number(e.target.value))}
-                sx={{ flex: 1 }}
-              />
-              <TextField
-                label="Unit Price"
-                size="small"
-                type="number"
-                value={l.unit_price}
-                onChange={e => setLine(i, 'unit_price', Number(e.target.value))}
-                sx={{ flex: 1 }}
-              />
-              <Typography variant="body2" sx={{ minWidth: 80, textAlign: 'right' }}>
-                {formatCurrency(l.quantity * l.unit_price)}
-              </Typography>
-              <IconButton
-                size="small"
-                onClick={() => setLines(p => p.filter((_, idx) => idx !== i))}
-                disabled={lines.length === 1}
-              >
-                <CloseIcon fontSize="small" />
-              </IconButton>
-            </Stack>
-          ))}
-          <Button
-            size="small"
-            onClick={() => setLines(p => [...p, { description: '', quantity: 1, unit_price: 0 }])}
-            sx={{ alignSelf: 'flex-start' }}
-          >
-            + Add Line
-          </Button>
-
-          {/* Totals Section */}
-          <Stack spacing={1} sx={{ mt: 2, pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
-            <Stack direction="row" justifyContent="space-between">
-              <Typography variant="body2">Subtotal:</Typography>
-              <Typography variant="body2" fontWeight={500}>{formatCurrency(subtotal)}</Typography>
-            </Stack>
-            <Stack direction="row" justifyContent="space-between">
-              <Typography variant="body2">Tax (16%):</Typography>
-              <Typography variant="body2" fontWeight={500}>{formatCurrency(taxAmount)}</Typography>
-            </Stack>
-            <Stack direction="row" justifyContent="space-between" sx={{ pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
-              <Typography variant="subtitle1" fontWeight={600}>Total:</Typography>
-              <Typography variant="subtitle1" fontWeight={600} color="primary">{formatCurrency(total)}</Typography>
-            </Stack>
-          </Stack>
-        </Stack>
-      </DialogContent>
-      <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={onClose} variant="outlined">Cancel</Button>
-        <Button
-          variant="contained"
-          onClick={handleSave}
-          disabled={saving}
-          startIcon={saving ? <CircularProgress size={14} color="inherit" /> : undefined}
-        >
-          Save
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-}
-
-function CustomerModal({ open, onClose, onSuccess }: {
-  open: boolean; onClose: () => void; onSuccess: (m: string, s?: 'success' | 'error') => void;
-}) {
-  const create = useCreateCustomer();
+  const convert = useConvertQuoteToInvoice();
   const [form, setForm] = useState({
-    category: 'individual',
-    first_name: '', last_name: '', company_name: '',
-    email: '', phone: '', address: '', city: '', country: '', tax_id: ''
+    date: new Date().toISOString().slice(0, 10),
+    due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+    number: '',
   });
-  const f = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) => setForm(p => ({ ...p, [k]: e.target.value }));
+  const [error, setError] = useState('');
 
-  const handleSave = async () => {
+  const handleConvert = async () => {
+    if (!quote) return;
+    if (!form.date || !form.due_date) { setError('Date and due date are required'); return; }
+    setError('');
     try {
-      await create.mutateAsync(form as Record<string, unknown>);
-      onSuccess('Customer created');
+      await convert.mutateAsync({ id: quote.id, ...form, number: form.number || `INV-${Date.now()}` });
+      onSuccess('Quotation converted to invoice');
       onClose();
-    } catch {
-      onSuccess('Failed to create customer', 'error');
+    } catch (e: any) {
+      setError(e?.response?.data?.message || 'Conversion failed');
     }
   };
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle sx={{ display: 'flex', alignItems: 'center' }}>
-        New Customer
+        Convert Quote to Invoice
         <IconButton size="small" sx={{ ml: 'auto' }} onClick={onClose}><CloseIcon /></IconButton>
       </DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2}>
-          <FormControl fullWidth size="small">
-            <InputLabel>Category</InputLabel>
-            <Select value={form.category} label="Category" onChange={e => setForm(p => ({ ...p, category: e.target.value }))}>
-              <MenuItem value="individual">Individual</MenuItem>
-              <MenuItem value="company">Company</MenuItem>
-            </Select>
-          </FormControl>
-          {form.category === 'company' && <TextField label="Company Name" size="small" fullWidth value={form.company_name} onChange={f('company_name')} />}
-          <Stack direction="row" spacing={2}>
-            <TextField label="First Name" size="small" fullWidth value={form.first_name} onChange={f('first_name')} />
-            <TextField label="Last Name" size="small" fullWidth value={form.last_name} onChange={f('last_name')} />
-          </Stack>
-          <TextField label="Email" size="small" fullWidth value={form.email} onChange={f('email')} />
-          <TextField label="Phone" size="small" fullWidth value={form.phone} onChange={f('phone')} />
-          <TextField label="Address" size="small" fullWidth value={form.address} onChange={f('address')} />
-          <Stack direction="row" spacing={2}>
-            <TextField label="City" size="small" fullWidth value={form.city} onChange={f('city')} />
-            <TextField label="Country" size="small" fullWidth value={form.country} onChange={f('country')} />
-          </Stack>
-          <TextField label="Tax ID" size="small" fullWidth value={form.tax_id} onChange={f('tax_id')} />
+          {error && <Alert severity="error">{error}</Alert>}
+          {quote && <Typography variant="body2" color="text.secondary">Converting: <strong>{quote.number}</strong></Typography>}
+          <TextField label="Invoice Number" size="small" fullWidth value={form.number}
+            placeholder={`INV-${Date.now()}`}
+            onChange={e => setForm(p => ({ ...p, number: e.target.value }))} />
+          <TextField label="Invoice Date" type="date" size="small" fullWidth value={form.date}
+            onChange={e => setForm(p => ({ ...p, date: e.target.value }))} InputLabelProps={{ shrink: true }} />
+          <TextField label="Due Date" type="date" size="small" fullWidth value={form.due_date}
+            onChange={e => setForm(p => ({ ...p, due_date: e.target.value }))} InputLabelProps={{ shrink: true }} />
         </Stack>
       </DialogContent>
       <DialogActions sx={{ px: 3, py: 2 }}>
         <Button onClick={onClose} variant="outlined">Cancel</Button>
-        <Button
-          variant="contained"
-          onClick={handleSave}
-          disabled={create.isPending}
-          startIcon={create.isPending ? <CircularProgress size={14} color="inherit" /> : undefined}
-        >
-          Save
+        <Button variant="contained" onClick={handleConvert} disabled={convert.isPending}
+          startIcon={convert.isPending ? <CircularProgress size={14} color="inherit" /> : <SwapHorizIcon />}>
+          Convert to Invoice
         </Button>
       </DialogActions>
     </Dialog>
   );
 }
 
+// ─── Customer Modal ───────────────────────────────────────────────────────────
+function CustomerModal({ open, onClose, onSuccess }: {
+  open: boolean; onClose: () => void; onSuccess: (m: string, s?: 'success' | 'error') => void;
+}) {
+  const create = useCreateCustomer();
+  const [form, setForm] = useState({
+    category: 'individual', first_name: '', last_name: '', company_name: '',
+    email: '', phone: '', address: '', city: '', country: '', tax_id: '',
+  });
+  const f = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) => setForm(p => ({ ...p, [k]: e.target.value }));
+  const handleSave = async () => {
+    try { await create.mutateAsync(form as Record<string, unknown>); onSuccess('Customer created'); onClose(); }
+    catch { onSuccess('Failed to create customer', 'error'); }
+  };
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center' }}>New Customer<IconButton size="small" sx={{ ml: 'auto' }} onClick={onClose}><CloseIcon /></IconButton></DialogTitle>
+      <DialogContent dividers><Stack spacing={2}>
+        <FormControl fullWidth size="small"><InputLabel>Category</InputLabel>
+          <Select value={form.category} label="Category" onChange={e => setForm(p => ({ ...p, category: e.target.value }))}>
+            <MenuItem value="individual">Individual</MenuItem><MenuItem value="company">Company</MenuItem>
+          </Select></FormControl>
+        {form.category === 'company' && <TextField label="Company Name" size="small" fullWidth value={form.company_name} onChange={f('company_name')} />}
+        <Stack direction="row" spacing={2}><TextField label="First Name" size="small" fullWidth value={form.first_name} onChange={f('first_name')} /><TextField label="Last Name" size="small" fullWidth value={form.last_name} onChange={f('last_name')} /></Stack>
+        <TextField label="Email" size="small" fullWidth value={form.email} onChange={f('email')} />
+        <TextField label="Phone" size="small" fullWidth value={form.phone} onChange={f('phone')} />
+        <TextField label="Address" size="small" fullWidth value={form.address} onChange={f('address')} />
+        <Stack direction="row" spacing={2}><TextField label="City" size="small" fullWidth value={form.city} onChange={f('city')} /><TextField label="Country" size="small" fullWidth value={form.country} onChange={f('country')} /></Stack>
+        <TextField label="Tax ID" size="small" fullWidth value={form.tax_id} onChange={f('tax_id')} />
+      </Stack></DialogContent>
+      <DialogActions sx={{ px: 3, py: 2 }}><Button onClick={onClose} variant="outlined">Cancel</Button>
+        <Button variant="contained" onClick={handleSave} disabled={create.isPending} startIcon={create.isPending ? <CircularProgress size={14} color="inherit" /> : undefined}>Save</Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+// ─── Main Section ─────────────────────────────────────────────────────────────
 export default function SalesSection({ subTab, notify, addOpen, setAddOpen }: SectionProps) {
   const [page, setPage] = useState(0);
   const [editInvoice, setEditInvoice] = useState<Invoice | null>(null);
   const [editQuote, setEditQuote] = useState<Quotation | null>(null);
   const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
   const [previewQuote, setPreviewQuote] = useState<Quotation | null>(null);
+  const [paymentOpen, setPaymentOpen] = useState(false);
+  const [payInvoice, setPayInvoice] = useState<Invoice | null>(null); // single invoice payment
+  const [convertQuote, setConvertQuote] = useState<Quotation | null>(null);
 
   const { data: invoiceData, isLoading: invoiceLoading } = useInvoices();
   const { data: quoteData, isLoading: quoteLoading } = useQuotations();
   const { data: customerData, isLoading: customerLoading } = useCustomers();
+  const { data: salesSummary } = useSalesSummary();
   const delInvoice = useDeleteInvoice();
   const delQuote = useDeleteQuotation();
   const delCustomer = useDeleteCustomer();
@@ -590,20 +287,21 @@ export default function SalesSection({ subTab, notify, addOpen, setAddOpen }: Se
   const isQuotes = subTab === 'quotes';
   const isCustomers = subTab === 'customers';
 
+  // Stat card values — all from summary API for consistency
+  const totalInvoiced = salesSummary?.total_invoiced ?? 0;
+  const totalPaid = salesSummary?.total_paid ?? 0;
+  const totalOverdue = salesSummary?.total_overdue ?? 0;
+  const quotesPending = salesSummary?.quotes_pending ?? 0;
+
   const handleDownloadInvoicePDF = async (id: string) => {
     try {
       const response = await financeService.downloadInvoicePDF(id);
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `invoice_${id}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+      link.href = url; link.setAttribute('download', `invoice_${id}.pdf`);
+      document.body.appendChild(link); link.click(); link.remove();
       window.URL.revokeObjectURL(url);
-    } catch (error) {
-      notify('Failed to download PDF', 'error');
-    }
+    } catch { notify('Failed to download PDF', 'error'); }
   };
 
   const handleDownloadQuotePDF = async (id: string) => {
@@ -611,15 +309,10 @@ export default function SalesSection({ subTab, notify, addOpen, setAddOpen }: Se
       const response = await financeService.downloadQuotationPDF(id);
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `quote_${id}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+      link.href = url; link.setAttribute('download', `quote_${id}.pdf`);
+      document.body.appendChild(link); link.click(); link.remove();
       window.URL.revokeObjectURL(url);
-    } catch (error) {
-      notify('Failed to download PDF', 'error');
-    }
+    } catch { notify('Failed to download PDF', 'error'); }
   };
 
   const INVOICE_COLS: TableColumn<Invoice>[] = [
@@ -633,13 +326,17 @@ export default function SalesSection({ subTab, notify, addOpen, setAddOpen }: Se
       id: 'actions', label: 'Actions', align: 'right', format: (_, row) => (
         <ActionMenu actions={[
           { label: 'View', icon: <VisibilityIcon />, onClick: () => setPreviewInvoice(row) },
+          {
+            label: 'Record Payment', icon: <PaymentIcon />,
+            onClick: () => { setPayInvoice(row); setPaymentOpen(true); },
+            disabled: !['POSTED', 'PARTIALLY_PAID', 'OVERDUE'].includes((row.status ?? '').toUpperCase()),
+          },
           commonActions.edit(() => setEditInvoice(row)),
           commonActions.delete(() => delInvoice.mutate(row.id, {
-            onSuccess: () => notify('Invoice deleted'),
-            onError: () => notify('Failed to delete', 'error')
-          }))
+            onSuccess: () => notify('Invoice deleted'), onError: () => notify('Failed to delete', 'error'),
+          })),
         ]} />
-      )
+      ),
     },
   ];
 
@@ -654,13 +351,17 @@ export default function SalesSection({ subTab, notify, addOpen, setAddOpen }: Se
       id: 'actions', label: 'Actions', align: 'right', format: (_, row) => (
         <ActionMenu actions={[
           { label: 'View', icon: <VisibilityIcon />, onClick: () => setPreviewQuote(row) },
+          {
+            label: 'Convert to Invoice', icon: <SwapHorizIcon />,
+            onClick: () => setConvertQuote(row),
+            disabled: row.status === 'INVOICED',
+          },
           commonActions.edit(() => setEditQuote(row)),
           commonActions.delete(() => delQuote.mutate(row.id, {
-            onSuccess: () => notify('Quote deleted'),
-            onError: () => notify('Failed to delete', 'error')
-          }))
+            onSuccess: () => notify('Quote deleted'), onError: () => notify('Failed to delete', 'error'),
+          })),
         ]} />
-      )
+      ),
     },
   ];
 
@@ -673,120 +374,75 @@ export default function SalesSection({ subTab, notify, addOpen, setAddOpen }: Se
     {
       id: 'actions', label: 'Actions', align: 'right', format: (_, row) => (
         <ActionMenu actions={[
-          commonActions.view(() => {}),
-          commonActions.edit(() => {}),
           commonActions.delete(() => delCustomer.mutate(row.id, {
-            onSuccess: () => notify('Customer deleted'),
-            onError: () => notify('Failed to delete', 'error')
-          }))
+            onSuccess: () => notify('Customer deleted'), onError: () => notify('Failed to delete', 'error'),
+          })),
         ]} />
-      )
+      ),
     },
   ];
+
+  // Invoices available for bulk payment (payable ones)
+  const payableInvoices = payInvoice
+    ? [payInvoice]
+    : invoices.filter(i => ['POSTED', 'PARTIALLY_PAID', 'OVERDUE'].includes((i.status ?? '').toUpperCase()));
 
   return (
     <>
       <Grid container spacing={2.5} sx={{ mb: 3 }}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <MetricCard
-            label="Total Invoiced"
-            value={formatCurrency(invoices.filter(i => i.status === 'POSTED' || i.status === 'PAID' || i.status === 'posted' || i.status === 'paid').reduce((s, i) => s + (i.total ?? 0), 0))}
-            trend="up"
-            color="#2E7D32"
-            loading={invoiceLoading}
-          />
+          <MetricCard label="Total Invoiced" value={formatCurrency(totalInvoiced)} trend="up" color="#2E7D32" loading={invoiceLoading} />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <MetricCard
-            label="Pending Invoices"
-            value={invoices.filter(i => (i.status === 'POSTED' || i.status === 'posted') && !['PAID', 'paid'].includes(i.status as string)).length}
-            trend="neutral"
-            color="#F57C00"
-            loading={invoiceLoading}
-          />
+          <MetricCard label="Total Paid" value={formatCurrency(totalPaid)} trend="up" color="#1565C0" loading={invoiceLoading} />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <MetricCard
-            label="Active Quotes"
-            value={quotes.filter(q => q.status !== 'EXPIRED' && q.status !== 'expired' && q.status !== 'DRAFT' && q.status !== 'draft').length}
-            trend="neutral"
-            color="#1565C0"
-            loading={quoteLoading}
-          />
+          <MetricCard label="Overdue" value={formatCurrency(totalOverdue)} trend="down" color="#C62828" loading={invoiceLoading} />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <MetricCard
-            label="Customers"
-            value={customers.length}
-            trend="up"
-            color="#7B1FA2"
-            loading={customerLoading}
-          />
+          <MetricCard label="Quotes Pending" value={quotesPending} trend="neutral" color="#F57C00" loading={quoteLoading} />
         </Grid>
       </Grid>
 
       {isInvoices && (
         <DataTable
-          columns={INVOICE_COLS}
-          rows={invoices}
-          loading={invoiceLoading}
-          total={invoices.length}
-          page={page}
-          pageSize={25}
-          onPageChange={setPage}
-          onSearch={() => {}}
-          searchPlaceholder="Search invoices..."
-          getRowId={r => r.id}
-          emptyMessage="No invoices yet."
+          columns={INVOICE_COLS} rows={invoices} loading={invoiceLoading}
+          total={invoices.length} page={page} pageSize={25} onPageChange={setPage}
+          onSearch={() => {}} searchPlaceholder="Search invoices..."
+          getRowId={r => r.id} emptyMessage="No invoices yet."
+          toolbar={
+            <Button size="small" variant="outlined" startIcon={<PaymentIcon />}
+              onClick={() => { setPayInvoice(null); setPaymentOpen(true); }}
+              disabled={!invoices.some(i => ['POSTED', 'PARTIALLY_PAID', 'OVERDUE'].includes((i.status ?? '').toUpperCase()))}>
+              Bulk Payment
+            </Button>
+          }
         />
       )}
 
       {isQuotes && (
         <DataTable
-          columns={QUOTE_COLS}
-          rows={quotes}
-          loading={quoteLoading}
-          total={quotes.length}
-          page={page}
-          pageSize={25}
-          onPageChange={setPage}
-          onSearch={() => {}}
-          searchPlaceholder="Search quotes..."
-          getRowId={r => r.id}
-          emptyMessage="No quotes yet."
+          columns={QUOTE_COLS} rows={quotes} loading={quoteLoading}
+          total={quotes.length} page={page} pageSize={25} onPageChange={setPage}
+          onSearch={() => {}} searchPlaceholder="Search quotes..."
+          getRowId={r => r.id} emptyMessage="No quotes yet."
         />
       )}
 
       {isCustomers && (
         <DataTable
-          columns={CUSTOMER_COLS}
-          rows={customers}
-          loading={customerLoading}
-          total={customers.length}
-          page={page}
-          pageSize={25}
-          onPageChange={setPage}
-          onSearch={() => {}}
-          searchPlaceholder="Search customers..."
-          getRowId={r => r.id}
-          emptyMessage="No customers yet."
+          columns={CUSTOMER_COLS} rows={customers} loading={customerLoading}
+          total={customers.length} page={page} pageSize={25} onPageChange={setPage}
+          onSearch={() => {}} searchPlaceholder="Search customers..."
+          getRowId={r => r.id} emptyMessage="No customers yet."
         />
       )}
 
       <InvoiceModalNew
         open={(addOpen && isInvoices) || !!editInvoice}
         onClose={() => { setAddOpen(false); setEditInvoice(null); }}
-        record={editInvoice}
-        customers={customers}
+        record={editInvoice} customers={customers}
         onSuccess={(m, s) => { notify(m, s); setAddOpen(false); setEditInvoice(null); }}
-      />
-
-      <QuoteModal
-        open={(addOpen && isQuotes) || !!editQuote}
-        onClose={() => { setAddOpen(false); setEditQuote(null); }}
-        record={editQuote}
-        customers={customers}
-        onSuccess={(m, s) => { notify(m, s); setAddOpen(false); setEditQuote(null); }}
       />
 
       <CustomerModal
@@ -795,24 +451,32 @@ export default function SalesSection({ subTab, notify, addOpen, setAddOpen }: Se
         onSuccess={(m, s) => { notify(m, s); setAddOpen(false); }}
       />
 
+      {/* Payment Modal */}
+      <InvoicePaymentModal
+        open={paymentOpen}
+        onClose={() => { setPaymentOpen(false); setPayInvoice(null); }}
+        invoices={payableInvoices}
+        onSuccess={(m, s) => { notify(m, s); setPaymentOpen(false); setPayInvoice(null); }}
+      />
+
+      {/* Convert Quote to Invoice */}
+      <ConvertQuoteModal
+        open={!!convertQuote}
+        onClose={() => setConvertQuote(null)}
+        quote={convertQuote}
+        onSuccess={(m, s) => { notify(m, s); setConvertQuote(null); }}
+      />
+
       {/* Document Previews */}
       {previewInvoice && (
         <DocumentPreview
-          open={!!previewInvoice}
-          onClose={() => setPreviewInvoice(null)}
+          open={!!previewInvoice} onClose={() => setPreviewInvoice(null)}
           document={{
-            id: previewInvoice.id,
-            number: previewInvoice.number,
-            date: previewInvoice.date,
-            customer: previewInvoice.customer,
-            lines: previewInvoice.lines || [],
-            sub_total: previewInvoice.sub_total || 0,
-            tax_total: previewInvoice.tax_total || 0,
-            total: previewInvoice.total || 0,
-            status: previewInvoice.status,
-            due_date: previewInvoice.due_date,
-            comments: previewInvoice.comments,
-            terms: previewInvoice.terms,
+            id: previewInvoice.id, number: previewInvoice.number, date: previewInvoice.date,
+            customer: previewInvoice.customer, lines: previewInvoice.lines || [],
+            sub_total: previewInvoice.sub_total || 0, tax_total: previewInvoice.tax_total || 0,
+            total: previewInvoice.total || 0, status: previewInvoice.status,
+            due_date: previewInvoice.due_date, comments: previewInvoice.comments, terms: previewInvoice.terms,
           }}
           documentType="invoice"
           onDownload={() => handleDownloadInvoicePDF(previewInvoice.id)}
@@ -821,21 +485,13 @@ export default function SalesSection({ subTab, notify, addOpen, setAddOpen }: Se
 
       {previewQuote && (
         <DocumentPreview
-          open={!!previewQuote}
-          onClose={() => setPreviewQuote(null)}
+          open={!!previewQuote} onClose={() => setPreviewQuote(null)}
           document={{
-            id: previewQuote.id,
-            number: previewQuote.number,
-            date: previewQuote.date,
-            customer: previewQuote.customer,
-            lines: previewQuote.lines || [],
-            sub_total: previewQuote.sub_total || 0,
-            tax_total: previewQuote.tax_total || 0,
-            total: previewQuote.total || 0,
-            status: previewQuote.status,
-            valid_until: previewQuote.valid_until,
-            comments: previewQuote.comments,
-            terms: previewQuote.terms,
+            id: previewQuote.id, number: previewQuote.number, date: previewQuote.date,
+            customer: previewQuote.customer, lines: previewQuote.lines || [],
+            sub_total: previewQuote.sub_total || 0, tax_total: previewQuote.tax_total || 0,
+            total: previewQuote.total || 0, status: previewQuote.status,
+            valid_until: previewQuote.valid_until, comments: previewQuote.comments, terms: previewQuote.terms,
           }}
           documentType="quote"
           onDownload={() => handleDownloadQuotePDF(previewQuote.id)}

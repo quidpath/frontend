@@ -196,3 +196,23 @@ export function useDeleteTransaction() {
   const inv = useInvalidate(['transactions']);
   return useMutation({ mutationFn: (id: string) => financeService.deleteTransaction(id), onSuccess: inv });
 }
+
+export function useRecordInvoicePayment() {
+  const inv = useInvalidate(['invoices', 'salesSummary']);
+  return useMutation({ mutationFn: (d: Record<string, unknown>) => financeService.recordInvoicePayment(d).then(r => r.data), onSuccess: inv });
+}
+
+export function useRecordBillPayment() {
+  const inv = useInvalidate(['bills', 'purchasesSummary']);
+  return useMutation({ mutationFn: (d: Record<string, unknown>) => financeService.recordBillPayment(d).then(r => r.data), onSuccess: inv });
+}
+
+export function useConvertQuoteToInvoice() {
+  const inv = useInvalidate(['quotations', 'invoices', 'salesSummary']);
+  return useMutation({ mutationFn: (d: Record<string, unknown>) => financeService.convertQuoteToInvoice(d.id as string).then(r => r.data), onSuccess: inv });
+}
+
+export function useConvertPOToBill() {
+  const inv = useInvalidate(['purchaseOrders', 'bills', 'purchasesSummary']);
+  return useMutation({ mutationFn: (d: Record<string, unknown>) => financeService.convertPOToBill(d).then(r => r.data), onSuccess: inv });
+}

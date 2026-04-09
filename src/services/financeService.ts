@@ -199,6 +199,7 @@ const financeService = {
   createAccount: (d: Record<string, unknown>) => gatewayClient.post<Account>('/account/create/', d),
   updateAccount: (d: Record<string, unknown>) => gatewayClient.put<Account>('/account/update/', d),
   deleteAccount: (id: string) => gatewayClient.delete('/account/delete/', { params: { id } }),
+  seedDefaultAccounts: () => gatewayClient.post('/accounts/seed-defaults/', {}),
 
   // Banking
   getBankAccounts: (p?: Record<string, unknown>) => gatewayClient.get('/bank-account/list/', { params: p }),
@@ -268,6 +269,13 @@ const financeService = {
   downloadQuotationPDF: (id: string) => gatewayClient.get('/quotation/download-pdf/', { params: { id }, responseType: 'blob' }),
   downloadPOPDF: (id: string) => gatewayClient.get('/purchase-orders/download-pdf/', { params: { id }, responseType: 'blob' }),
   downloadBillPDF: (id: string) => gatewayClient.get('/vendor-bill/download-pdf/', { params: { id }, responseType: 'blob' }),
+
+  // Payment Recording
+  recordInvoicePayment: (d: Record<string, unknown>) => gatewayClient.post('/invoice/record-payment/', d),
+  recordBillPayment: (d: Record<string, unknown>) => gatewayClient.post('/vendor-bill/record-payment/', d),
+
+  // Conversions
+  convertPOToBill: (d: Record<string, unknown>) => gatewayClient.post('/vendor-bill/convert-purchase-order/', d),
 };
 
 export default financeService;

@@ -116,17 +116,18 @@ export default function DocumentPreview({
     ]).then(([templateResponse, profileResponse]) => {
       setTemplate(templateResponse.data?.template || null);
       
-      // Extract company info from profile
-      const profile = profileResponse.data;
+      // Profile response shape: { user: { corporate: {...}, ... } }
+      const profile = profileResponse.data?.user ?? profileResponse.data;
+      const corp = profile?.corporate ?? {};
       setCompanyInfo({
-        name: profile?.corporate?.name || profile?.company_name || 'Company Name',
-        logo_url: profile?.logo || profile?.corporate?.logo || '',
-        address: profile?.corporate?.address || '',
-        city: profile?.corporate?.city || '',
-        country: profile?.corporate?.country || '',
-        phone: profile?.corporate?.phone || profile?.phone || '',
-        email: profile?.corporate?.email || profile?.email || '',
-        tax_id: profile?.corporate?.tax_id || '',
+        name: corp.name || profile?.company_name || 'Company Name',
+        logo_url: corp.logo || '',
+        address: corp.address || '',
+        city: corp.city || '',
+        country: corp.country || '',
+        phone: corp.phone || profile?.phone_number || '',
+        email: corp.email || profile?.email || '',
+        tax_id: corp.tax_id || '',
       });
       
       setLoadingTemplate(false);
@@ -145,6 +146,8 @@ export default function DocumentPreview({
   const footerText = template?.footerText || 'Thank you for your business.';
   const headerBg = template?.headerBg !== false;
   const logoAlign = template?.logoAlign || 'left';
+  const showTagline = template?.showTagline || false;
+  const tagline = template?.tagline || '';
 
   const documentTitle = {
     invoice: 'INVOICE',
@@ -256,6 +259,11 @@ export default function DocumentPreview({
                 <Typography variant="h5" fontWeight={700} sx={{ color: accentColor, fontFamily: fontFamily }}>
                   {companyInfo?.name || 'Company Name'}
                 </Typography>
+                {showTagline && tagline && (
+                  <Typography variant="body2" color="text.secondary" sx={{ fontFamily: fontFamily, fontStyle: 'italic' }}>
+                    {tagline}
+                  </Typography>
+                )}
                 {companyInfo?.address && (
                   <Typography variant="body2" color="text.secondary" sx={{ fontFamily: fontFamily }}>
                     {companyInfo.address}
@@ -412,9 +420,23 @@ export default function DocumentPreview({
           {(showBankDetails || showSignatureLine) && (
             <Box sx={{ mt: 4, pt: 3, borderTop: `1px solid ${accentColor}33` }}>
               {showBankDetails && (
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2, fontFamily: fontFamily }}>
-                  Bank: Your Bank · A/C: 1234567890 · Branch: Main
-                </Typography>
+                <Box sx={{ mb: 2 }}>
+                  {companyInfo?.phone && (
+                    <Typography variant="body2" color="text.secondary" sx={{ fontFamily: fontFamily }}>
+                      Phone: {companyInfo.phone}
+                    </Typography>
+                  )}
+                  {companyInfo?.email && (
+                    <Typography variant="body2" color="text.secondary" sx={{ fontFamily: fontFamily }}>
+                      Email: {companyInfo.email}
+                    </Typography>
+                  )}
+                  {companyInfo?.tax_id && (
+                    <Typography variant="body2" color="text.secondary" sx={{ fontFamily: fontFamily }}>
+                      Tax ID: {companyInfo.tax_id}
+                    </Typography>
+                  )}
+                </Box>
               )}
               {showSignatureLine && (
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>

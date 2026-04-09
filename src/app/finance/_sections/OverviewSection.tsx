@@ -31,11 +31,22 @@ function AccountModal({ open, onClose, record, onSuccess }: {
   const saving = create.isPending || update.isPending;
   
   // Fetch account types from backend
-  const { data: accountTypesData, isLoading: loadingTypes } = useQuery({
+  const { data: accountTypesData, isLoading: loadingTypes, refetch: refetchTypes } = useQuery({
     queryKey: ['account-types'],
     queryFn: () => financeService.getAccountTypes(),
   });
   const accountTypes = (accountTypesData?.data?.account_types ?? []) as Array<{ id: string; name: string; description: string }>;
+
+  // Auto-seed default accounts (which also creates AccountTypes) if none exist
+  const [seeding, setSeeding] = useState(false);
+  useEffect(() => {
+    if (!loadingTypes && accountTypes.length === 0 && !seeding) {
+      setSeeding(true);
+      financeService.seedDefaultAccounts()
+        .catch(() => {})
+        .finally(() => { setSeeding(false); refetchTypes(); });
+    }
+  }, [loadingTypes, accountTypes.length]);
   
   const [form, setForm] = useState({ code: '', name: '', account_type_id: '', account_sub_type: '', description: '', is_active: true });
 
@@ -72,8 +83,11 @@ function AccountModal({ open, onClose, record, onSuccess }: {
     >
       <Stack spacing={2} sx={{ pt: 1 }}>
         <Stack direction="row" spacing={2}>
-          <TextField label="Code" size="small" fullWidth value={form.code} onChange={e => setForm(p => ({ ...p, code: e.target.value }))} />
-          <TextField label="Name" size="small" fullWidth value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} />
+          <TextField label="Code (auto-generated if blank)" size="small" fullWidth value={form.code}
+            onChange={e => setForm(p => ({ ...p, code: e.target.value }))}
+            helperText="Leave blank to auto-generate" />
+          <TextField label="Name" size="small" fullWidth value={form.name}
+            onChange={e => setForm(p => ({ ...p, name: e.target.value }))} />
         </Stack>
         <Stack direction="row" spacing={2}>
           <FormControl fullWidth size="small">
@@ -82,9 +96,14 @@ function AccountModal({ open, onClose, record, onSuccess }: {
               value={form.account_type_id} 
               label="Type" 
               onChange={e => setForm(p => ({ ...p, account_type_id: e.target.value }))}
-              disabled={loadingTypes}
+              disabled={loadingTypes || seeding}
             >
-              {accountTypes.map(t => <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>)}
+              {accountTypes.length > 0
+                ? accountTypes.map(t => <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>)
+                : ['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE'].map(n => (
+                    <MenuItem key={n} value={n} disabled>{n} (loading...)</MenuItem>
+                  ))
+              }
             </Select>
           </FormControl>
           <FormControl fullWidth size="small"><InputLabel>Status</InputLabel>
@@ -540,7 +559,13 @@ export default function OverviewSection({ subTab, notify, addOpen, setAddOpen }:
   return (
     <>
       {subTab === 'transactions' && <DataTable columns={JOURNAL_COLS} rows={entries as JournalEntry[]} loading={journalLoading} total={entries.length} page={page} pageSize={25} onPageChange={setPage} onSearch={() => {}} searchPlaceholder="Search journal entries..." getRowId={r => r.id} emptyMessage="No journal entries yet." />}
-      {subTab === 'chart-of-accounts' && <DataTable columns={ACCOUNT_COLS} rows={accounts} loading={accLoading} total={accounts.length} page={page} pageSize={25} onPageChange={setPage} onSearch={() => {}} searchPlaceholder="Search accounts..." getRowId={r => r.id} emptyMessage="No accounts found." />}
+      {subTab === 'chart-of-accounts' && <DataTable columns={ACCOUNT_COLS} rows={accounts} loading={accLoading} total={accounts.length} page={page} pageSize={25} onPageChange={setPage} onSearch={() => {}} searchPlaceholder="Search accounts..." getRowId={r => r.id} emptyMessage="No accounts found."
+        toolbar={
+          <Button size="small" variant="outlined" onClick={() => financeService.seedDefaultAccounts().then(() => { qc.invalidateQueries({ queryKey: ['finance', 'accounts'] }); notify('Default accounts seeded'); }).catch(() => notify('Failed to seed accounts', 'error'))}>
+            Seed Defaults
+          </Button>
+        }
+      />}
       {subTab === 'trial-balance' && <TrialBalance notify={notify} />}
       {subTab === 'ledger' && <Ledger notify={notify} />}
 

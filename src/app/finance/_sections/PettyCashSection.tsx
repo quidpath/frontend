@@ -39,11 +39,15 @@ function FundModal({ open, onClose, onSuccess }: { open: boolean; onClose: () =>
   }, [open]);
 
   const handleSave = async () => {
+    if (!form.name) { onSuccess('Fund name is required', 'error'); return; }
+    if (!form.initial_amount || Number(form.initial_amount) < 0) { onSuccess('Initial amount must be 0 or more', 'error'); return; }
     setSaving(true);
     try {
       await financeService.createPettyCashFund({ ...form, initial_amount: Number(form.initial_amount) });
       onSuccess('Fund created'); onClose();
-    } catch { onSuccess('Failed to create fund', 'error'); }
+    } catch (e: any) {
+      onSuccess(e?.response?.data?.message || 'Failed to create fund', 'error');
+    }
     finally { setSaving(false); }
   };
 
@@ -67,15 +71,22 @@ function TransactionModal({ open, onClose, funds, onSuccess }: { open: boolean; 
 
   useEffect(() => {
     if (!open) return;
-    setForm({ fund_id: '', transaction_type: 'DISBURSEMENT', date: new Date().toISOString().slice(0, 10), reference: '', description: '', category: '', amount: '', recipient: '', receipt_number: '' });
-  }, [open]);
+    setForm({ fund_id: funds[0]?.id ?? '', transaction_type: 'DISBURSEMENT', date: new Date().toISOString().slice(0, 10), reference: '', description: '', category: '', amount: '', recipient: '', receipt_number: '' });
+  }, [open, funds]);
 
   const handleSave = async () => {
+    if (!form.fund_id) { onSuccess('Please select a fund', 'error'); return; }
+    if (!form.amount || Number(form.amount) <= 0) { onSuccess('Amount must be greater than 0', 'error'); return; }
+    if (!form.description) { onSuccess('Description is required', 'error'); return; }
     setSaving(true);
+    // Auto-generate reference if blank
+    const reference = form.reference.trim() || `PC-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
     try {
-      await financeService.createPettyCashTransaction({ ...form, amount: Number(form.amount) });
+      await financeService.createPettyCashTransaction({ ...form, reference, amount: Number(form.amount) });
       onSuccess('Transaction created'); onClose();
-    } catch { onSuccess('Failed to create transaction', 'error'); }
+    } catch (e: any) {
+      onSuccess(e?.response?.data?.message || 'Failed to create transaction', 'error');
+    }
     finally { setSaving(false); }
   };
 
@@ -86,7 +97,7 @@ function TransactionModal({ open, onClose, funds, onSuccess }: { open: boolean; 
         <FormControl fullWidth size="small"><InputLabel>Fund</InputLabel><Select value={form.fund_id} label="Fund" onChange={e => setForm(p => ({ ...p, fund_id: e.target.value }))}>{funds.map(f => <MenuItem key={f.id} value={f.id}>{f.name}</MenuItem>)}</Select></FormControl>
         <FormControl fullWidth size="small"><InputLabel>Type</InputLabel><Select value={form.transaction_type} label="Type" onChange={e => setForm(p => ({ ...p, transaction_type: e.target.value }))}><MenuItem value="DISBURSEMENT">Disbursement</MenuItem><MenuItem value="REPLENISHMENT">Replenishment</MenuItem><MenuItem value="ADJUSTMENT">Adjustment</MenuItem></Select></FormControl>
         <TextField label="Date" type="date" size="small" fullWidth value={form.date} onChange={e => setForm(p => ({ ...p, date: e.target.value }))} InputLabelProps={{ shrink: true }} />
-        <TextField label="Reference" size="small" fullWidth value={form.reference} onChange={e => setForm(p => ({ ...p, reference: e.target.value }))} />
+        <TextField label="Reference (auto-generated if blank)" size="small" fullWidth value={form.reference} onChange={e => setForm(p => ({ ...p, reference: e.target.value }))} />
         <TextField label="Description" size="small" fullWidth multiline rows={2} value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
         <TextField label="Category" size="small" fullWidth value={form.category} onChange={e => setForm(p => ({ ...p, category: e.target.value }))} />
         <TextField label="Amount" size="small" type="number" fullWidth value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} />
