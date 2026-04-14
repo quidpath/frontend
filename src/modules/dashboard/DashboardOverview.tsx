@@ -16,6 +16,11 @@ import PageHeader from '@/components/ui/PageHeader';
 import MetricCard from '@/components/ui/MetricCard';
 import { useSubscription, useInvoices, usePaymentHistory, useAccessCheck } from '@/hooks/useBilling';
 import { useRecentActivity, formatRelativeTime, getActivityColor } from '@/hooks/useActivity';
+import { useAccountingSummary } from '@/hooks/useAccounting';
+import { useCRMSummary } from '@/hooks/useCRM';
+import { useInventorySummary } from '@/hooks/useInventory';
+import { useHRMSummary } from '@/hooks/useHRM';
+import { usePOSSummary } from '@/hooks/usePOS';
 import { formatCurrency } from '@/utils/formatters';
 import { useUserStore } from '@/store/userStore';
 import { checkBillingSetup } from '@/middleware/billingCheck';
@@ -81,20 +86,17 @@ export default function DashboardOverview() {
     }
   }, [user, accessData, accessLoading, router]);
   
-  const billing = subscription ? {
-    total_revenue: 0,
-    total_outstanding: 0,
-  } : null;
-  const inventory = { low_stock_items: 0 };
-  const pos = { todays_sales: 0 };
-  const hrm = { total_employees: 0 };
+  // Fetch real summary data from all services
+  const { data: accounting, isLoading: accountingLoading } = useAccountingSummary();
+  const { data: crm, isLoading: crmLoading } = useCRMSummary();
+  const { data: inventory, isLoading: inventoryLoading } = useInventorySummary();
+  const { data: hrm, isLoading: hrmLoading } = useHRMSummary();
+  const { data: pos, isLoading: posLoading } = usePOSSummary();
+  
+  // Use accounting data as billing data
+  const billing = accounting;
   const projects = { active_projects: 0, open_issues: 0 };
-  const crm = { pipeline_value: 0 };
-  const inventoryLoading = false;
-  const posLoading = false;
-  const hrmLoading = false;
   const projectsLoading = false;
-  const crmLoading = false;
   
   // Fetch real activity data
   const { data: activityData, isLoading: activityLoading } = useRecentActivity({ page_size: 6 });
@@ -112,34 +114,34 @@ export default function DashboardOverview() {
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <MetricCard
             label="Total Revenue"
-            value={billing ? formatCurrency(billing.total_revenue) : '—'}
-            change={12.4}
+            value={billing ? formatCurrency(billing.total_revenue ?? 0) : '—'}
+            change={billing?.total_revenue_change}
             changeLabel="vs last month"
-            trend="up"
+            trend={billing?.total_revenue_trend || 'neutral'}
             icon={<AccountBalanceIcon fontSize="small" />}
             color="#2E7D32"
-            loading={billingLoading}
+            loading={accountingLoading}
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <MetricCard
             label="Outstanding Invoices"
-            value={billing ? formatCurrency(billing.total_outstanding) : '—'}
-            change={-5.2}
+            value={billing ? formatCurrency(billing.total_outstanding ?? 0) : '—'}
+            change={billing?.total_outstanding_change}
             changeLabel="vs last week"
-            trend="down"
+            trend={billing?.total_outstanding_trend || 'neutral'}
             icon={<AccountBalanceIcon fontSize="small" />}
             color="#E65100"
-            loading={billingLoading}
+            loading={accountingLoading}
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <MetricCard
             label="Today's POS Sales"
-            value={pos ? formatCurrency(pos.todays_sales) : '—'}
-            change={8.7}
+            value={pos ? formatCurrency(pos.todays_sales ?? 0) : '—'}
+            change={pos?.todays_sales_change}
             changeLabel="vs yesterday"
-            trend="up"
+            trend={pos?.todays_sales_trend || 'neutral'}
             icon={<PointOfSaleIcon fontSize="small" />}
             color="#6A1B9A"
             loading={posLoading}
@@ -149,9 +151,9 @@ export default function DashboardOverview() {
           <MetricCard
             label="Active Employees"
             value={hrm?.total_employees ?? '—'}
-            change={2}
+            change={hrm?.total_employees_change}
             changeLabel="new this month"
-            trend="up"
+            trend={hrm?.total_employees_trend || 'neutral'}
             icon={<BadgeIcon fontSize="small" />}
             color="#C62828"
             loading={hrmLoading}
@@ -164,7 +166,7 @@ export default function DashboardOverview() {
         <Grid size={{ xs: 6, sm: 3 }}>
           <MetricCard
             label="Pipeline Value"
-            value={crm ? formatCurrency(crm.pipeline_value) : '—'}
+            value={crm ? formatCurrency(crm.pipeline_value ?? 0) : '—'}
             icon={<PeopleAltIcon fontSize="small" />}
             color="#00695C"
             loading={crmLoading}

@@ -67,9 +67,23 @@ export interface POSStoreListResponse {
 
 export interface POSSummary {
   todays_sales: number;
+  todays_sales_previous?: number;
+  todays_sales_change?: number;
+  todays_sales_trend?: 'up' | 'down' | 'neutral';
+  
   transactions_today: number;
+  transactions_today_previous?: number;
+  transactions_today_change?: number;
+  transactions_today_trend?: 'up' | 'down' | 'neutral';
+  
   average_order_value: number;
+  
   refunds_today: number;
+  refunds_today_previous?: number;
+  refunds_today_change?: number;
+  refunds_today_trend?: 'up' | 'down' | 'neutral';
+  
+  active_sessions: number;
 }
 
 // Purchases (from /api/purchases/)
@@ -238,6 +252,10 @@ const posService = {
 
   getBill: (id: string) =>
     posClient.get(`/api/purchases/bills/${id}/`),
+
+  // Summary
+  getSummary: () =>
+    posClient.get<POSSummary>('/api/pos/summary/'),
 };
 
 export default posService;

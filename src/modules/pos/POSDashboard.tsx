@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Button, Grid, Tab, Tabs, Typography, Chip } from '@mui/material';
 import PointOfSaleIcon from '@mui/icons-material/PointOfSale';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -22,6 +22,16 @@ import SessionModal from './modals/SessionModal';
 export default function POSDashboard() {
   const [tab, setTab] = useState(0);
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
+  const [search, setSearch] = useState('');
+  const [searchDebounced, setSearchDebounced] = useState('');
+
+  useEffect(() => {
+    const t = setTimeout(() => setSearchDebounced(search), 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  useEffect(() => { setPage(0); }, [searchDebounced, tab]);
   
   const [orderModalOpen, setOrderModalOpen] = useState(false);
   const [sessionModalOpen, setSessionModalOpen] = useState(false);
@@ -31,8 +41,8 @@ export default function POSDashboard() {
   const { notification, showSuccess, showError, hideNotification } = useNotification();
 
   const { data: summary, isLoading: summaryLoading, refetch } = usePOSSummary();
-  const { data: orders, isLoading: ordersLoading, refetch: refetchOrders } = usePOSOrders({ page: page + 1 });
-  const { data: sessions, isLoading: sessionsLoading, refetch: refetchSessions } = usePOSSessions();
+  const { data: orders, isLoading: ordersLoading, refetch: refetchOrders } = usePOSOrders({ page: page + 1, page_size: pageSize, ...(searchDebounced ? { search: searchDebounced } : {}) });
+  const { data: sessions, isLoading: sessionsLoading, refetch: refetchSessions } = usePOSSessions({ page: page + 1, page_size: pageSize });
 
   const buttonContexts = {
     0: { label: 'New Order', onClick: () => { setSelectedItem(null); setOrderModalOpen(true); } },
@@ -98,16 +108,36 @@ export default function POSDashboard() {
 
       <Grid container spacing={2.5} sx={{ mb: 3 }}>
         <Grid size={{ xs: 6, sm: 3 }}>
-          <MetricCard label="Today's Sales" value={summary ? formatCurrency(summary.todays_sales ?? 0) : '—'} change={8.7} changeLabel="vs yesterday" trend="up" color="#6A1B9A" loading={summaryLoading} />
+          <MetricCard 
+            label="Today's Sales" 
+            value={summary ? formatCurrency(summary.todays_sales ?? 0) : '—'} 
+            change={summary?.todays_sales_change} 
+            changeLabel="vs yesterday" 
+            trend={summary?.todays_sales_trend || 'neutral'} 
+            color="#6A1B9A" 
+            loading={summaryLoading} 
+          />
         </Grid>
         <Grid size={{ xs: 6, sm: 3 }}>
-          <MetricCard label="Transactions Today" value={summary?.transactions_today ?? '—'} trend="up" color="#00695C" loading={summaryLoading} />
+          <MetricCard 
+            label="Transactions Today" 
+            value={summary?.transactions_today ?? '—'} 
+            trend={summary?.transactions_today_trend || 'neutral'} 
+            color="#00695C" 
+            loading={summaryLoading} 
+          />
         </Grid>
         <Grid size={{ xs: 6, sm: 3 }}>
           <MetricCard label="Avg. Order Value" value={summary ? formatCurrency(summary.average_order_value ?? 0) : '—'} color="#1565C0" loading={summaryLoading} />
         </Grid>
         <Grid size={{ xs: 6, sm: 3 }}>
-          <MetricCard label="Refunds Today" value={summary?.refunds_today ?? '—'} trend="down" color="#E53E3E" loading={summaryLoading} />
+          <MetricCard 
+            label="Refunds Today" 
+            value={summary?.refunds_today ?? '—'} 
+            trend={summary?.refunds_today_trend || 'neutral'} 
+            color="#E53E3E" 
+            loading={summaryLoading} 
+          />
         </Grid>
       </Grid>
 
@@ -123,8 +153,11 @@ export default function POSDashboard() {
           loading={ordersLoading}
           total={orders?.count ?? 0}
           page={page}
-          pageSize={25}
-          onPageChange={setPage}
+          pageSize={pageSize}
+          onPageChange={(p) => setPage(p)}
+          onPageSizeChange={(s) => { setPageSize(s); setPage(0); }}
+          onSearch={(q) => setSearch(q)}
+          searchPlaceholder="Search orders..."
           getRowId={(r) => String(r.id)}
           emptyMessage="No orders yet today"
         />
@@ -137,8 +170,9 @@ export default function POSDashboard() {
           loading={sessionsLoading}
           total={sessions?.count ?? 0}
           page={page}
-          pageSize={25}
-          onPageChange={setPage}
+          pageSize={pageSize}
+          onPageChange={(p) => setPage(p)}
+          onPageSizeChange={(s) => { setPageSize(s); setPage(0); }}
           getRowId={(r) => String(r.id)}
           emptyMessage="No sessions found"
         />

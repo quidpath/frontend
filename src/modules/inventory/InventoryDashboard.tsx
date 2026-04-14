@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Button, Grid, Tab, Tabs, Chip } from '@mui/material';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -25,7 +25,19 @@ import StockMovementModal from './modals/StockMovementModal';
 export default function InventoryDashboard() {
   const [tab, setTab] = useState(0);
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
   const [search, setSearch] = useState('');
+  const [searchDebounced, setSearchDebounced] = useState('');
+
+  useEffect(() => {
+    const t = setTimeout(() => setSearchDebounced(search), 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  useEffect(() => { setPage(0); }, [searchDebounced, tab]);
+
+  const productParams = { page: String(page + 1), page_size: String(pageSize), ...(searchDebounced ? { search: searchDebounced } : {}) };
+  const movementParams = { page: String(page + 1), page_size: String(pageSize) };
   
   const [productModalOpen, setProductModalOpen] = useState(false);
   const [warehouseModalOpen, setWarehouseModalOpen] = useState(false);
@@ -48,9 +60,9 @@ export default function InventoryDashboard() {
   const { notification, showSuccess, showError, hideNotification } = useNotification();
 
   const { data: summary, isLoading: summaryLoading } = useInventorySummary();
-  const { data: productsData, isLoading: productsLoading, refetch: refetchProducts } = useProducts();
+  const { data: productsData, isLoading: productsLoading, refetch: refetchProducts } = useProducts(productParams);
   const { data: warehousesData, isLoading: warehousesLoading, refetch: refetchWarehouses } = useWarehouses();
-  const { data: movementsData, isLoading: movementsLoading, refetch: refetchMovements } = useStockMovements();
+  const { data: movementsData, isLoading: movementsLoading, refetch: refetchMovements } = useStockMovements(movementParams);
 
   const buttonContexts = {
     0: { label: 'New Product', onClick: () => { setSelectedItem(null); setProductModalOpen(true); } },
@@ -153,13 +165,37 @@ export default function InventoryDashboard() {
 
       <Grid container spacing={2.5} sx={{ mb: 3 }}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <MetricCard label="Total Products" value={summary?.total_products ?? 0} trend="up" color="#F57C00" loading={summaryLoading} />
+          <MetricCard 
+            label="Total Products" 
+            value={summary?.total_products ?? 0} 
+            change={summary?.total_products_change}
+            changeLabel="vs last month"
+            trend={summary?.total_products_trend || 'neutral'} 
+            color="#F57C00" 
+            loading={summaryLoading} 
+          />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <MetricCard label="Total Value" value={summary ? formatCurrency(summary.total_value ?? 0) : '—'} trend="up" color="#2E7D32" loading={summaryLoading} />
+          <MetricCard 
+            label="Total Value" 
+            value={summary ? formatCurrency(summary.total_value ?? 0) : '—'} 
+            change={summary?.total_value_change}
+            changeLabel="vs last month"
+            trend={summary?.total_value_trend || 'neutral'} 
+            color="#2E7D32" 
+            loading={summaryLoading} 
+          />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <MetricCard label="Low Stock Items" value={summary?.low_stock_items ?? 0} trend="down" color="#F2A40E" loading={summaryLoading} />
+          <MetricCard 
+            label="Low Stock Items" 
+            value={summary?.low_stock_items ?? 0} 
+            change={summary?.low_stock_items_change}
+            changeLabel="vs last week"
+            trend={summary?.low_stock_items_trend || 'neutral'} 
+            color="#F2A40E" 
+            loading={summaryLoading} 
+          />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <MetricCard label="Warehouses" value={summary?.warehouses_count ?? 0} trend="neutral" color="#1565C0" loading={summaryLoading} />
@@ -179,9 +215,10 @@ export default function InventoryDashboard() {
           loading={productsLoading}
           total={productsData?.count ?? 0}
           page={page}
-          pageSize={25}
-          onPageChange={setPage}
-          onSearch={setSearch}
+          pageSize={pageSize}
+          onPageChange={(p) => setPage(p)}
+          onPageSizeChange={(s) => { setPageSize(s); setPage(0); }}
+          onSearch={(q) => setSearch(q)}
           searchPlaceholder="Search products..."
           getRowId={(row) => String(row.id)}
           emptyMessage="No products found. Add your first product to get started."
@@ -195,8 +232,9 @@ export default function InventoryDashboard() {
           loading={warehousesLoading}
           total={warehousesData?.count ?? 0}
           page={page}
-          pageSize={25}
-          onPageChange={setPage}
+          pageSize={pageSize}
+          onPageChange={(p) => setPage(p)}
+          onPageSizeChange={(s) => { setPageSize(s); setPage(0); }}
           getRowId={(row) => String(row.id)}
           emptyMessage="No warehouses found. Create your first warehouse to get started."
         />
@@ -209,8 +247,9 @@ export default function InventoryDashboard() {
           loading={movementsLoading}
           total={movementsData?.count ?? 0}
           page={page}
-          pageSize={25}
-          onPageChange={setPage}
+          pageSize={pageSize}
+          onPageChange={(p) => setPage(p)}
+          onPageSizeChange={(s) => { setPageSize(s); setPage(0); }}
           getRowId={(row) => String(row.id)}
           emptyMessage="No stock movements found."
         />

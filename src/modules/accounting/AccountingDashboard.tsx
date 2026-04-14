@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -35,10 +35,21 @@ import JournalModal from './modals/JournalModal';
 export default function AccountingDashboard() {
   const [tab, setTab] = useState(0);
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  
-  // Modal states
+  const [searchDebounced, setSearchDebounced] = useState('');
+
+  // Debounce search input
+  useEffect(() => {
+    const t = setTimeout(() => setSearchDebounced(search), 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // Reset page when search/filter changes
+  useEffect(() => { setPage(0); }, [searchDebounced, statusFilter]);
+
+  // Build params for server-side search + pagination — defined below after modal state
   const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
   const [expenseModalOpen, setExpenseModalOpen] = useState(false);
   const [journalModalOpen, setJournalModalOpen] = useState(false);
@@ -61,12 +72,19 @@ export default function AccountingDashboard() {
   // Notifications
   const { notification, showSuccess, showError, hideNotification } = useNotification();
 
-  // Data fetching with filters
-  const invoiceParams = statusFilter !== 'all' ? { status: statusFilter } : undefined;
+  // Data fetching — server-side search + pagination
+  const invoiceParams: Record<string, string> = {
+    page: String(page + 1),
+    page_size: String(pageSize),
+    ...(searchDebounced ? { search: searchDebounced } : {}),
+    ...(statusFilter !== 'all' ? { status: statusFilter.toUpperCase() } : {}),
+  };
+  const expenseParams: Record<string, string> = { page: String(page + 1), page_size: String(pageSize), ...(searchDebounced ? { search: searchDebounced } : {}) };
+  const journalParams: Record<string, string> = { page: String(page + 1), page_size: String(pageSize), ...(searchDebounced ? { search: searchDebounced } : {}) };
   const { data: summary, isLoading: summaryLoading } = useAccountingSummary();
   const { data: invoicesData, isLoading: invoicesLoading, refetch: refetchInvoices } = useInvoices(invoiceParams);
-  const { data: expensesData, isLoading: expensesLoading, refetch: refetchExpenses } = useExpenses();
-  const { data: journalsData, isLoading: journalsLoading, refetch: refetchJournals } = useJournalEntries();
+  const { data: expensesData, isLoading: expensesLoading, refetch: refetchExpenses } = useExpenses(expenseParams);
+  const { data: journalsData, isLoading: journalsLoading, refetch: refetchJournals } = useJournalEntries(journalParams);
 
   // Context-aware button configuration
   const buttonContexts = {
@@ -384,9 +402,9 @@ export default function AccountingDashboard() {
           <MetricCard
             label="Total Revenue"
             value={summary ? formatCurrency(summary.total_revenue ?? 0) : '—'}
-            change={12.4}
+            change={summary?.total_revenue_change}
             changeLabel="vs last month"
-            trend="up"
+            trend={summary?.total_revenue_trend || 'neutral'}
             color="#2E7D32"
             loading={summaryLoading}
           />
@@ -404,9 +422,9 @@ export default function AccountingDashboard() {
           <MetricCard
             label="Overdue"
             value={summary ? formatCurrency(summary.total_overdue ?? 0) : '—'}
-            change={-18}
+            change={summary?.total_overdue_change}
             changeLabel="vs last week"
-            trend="down"
+            trend={summary?.total_overdue_trend || 'neutral'}
             color="#E53E3E"
             loading={summaryLoading}
           />
@@ -415,9 +433,9 @@ export default function AccountingDashboard() {
           <MetricCard
             label="Paid This Month"
             value={summary ? formatCurrency(summary.paid_this_month ?? 0) : '—'}
-            change={8.2}
+            change={summary?.paid_this_month_change}
             changeLabel="vs last month"
-            trend="up"
+            trend={summary?.paid_this_month_trend || 'neutral'}
             color="#F2A40E"
             loading={summaryLoading}
           />
@@ -442,9 +460,10 @@ export default function AccountingDashboard() {
           loading={invoicesLoading}
           total={invoicesData?.total ?? 0}
           page={page}
-          pageSize={25}
-          onPageChange={setPage}
-          onSearch={setSearch}
+          pageSize={pageSize}
+          onPageChange={(p) => setPage(p)}
+          onPageSizeChange={(s) => { setPageSize(s); setPage(0); }}
+          onSearch={(q) => setSearch(q)}
           searchPlaceholder="Search invoices..."
           getRowId={(row) => String(row.id)}
           emptyMessage="No invoices found. Create your first invoice to get started."
@@ -503,9 +522,10 @@ export default function AccountingDashboard() {
           loading={expensesLoading}
           total={expensesData?.total ?? 0}
           page={page}
-          pageSize={25}
-          onPageChange={setPage}
-          onSearch={setSearch}
+          pageSize={pageSize}
+          onPageChange={(p) => setPage(p)}
+          onPageSizeChange={(s) => { setPageSize(s); setPage(0); }}
+          onSearch={(q) => setSearch(q)}
           searchPlaceholder="Search expenses..."
           getRowId={(row) => String(row.id)}
           emptyMessage="No expenses found. Track your first expense to get started."
@@ -520,9 +540,10 @@ export default function AccountingDashboard() {
           loading={journalsLoading}
           total={journalsData?.total ?? 0}
           page={page}
-          pageSize={25}
-          onPageChange={setPage}
-          onSearch={setSearch}
+          pageSize={pageSize}
+          onPageChange={(p) => setPage(p)}
+          onPageSizeChange={(s) => { setPageSize(s); setPage(0); }}
+          onSearch={(q) => setSearch(q)}
           searchPlaceholder="Search journal entries..."
           getRowId={(row) => String(row.id)}
           emptyMessage="No journal entries found. Create your first entry to get started."

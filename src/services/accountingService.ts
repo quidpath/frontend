@@ -87,9 +87,25 @@ export interface ExpenseListResponse {
 
 export interface AccountingSummary {
   total_revenue?: number;
+  total_revenue_previous?: number;
+  total_revenue_change?: number;
+  total_revenue_trend?: 'up' | 'down' | 'neutral';
+  
   total_outstanding?: number;
+  total_outstanding_previous?: number;
+  total_outstanding_change?: number;
+  total_outstanding_trend?: 'up' | 'down' | 'neutral';
+  
   total_overdue?: number;
+  total_overdue_previous?: number;
+  total_overdue_change?: number;
+  total_overdue_trend?: 'up' | 'down' | 'neutral';
+  
   paid_this_month?: number;
+  paid_this_month_previous?: number;
+  paid_this_month_change?: number;
+  paid_this_month_trend?: 'up' | 'down' | 'neutral';
+  
   invoices_count?: number;
   currency?: string;
 }

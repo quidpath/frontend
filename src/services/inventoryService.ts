@@ -82,10 +82,23 @@ export interface StockLevelListResponse {
 
 export interface InventorySummary {
   total_products: number;
+  total_products_previous?: number;
+  total_products_change?: number;
+  total_products_trend?: 'up' | 'down' | 'neutral';
+  
   total_value: number;
+  total_value_previous?: number;
+  total_value_change?: number;
+  total_value_trend?: 'up' | 'down' | 'neutral';
+  
   low_stock_items: number;
-  out_of_stock_items: number;
+  low_stock_items_previous?: number;
+  low_stock_items_change?: number;
+  low_stock_items_trend?: 'up' | 'down' | 'neutral';
+  
+  out_of_stock_items?: number;
   warehouses_count: number;
+  movements_this_month?: number;
 }
 
 const inventoryService = {
@@ -179,9 +192,9 @@ const inventoryService = {
   getStockSummary: (productId: string) =>
     inventoryClient.get(`/api/inventory/stock/summary/${productId}/`),
 
-  // Summary — derived from stock levels
+  // Summary
   getSummary: () =>
-    inventoryClient.get<InventorySummary>('/api/inventory/stock/levels/', { params: { summary: true } }),
+    inventoryClient.get<InventorySummary>('/api/inventory/products/summary/'),
 };
 
 export default inventoryService;

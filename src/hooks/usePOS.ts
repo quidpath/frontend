@@ -38,14 +38,7 @@ export function usePOSSessions(params?: Record<string, unknown>) {
 export function usePOSSummary() {
   return useQuery({
     queryKey: POS_KEYS.summary(),
-    queryFn: () => posService.getOrders({ page_size: 1 }).then((r) => ({
-      total_orders: r.data?.count ?? 0,
-      total_revenue: 0,
-      todays_sales: 0,
-      average_order_value: 0,
-      transactions_today: r.data?.count ?? 0,
-      refunds_today: 0,
-    })),
+    queryFn: () => posService.getSummary().then((r) => r.data),
     staleTime: 60_000,
   });
 }

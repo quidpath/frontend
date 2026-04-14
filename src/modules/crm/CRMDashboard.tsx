@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Button, Grid, Tab, Tabs, Typography, Chip } from '@mui/material';
 import PeopleIcon from '@mui/icons-material/People';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -26,8 +26,26 @@ import ActivityModal from './modals/ActivityModal';
 export default function CRMDashboard() {
   const [tab, setTab] = useState(0);
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
   const [search, setSearch] = useState('');
+  const [searchDebounced, setSearchDebounced] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+
+  useEffect(() => {
+    const t = setTimeout(() => setSearchDebounced(search), 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  useEffect(() => { setPage(0); }, [searchDebounced, statusFilter, tab]);
+
+  const contactParams = {
+    page: String(page + 1), page_size: String(pageSize),
+    ...(searchDebounced ? { search: searchDebounced } : {}),
+    ...(statusFilter !== 'all' ? { type: statusFilter } : {}),
+  };
+  const dealParams = { page: String(page + 1), page_size: String(pageSize), ...(searchDebounced ? { search: searchDebounced } : {}) };
+  const campaignParams = { page: String(page + 1), page_size: String(pageSize), ...(searchDebounced ? { search: searchDebounced } : {}) };
+  const activityParams = { page: String(page + 1), page_size: String(pageSize) };
   
   const [contactModalOpen, setContactModalOpen] = useState(false);
   const [dealModalOpen, setDealModalOpen] = useState(false);
@@ -50,12 +68,11 @@ export default function CRMDashboard() {
 
   const { notification, showSuccess, showError, hideNotification } = useNotification();
 
-  const contactParams = statusFilter !== 'all' ? { type: statusFilter } : undefined;
   const { data: summary, isLoading: summaryLoading } = useCRMSummary();
   const { data: contactsData, isLoading: contactsLoading, refetch: refetchContacts } = useContacts(contactParams);
-  const { data: dealsData, isLoading: dealsLoading, refetch: refetchDeals } = useDeals();
-  const { data: campaignsData, isLoading: campaignsLoading, refetch: refetchCampaigns } = useCampaigns();
-  const { data: activitiesData, isLoading: activitiesLoading, refetch: refetchActivities } = useActivities();
+  const { data: dealsData, isLoading: dealsLoading, refetch: refetchDeals } = useDeals(dealParams);
+  const { data: campaignsData, isLoading: campaignsLoading, refetch: refetchCampaigns } = useCampaigns(campaignParams);
+  const { data: activitiesData, isLoading: activitiesLoading, refetch: refetchActivities } = useActivities(activityParams);
 
   const buttonContexts = {
     0: { label: 'New Contact', onClick: () => { setSelectedItem(null); setContactModalOpen(true); } },
@@ -238,16 +255,48 @@ export default function CRMDashboard() {
 
       <Grid container spacing={2.5} sx={{ mb: 3 }}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <MetricCard label="Total Contacts" value={summary?.total_contacts ?? 0} trend="up" color="#1976D2" loading={summaryLoading} />
+          <MetricCard 
+            label="Total Contacts" 
+            value={summary?.total_contacts ?? 0} 
+            change={summary?.total_contacts_change}
+            changeLabel="vs last month"
+            trend={summary?.total_contacts_trend || 'neutral'} 
+            color="#1976D2" 
+            loading={summaryLoading} 
+          />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <MetricCard label="Active Deals" value={summary?.total_deals ?? 0} trend="up" color="#2E7D32" loading={summaryLoading} />
+          <MetricCard 
+            label="Active Deals" 
+            value={summary?.total_deals ?? 0} 
+            change={summary?.total_deals_change}
+            changeLabel="vs last month"
+            trend={summary?.total_deals_trend || 'neutral'} 
+            color="#2E7D32" 
+            loading={summaryLoading} 
+          />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <MetricCard label="Pipeline Value" value={summary ? formatCurrency(summary.pipeline_value ?? 0) : '—'} trend="up" color="#F2A40E" loading={summaryLoading} />
+          <MetricCard 
+            label="Pipeline Value" 
+            value={summary ? formatCurrency(summary.pipeline_value ?? 0) : '—'} 
+            change={summary?.pipeline_value_change}
+            changeLabel="vs last month"
+            trend={summary?.pipeline_value_trend || 'neutral'} 
+            color="#F2A40E" 
+            loading={summaryLoading} 
+          />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <MetricCard label="Conversion Rate" value={summary ? `${summary.conversion_rate}%` : '—'} trend="up" color="#9C27B0" loading={summaryLoading} />
+          <MetricCard 
+            label="Conversion Rate" 
+            value={summary ? `${summary.conversion_rate}%` : '—'} 
+            change={summary?.conversion_rate_change}
+            changeLabel="vs last month"
+            trend={summary?.conversion_rate_trend || 'neutral'} 
+            color="#9C27B0" 
+            loading={summaryLoading} 
+          />
         </Grid>
       </Grid>
 
@@ -265,9 +314,10 @@ export default function CRMDashboard() {
           loading={contactsLoading}
           total={contactsData?.count ?? 0}
           page={page}
-          pageSize={25}
-          onPageChange={setPage}
-          onSearch={setSearch}
+          pageSize={pageSize}
+          onPageChange={(p) => setPage(p)}
+          onPageSizeChange={(s) => { setPageSize(s); setPage(0); }}
+          onSearch={(q) => setSearch(q)}
           searchPlaceholder="Search contacts..."
           getRowId={(row) => String(row.id)}
           emptyMessage="No contacts found. Add your first contact to get started."
@@ -295,9 +345,10 @@ export default function CRMDashboard() {
           loading={dealsLoading}
           total={dealsData?.count ?? 0}
           page={page}
-          pageSize={25}
-          onPageChange={setPage}
-          onSearch={setSearch}
+          pageSize={pageSize}
+          onPageChange={(p) => setPage(p)}
+          onPageSizeChange={(s) => { setPageSize(s); setPage(0); }}
+          onSearch={(q) => setSearch(q)}
           searchPlaceholder="Search deals..."
           getRowId={(row) => String(row.id)}
           emptyMessage="No deals found. Create your first deal to get started."
@@ -311,9 +362,10 @@ export default function CRMDashboard() {
           loading={campaignsLoading}
           total={campaignsData?.count ?? 0}
           page={page}
-          pageSize={25}
-          onPageChange={setPage}
-          onSearch={setSearch}
+          pageSize={pageSize}
+          onPageChange={(p) => setPage(p)}
+          onPageSizeChange={(s) => { setPageSize(s); setPage(0); }}
+          onSearch={(q) => setSearch(q)}
           searchPlaceholder="Search campaigns..."
           getRowId={(row) => String(row.id)}
           emptyMessage="No campaigns found. Launch your first campaign to get started."
@@ -327,8 +379,9 @@ export default function CRMDashboard() {
           loading={activitiesLoading}
           total={activitiesData?.count ?? 0}
           page={page}
-          pageSize={25}
-          onPageChange={setPage}
+          pageSize={pageSize}
+          onPageChange={(p) => setPage(p)}
+          onPageSizeChange={(s) => { setPageSize(s); setPage(0); }}
           getRowId={(row) => String(row.id)}
           emptyMessage="No activities found."
         />

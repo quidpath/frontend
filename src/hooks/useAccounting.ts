@@ -90,18 +90,16 @@ export function useExpense(id: string | null) {
   });
 }
 
-/** Derived from invoice list (main backend). No total_revenue/total_outstanding until backend exposes. */
+/** Get accounting summary with real comparison data from backend */
 export function useAccountingSummary() {
-  const { data: list, isLoading } = useInvoices();
-  const summary: AccountingSummary | undefined = list
-    ? {
-        invoices_count: list.total,
-        total_revenue: undefined,
-        total_outstanding: undefined,
-        currency: undefined,
-      }
-    : undefined;
-  return { data: summary, isLoading };
+  return useQuery({
+    queryKey: ACCOUNTING_KEYS.summary(),
+    queryFn: async () => {
+      const { data } = await accountingService.getSummary();
+      return data;
+    },
+    staleTime: 60_000,
+  });
 }
 
 /** Billing plans — use the billing hook from useBilling instead. */

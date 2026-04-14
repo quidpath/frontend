@@ -113,10 +113,15 @@ export interface SalaryComponent {
 
 export interface HRMSummary {
   total_employees: number;
+  total_employees_previous?: number;
+  total_employees_change?: number;
+  total_employees_trend?: 'up' | 'down' | 'neutral';
+  
+  new_this_month: number;
   on_leave_today: number;
   pending_leaves: number;
   departments_count: number;
-  open_positions: number;
+  open_positions?: number;
 }
 
 const hrmService = {
@@ -273,7 +278,7 @@ const hrmService = {
 
   // Summary
   getSummary: () =>
-    hrmClient.get<HRMSummary>('/api/hrm/employees/'),
+    hrmClient.get<HRMSummary>('/api/hrm/employees/summary/'),
 };
 
 export default hrmService;
