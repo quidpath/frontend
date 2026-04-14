@@ -201,7 +201,13 @@ function LandingHeader() {
           </Box>
 
           <Box sx={{ display: 'flex', gap: 1.5 }}>
-            <Button variant="text" size="small" sx={{ color: 'text.secondary' }}>
+            <Button 
+              variant="text" 
+              size="small" 
+              component={Link}
+              href="/login"
+              sx={{ color: 'text.secondary' }}
+            >
               Sign In
             </Button>
             <Button
@@ -339,6 +345,8 @@ function HeroSection() {
             <Button
               variant="outlined"
               size="large"
+              component={Link}
+              href="/help"
               sx={{
                 px: 4,
                 py: 1.5,
@@ -348,7 +356,7 @@ function HeroSection() {
                 '&:hover': { borderColor: 'primary.main', backgroundColor: alpha('#43A047', 0.04) },
               }}
             >
-              Watch Demo
+              Get Help
             </Button>
           </Stack>
 
@@ -855,6 +863,8 @@ function CTASection() {
             <Button
               variant="outlined"
               size="large"
+              component={Link}
+              href="/help"
               sx={{
                 px: 5,
                 py: 1.5,
@@ -867,7 +877,7 @@ function CTASection() {
                 },
               }}
             >
-              Contact Sales
+              Contact Support
             </Button>
           </Stack>
         </Box>
