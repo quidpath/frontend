@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Button, Grid, Tab, Tabs, Typography, Avatar, alpha } from '@mui/material';
 import BadgeIcon from '@mui/icons-material/Badge';
 import AddIcon from '@mui/icons-material/Add';
@@ -45,7 +45,16 @@ const EMPLOYEE_COLUMNS: TableColumn<Employee>[] = [
 export default function HRMDashboard() {
   const [tab, setTab] = useState(0);
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
   const [search, setSearch] = useState('');
+  const [searchDebounced, setSearchDebounced] = useState('');
+
+  useEffect(() => {
+    const t = setTimeout(() => setSearchDebounced(search), 400);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  useEffect(() => { setPage(0); }, [searchDebounced, tab]);
 
   const { notification, showSuccess, showError, hideNotification } = useNotification();
 
@@ -54,10 +63,10 @@ export default function HRMDashboard() {
   }>({ open: false, title: '', message: '', onConfirm: () => {} });
 
   const { data: summary, isLoading: summaryLoading } = useHRMSummary();
-  const { data: employees, isLoading: empLoading, refetch: refetchEmployees } = useEmployees({ page: page + 1, search });
+  const { data: employees, isLoading: empLoading, refetch: refetchEmployees } = useEmployees({ page: page + 1, page_size: pageSize, ...(searchDebounced ? { search: searchDebounced } : {}) });
   const { data: departments, isLoading: deptLoading, refetch: refetchDepts } = useDepartments();
-  const { data: leaves, isLoading: leavesLoading, refetch: refetchLeaves } = useLeaveRequests();
-  const { data: payroll, isLoading: payrollLoading, refetch: refetchPayroll } = usePayrollRuns();
+  const { data: leaves, isLoading: leavesLoading, refetch: refetchLeaves } = useLeaveRequests({ page: page + 1, page_size: pageSize });
+  const { data: payroll, isLoading: payrollLoading, refetch: refetchPayroll } = usePayrollRuns({ page: page + 1, page_size: pageSize });
 
   const handleDeleteEmployee = async (id: string) => {
     try { await hrmService.deleteEmployee(id); showSuccess('Employee deleted'); refetchEmployees(); }
@@ -161,7 +170,15 @@ export default function HRMDashboard() {
 
       <Grid container spacing={2.5} sx={{ mb: 3 }}>
         <Grid size={{ xs: 6, sm: 3 }}>
-          <MetricCard label="Total Employees" value={summary?.total_employees ?? '—'} change={2} changeLabel="new this month" trend="up" color="#C62828" loading={summaryLoading} />
+          <MetricCard 
+            label="Total Employees" 
+            value={summary?.total_employees ?? '—'} 
+            change={summary?.total_employees_change} 
+            changeLabel="new this month" 
+            trend={summary?.total_employees_trend || 'neutral'} 
+            color="#C62828" 
+            loading={summaryLoading} 
+          />
         </Grid>
         <Grid size={{ xs: 6, sm: 3 }}>
           <MetricCard label="On Leave Today" value={summary?.on_leave_today ?? '—'} color="#F2A40E" loading={summaryLoading} />
@@ -183,16 +200,16 @@ export default function HRMDashboard() {
       </Tabs>
 
       {tab === 0 && (
-        <DataTable columns={EMPLOYEE_COLS} rows={employees?.results ?? []} loading={empLoading} total={employees?.count} page={page} pageSize={25} onPageChange={setPage} onSearch={setSearch} searchPlaceholder="Search employees..." getRowId={(r) => r.id} />
+        <DataTable columns={EMPLOYEE_COLS} rows={employees?.results ?? []} loading={empLoading} total={employees?.count} page={page} pageSize={pageSize} onPageChange={(p) => setPage(p)} onPageSizeChange={(s) => { setPageSize(s); setPage(0); }} onSearch={(q) => setSearch(q)} searchPlaceholder="Search employees..." getRowId={(r) => r.id} />
       )}
       {tab === 1 && (
         <DataTable columns={DEPT_COLUMNS} rows={departments?.results ?? []} loading={deptLoading} getRowId={(r) => r.id} />
       )}
       {tab === 2 && (
-        <DataTable columns={LEAVE_COLUMNS} rows={leaves?.results ?? []} loading={leavesLoading} getRowId={(r) => r.id} emptyMessage="No leave requests" />
+        <DataTable columns={LEAVE_COLUMNS} rows={leaves?.results ?? []} loading={leavesLoading} total={leaves?.count} page={page} pageSize={pageSize} onPageChange={(p) => setPage(p)} onPageSizeChange={(s) => { setPageSize(s); setPage(0); }} getRowId={(r) => r.id} emptyMessage="No leave requests" />
       )}
       {tab === 3 && (
-        <DataTable columns={PAYROLL_COLUMNS} rows={payroll?.results ?? []} loading={payrollLoading} getRowId={(r) => r.id} emptyMessage="No payroll runs" />
+        <DataTable columns={PAYROLL_COLUMNS} rows={payroll?.results ?? []} loading={payrollLoading} total={payroll?.count} page={page} pageSize={pageSize} onPageChange={(p) => setPage(p)} onPageSizeChange={(s) => { setPageSize(s); setPage(0); }} getRowId={(r) => r.id} emptyMessage="No payroll runs" />
       )}
       {tab === 4 && (
         <Box sx={{ py: 4, textAlign: 'center' }}>

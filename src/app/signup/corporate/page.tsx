@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Alert, Box, Button, Card, CardContent, CircularProgress,
   Divider, Step, StepLabel, Stepper, TextField, Typography,
+  Chip, alpha,
 } from '@mui/material';
 import BusinessIcon from '@mui/icons-material/Business';
 import EmailIcon from '@mui/icons-material/Email';
@@ -13,6 +14,7 @@ import LocationOnIcon from '@mui/icons-material/LocationOn';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import PaymentIcon from '@mui/icons-material/Payment';
 import axios from 'axios';
+import { usePlans } from '@/hooks/useBilling';
 
 const API_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || 'http://localhost:8000';
 
@@ -27,11 +29,20 @@ const TRIAL_FEATURES = [
   'Email & in-app support',
 ];
 
-export default function SignUpCorporatePage() {
+function SignUpCorporatePageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [activeStep, setActiveStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Get plan and trial parameters from URL
+  const planIdFromUrl = searchParams.get('plan');
+  const isTrialFromUrl = searchParams.get('trial') === 'true';
+
+  // Fetch plans
+  const { data: allPlans, isLoading: plansLoading } = usePlans();
+  const [selectedPlan, setSelectedPlan] = useState<any>(null);
 
   // Form data
   const [formData, setFormData] = useState({
@@ -51,6 +62,16 @@ export default function SignUpCorporatePage() {
 
   // Payment state
   const [registrationId, setRegistrationId] = useState('');
+
+  // Set selected plan when plans are loaded and URL has plan parameter
+  useEffect(() => {
+    if (allPlans && planIdFromUrl) {
+      const plan = allPlans.find((p: any) => p.id === planIdFromUrl);
+      if (plan) {
+        setSelectedPlan(plan);
+      }
+    }
+  }, [allPlans, planIdFromUrl]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -138,18 +159,15 @@ export default function SignUpCorporatePage() {
   };
 
   // Check URL for payment callback
-  useState(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const reference = params.get('reference');
-      const regId = params.get('reg_id');
+  useEffect(() => {
+    const reference = searchParams.get('reference');
+    const regId = searchParams.get('reg_id');
 
-      if (reference && regId) {
-        setRegistrationId(regId);
-        verifyPayment(reference);
-      }
+    if (reference && regId) {
+      setRegistrationId(regId);
+      verifyPayment(reference);
     }
-  });
+  }, [searchParams]);
 
   // Success screen
   if (activeStep === 2) {
@@ -236,10 +254,13 @@ export default function SignUpCorporatePage() {
           <Box component="img" src="/quidpathLong.svg" alt="QuidPath"
             sx={{ height: 32, objectFit: 'contain', filter: 'brightness(0) invert(1)', mb: 2 }} />
           <Typography variant="h4" fontWeight={700} color="#fff" gutterBottom>
-            Register Your Organization
+            {isTrialFromUrl ? 'Start Your Free Trial' : 'Register Your Organization'}
           </Typography>
           <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.9)' }}>
-            Complete registration and verify your payment to get started
+            {isTrialFromUrl 
+              ? 'Complete registration to start your 30-day free trial — no payment required today'
+              : 'Complete registration and verify your payment to get started'
+            }
           </Typography>
         </Box>
 
@@ -253,20 +274,57 @@ export default function SignUpCorporatePage() {
             ))}
           </Stepper>
 
-          {/* Trial Features */}
-          <Box sx={{ mb: 3, p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
-            <Typography variant="subtitle2" fontWeight={600} gutterBottom>
-              What's included in your 30-day trial:
-            </Typography>
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1 }}>
-              {TRIAL_FEATURES.map((feature) => (
-                <Box key={feature} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <CheckCircleIcon sx={{ fontSize: 16, color: 'primary.main' }} />
-                  <Typography variant="body2" color="text.secondary">{feature}</Typography>
+          {/* Selected Plan Display */}
+          {selectedPlan && (
+            <Box sx={{ mb: 3, p: 3, bgcolor: alpha('#43A047', 0.08), borderRadius: 2, border: '1px solid', borderColor: alpha('#43A047', 0.2) }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                <Box>
+                  <Typography variant="h6" fontWeight={700} color="primary.dark">
+                    {selectedPlan.name}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {selectedPlan.tier.charAt(0).toUpperCase() + selectedPlan.tier.slice(1)} • {selectedPlan.plan_type}
+                  </Typography>
                 </Box>
-              ))}
+                <Box sx={{ textAlign: 'right' }}>
+                  <Typography variant="h5" fontWeight={800} color="primary.dark">
+                    KES {selectedPlan.price_monthly.toLocaleString()}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    per month
+                  </Typography>
+                </Box>
+              </Box>
+              {isTrialFromUrl && (
+                <Chip
+                  label="30-Day Free Trial Included"
+                  size="small"
+                  sx={{
+                    background: 'linear-gradient(135deg, #43A047, #2E7D32)',
+                    color: '#fff',
+                    fontWeight: 700,
+                  }}
+                />
+              )}
             </Box>
-          </Box>
+          )}
+
+          {/* Trial Features */}
+          {isTrialFromUrl && (
+            <Box sx={{ mb: 3, p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
+              <Typography variant="subtitle2" fontWeight={600} gutterBottom>
+                What's included in your 30-day trial:
+              </Typography>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1 }}>
+                {TRIAL_FEATURES.map((feature) => (
+                  <Box key={feature} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <CheckCircleIcon sx={{ fontSize: 16, color: 'primary.main' }} />
+                    <Typography variant="body2" color="text.secondary">{feature}</Typography>
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+          )}
 
           <Divider sx={{ mb: 3 }} />
 
@@ -483,3 +541,23 @@ const brandBar = {
   justifyContent: 'center',
   mb: 3,
 };
+
+// Wrap the component with Suspense to handle useSearchParams
+export default function SignUpCorporatePage() {
+  return (
+    <Suspense fallback={
+      <Box sx={pageWrap}>
+        <Card sx={cardSx}>
+          <CardContent sx={{ p: { xs: 3, sm: 5 }, textAlign: 'center' }}>
+            <CircularProgress size={60} sx={{ mb: 3 }} />
+            <Typography variant="h5" fontWeight={600} gutterBottom>
+              Loading...
+            </Typography>
+          </CardContent>
+        </Card>
+      </Box>
+    }>
+      <SignUpCorporatePageContent />
+    </Suspense>
+  );
+}

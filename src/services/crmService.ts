@@ -104,10 +104,26 @@ export interface ActivityListResponse {
 
 export interface CRMSummary {
   total_contacts: number;
+  total_contacts_previous?: number;
+  total_contacts_change?: number;
+  total_contacts_trend?: 'up' | 'down' | 'neutral';
+  
   total_deals: number;
+  total_deals_previous?: number;
+  total_deals_change?: number;
+  total_deals_trend?: 'up' | 'down' | 'neutral';
+  
   pipeline_value: number;
+  pipeline_value_previous?: number;
+  pipeline_value_change?: number;
+  pipeline_value_trend?: 'up' | 'down' | 'neutral';
+  
   won_deals_this_month: number;
   conversion_rate: number;
+  conversion_rate_previous?: number;
+  conversion_rate_change?: number;
+  conversion_rate_trend?: 'up' | 'down' | 'neutral';
+  
   active_campaigns: number;
 }
 
