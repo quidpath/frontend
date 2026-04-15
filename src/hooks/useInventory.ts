@@ -7,8 +7,13 @@ export const INVENTORY_KEYS = {
   warehouses: (params?: Record<string, unknown>) => ['inventory', 'warehouses', params] as const,
   movements: (params?: Record<string, unknown>) => ['inventory', 'movements', params] as const,
   summary: () => ['inventory', 'summary'] as const,
+  integrationHealth: () => ['inventory', 'integration-health'] as const,
 };
 
+/**
+ * Hook to fetch products with pagination and search
+ * Uses integrated endpoint for full sync status
+ */
 export function useProducts(params?: Record<string, unknown>) {
   return useQuery({
     queryKey: INVENTORY_KEYS.products(params),
@@ -20,6 +25,9 @@ export function useProducts(params?: Record<string, unknown>) {
   });
 }
 
+/**
+ * Hook to fetch warehouses
+ */
 export function useWarehouses(params?: Record<string, unknown>) {
   return useQuery({
     queryKey: INVENTORY_KEYS.warehouses(params),
@@ -31,6 +39,10 @@ export function useWarehouses(params?: Record<string, unknown>) {
   });
 }
 
+/**
+ * Hook to fetch stock movements
+ * Uses integrated endpoint for full sync status
+ */
 export function useStockMovements(params?: Record<string, unknown>) {
   return useQuery({
     queryKey: INVENTORY_KEYS.movements(params),
@@ -42,6 +54,9 @@ export function useStockMovements(params?: Record<string, unknown>) {
   });
 }
 
+/**
+ * Hook to fetch inventory summary metrics
+ */
 export function useInventorySummary() {
   return useQuery({
     queryKey: INVENTORY_KEYS.summary(),
@@ -50,5 +65,21 @@ export function useInventorySummary() {
       return data;
     },
     staleTime: 60_000,
+  });
+}
+
+/**
+ * Hook to check integration health for all services
+ * Monitors: Accounting, POS, CRM, HRM, Projects
+ */
+export function useIntegrationHealth() {
+  return useQuery({
+    queryKey: INVENTORY_KEYS.integrationHealth(),
+    queryFn: async () => {
+      const { data } = await inventoryService.checkIntegrationHealth();
+      return data;
+    },
+    staleTime: 60_000, // Refresh every minute
+    refetchInterval: 60_000, // Auto-refresh every minute
   });
 }

@@ -346,7 +346,7 @@ function HeroSection() {
               variant="outlined"
               size="large"
               component={Link}
-              href="/help"
+              href="/contact"
               sx={{
                 px: 4,
                 py: 1.5,
@@ -356,7 +356,7 @@ function HeroSection() {
                 '&:hover': { borderColor: 'primary.main', backgroundColor: alpha('#43A047', 0.04) },
               }}
             >
-              Get Help
+              Contact Us
             </Button>
           </Stack>
 
@@ -707,7 +707,7 @@ function PricingSection() {
                           fullWidth
                           variant={isHighlighted ? 'contained' : 'outlined'}
                           component={Link}
-                          href="/billing-setup"
+                          href={`/signup/corporate?plan=${plan.id}&trial=true`}
                           sx={{
                             mb: 3,
                             ...(isHighlighted
@@ -864,7 +864,7 @@ function CTASection() {
               variant="outlined"
               size="large"
               component={Link}
-              href="/help"
+              href="/contact"
               sx={{
                 px: 5,
                 py: 1.5,
@@ -877,7 +877,7 @@ function CTASection() {
                 },
               }}
             >
-              Contact Support
+              Contact Us
             </Button>
           </Stack>
         </Box>
