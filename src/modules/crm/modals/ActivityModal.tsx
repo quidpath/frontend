@@ -16,32 +16,32 @@ interface ActivityModalProps {
 export default function ActivityModal({ open, onClose, activity, onSuccess }: ActivityModalProps) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    type: 'task' as 'call' | 'meeting' | 'email' | 'task' | 'note',
+    activity_type: 'task' as Activity['activity_type'],
     subject: '',
     description: '',
-    contact_id: '',
-    due_date: '',
-    completed: false,
+    contact: '',       // FK UUID
+    scheduled_at: '',
+    status: 'planned' as Activity['status'],
   });
 
   useEffect(() => {
     if (activity) {
       setFormData({
-        type: activity.type || 'task',
+        activity_type: activity.activity_type || 'task',
         subject: activity.subject || '',
         description: activity.description || '',
-        contact_id: activity.contact_id || '',
-        due_date: activity.due_date || '',
-        completed: activity.completed || false,
+        contact: activity.contact || '',
+        scheduled_at: activity.scheduled_at ? activity.scheduled_at.split('T')[0] : '',
+        status: activity.status || 'planned',
       });
     } else {
       setFormData({
-        type: 'task',
+        activity_type: 'task',
         subject: '',
         description: '',
-        contact_id: '',
-        due_date: new Date().toISOString().split('T')[0],
-        completed: false,
+        contact: '',
+        scheduled_at: new Date().toISOString().split('T')[0],
+        status: 'planned',
       });
     }
   }, [activity, open]);
@@ -80,22 +80,24 @@ export default function ActivityModal({ open, onClose, activity, onSuccess }: Ac
     >
       <Grid container spacing={2.5}>
         <Grid size={{ xs: 12 }}>
-          <TextField fullWidth select label="Type" value={formData.type} onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}>
+          <TextField fullWidth select label="Type" value={formData.activity_type} onChange={(e) => setFormData({ ...formData, activity_type: e.target.value as Activity['activity_type'] })}>
             <MenuItem value="call">Call</MenuItem>
             <MenuItem value="meeting">Meeting</MenuItem>
             <MenuItem value="email">Email</MenuItem>
             <MenuItem value="task">Task</MenuItem>
             <MenuItem value="note">Note</MenuItem>
+            <MenuItem value="demo">Demo</MenuItem>
+            <MenuItem value="follow_up">Follow-up</MenuItem>
           </TextField>
         </Grid>
         <Grid size={{ xs: 12 }}>
           <TextField fullWidth label="Subject" value={formData.subject} onChange={(e) => setFormData({ ...formData, subject: e.target.value })} required />
         </Grid>
         <Grid size={{ xs: 12 }}>
-          <TextField fullWidth label="Contact ID" value={formData.contact_id} onChange={(e) => setFormData({ ...formData, contact_id: e.target.value })} />
+          <TextField fullWidth label="Contact ID" value={formData.contact} onChange={(e) => setFormData({ ...formData, contact: e.target.value })} />
         </Grid>
         <Grid size={{ xs: 12 }}>
-          <TextField fullWidth label="Due Date" type="date" value={formData.due_date} onChange={(e) => setFormData({ ...formData, due_date: e.target.value })} InputLabelProps={{ shrink: true }} />
+          <TextField fullWidth label="Scheduled Date" type="date" value={formData.scheduled_at} onChange={(e) => setFormData({ ...formData, scheduled_at: e.target.value })} InputLabelProps={{ shrink: true }} />
         </Grid>
         <Grid size={{ xs: 12 }}>
           <TextField fullWidth label="Description" value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} multiline rows={3} />

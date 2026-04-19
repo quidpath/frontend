@@ -136,8 +136,8 @@ const UserManagement: React.FC = () => {
           {users?.results?.map((user) => (
             <TableRow key={user.id}>
               <TableCell>{user.full_name}</TableCell>
-              <TableCell>{user.email}</TableCell>
-              <TableCell>{user.position}</TableCell>
+              <TableCell>{user.work_email}</TableCell>
+              <TableCell>{user.position_title}</TableCell>
               <TableCell>
                 <IconButton onClick={() => handleOpenModal('view', user)}>
                   <VisibilityIcon />
@@ -172,8 +172,8 @@ const UserManagement: React.FC = () => {
           {modalType === 'view' && (
             <Box>
               <Typography>Name: {selectedUser?.full_name}</Typography>
-              <Typography>Email: {selectedUser?.email}</Typography>
-              <Typography>Role: {selectedUser?.position}</Typography>
+              <Typography>Email: {selectedUser?.work_email}</Typography>
+              <Typography>Role: {selectedUser?.position_title}</Typography>
             </Box>
           )}
 
