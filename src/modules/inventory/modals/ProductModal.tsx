@@ -6,6 +6,9 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import UniversalModal from '@/components/ui/UniversalModal';
 import { Product } from '@/services/inventoryService';
 import inventoryService from '@/services/inventoryService';
+import CategoryDropdown from '../components/CategoryDropdown';
+import UomDropdown from '../components/UomDropdown';
+import CategoryManagementModal from './CategoryManagementModal';
 
 interface ProductModalProps {
   open: boolean;
@@ -16,6 +19,7 @@ interface ProductModalProps {
 
 export default function ProductModal({ open, onClose, product, onSuccess }: ProductModalProps) {
   const [loading, setLoading] = useState(false);
+  const [managementModalOpen, setManagementModalOpen] = useState(false);
   const [syncStatus, setSyncStatus] = useState<{
     synced: string[];
     errors: string[];
@@ -190,7 +194,12 @@ export default function ProductModal({ open, onClose, product, onSuccess }: Prod
           <TextField fullWidth label="Barcode" value={formData.barcode} onChange={(e) => setFormData({ ...formData, barcode: e.target.value })} disabled={loading} />
         </Grid>
         <Grid size={{ xs: 12, sm: 6 }}>
-          <TextField fullWidth label="Category ID" value={formData.category_id} onChange={(e) => setFormData({ ...formData, category_id: e.target.value })} disabled={loading} helperText="Enter category UUID" />
+          <CategoryDropdown
+            value={formData.category_id}
+            onChange={(value) => setFormData({ ...formData, category_id: value })}
+            disabled={loading}
+            onManageClick={() => setManagementModalOpen(true)}
+          />
         </Grid>
         
         <Grid size={{ xs: 12 }}>
@@ -230,7 +239,13 @@ export default function ProductModal({ open, onClose, product, onSuccess }: Prod
         </Grid>
         
         <Grid size={{ xs: 12, sm: 6 }}>
-          <TextField fullWidth label="Unit of Measure ID" value={formData.uom_id} onChange={(e) => setFormData({ ...formData, uom_id: e.target.value })} disabled={loading} helperText="Enter UoM UUID (e.g. pcs, kg)" />
+          <UomDropdown
+            value={formData.uom_id}
+            onChange={(value) => setFormData({ ...formData, uom_id: value })}
+            disabled={loading}
+            required
+            onManageClick={() => setManagementModalOpen(true)}
+          />
         </Grid>
         <Grid size={{ xs: 12, sm: 6 }}>
           <TextField 
@@ -311,6 +326,15 @@ export default function ProductModal({ open, onClose, product, onSuccess }: Prod
           </Grid>
         )}
       </Grid>
+
+      {/* Category Management Modal */}
+      <CategoryManagementModal
+        open={managementModalOpen}
+        onClose={() => setManagementModalOpen(false)}
+        onSuccess={() => {
+          // Refresh dropdowns will happen automatically via their refresh buttons
+        }}
+      />
     </UniversalModal>
   );
 }

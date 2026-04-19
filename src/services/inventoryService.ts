@@ -100,6 +100,45 @@ export interface StockLevelListResponse {
   previous: string | null;
 }
 
+// ── Category ──────────────────────────────────────────────────────────────────
+export interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  parent?: string;  // parent category ID
+  parent_name?: string;  // read-only
+  description?: string;
+  image?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CategoryListResponse {
+  results?: Category[];
+  data?: Category[];  // Backend might return 'data' instead of 'results'
+  count?: number;
+}
+
+// ── Unit of Measure ───────────────────────────────────────────────────────────
+export interface UnitOfMeasure {
+  id: string;
+  category_id: string;
+  name: string;
+  symbol: string;
+  factor: string;
+  rounding: 'UP' | 'DOWN' | 'HALF_UP';
+  is_base: boolean;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface UnitOfMeasureListResponse {
+  results?: UnitOfMeasure[];
+  data?: UnitOfMeasure[];
+  count?: number;
+}
+
 // ── Summary ───────────────────────────────────────────────────────────────────
 export interface InventorySummary {
   total_products: number;
@@ -287,6 +326,48 @@ const inventoryService = {
 
   getSummary: () =>
     inventoryClient.get<InventorySummary>('/api/inventory/products/summary/'),
+
+  // ── Categories ────────────────────────────────────────────────────────────
+
+  getCategories: (params?: Record<string, unknown>) =>
+    inventoryClient.get<CategoryListResponse>('/api/inventory/products/categories/', { params }),
+
+  getCategory: (id: string) =>
+    inventoryClient.get<{ success?: boolean; data?: Category }>(`/api/inventory/products/categories/${id}/`),
+
+  createCategory: (data: { name: string; slug: string; parent_id?: string; description?: string; is_active?: boolean }) =>
+    inventoryClient.post<{ success?: boolean; data?: Category; message?: string }>('/api/inventory/products/categories/', data),
+
+  updateCategory: (id: string, data: Partial<Category>) =>
+    inventoryClient.put<{ success?: boolean; data?: Category; message?: string }>(`/api/inventory/products/categories/${id}/`, data),
+
+  deleteCategory: (id: string) =>
+    inventoryClient.delete<{ success?: boolean; message?: string }>(`/api/inventory/products/categories/${id}/`),
+
+  // ── Units of Measure ──────────────────────────────────────────────────────
+
+  getUnitsOfMeasure: (params?: Record<string, unknown>) =>
+    inventoryClient.get<UnitOfMeasureListResponse>('/api/inventory/products/uom/', { params }),
+
+  getUnitOfMeasure: (id: string) =>
+    inventoryClient.get<{ success?: boolean; data?: UnitOfMeasure }>(`/api/inventory/products/uom/${id}/`),
+
+  createUnitOfMeasure: (data: {
+    category_id: string;
+    name: string;
+    symbol: string;
+    factor?: string;
+    rounding?: 'UP' | 'DOWN' | 'HALF_UP';
+    is_base?: boolean;
+    is_active?: boolean;
+  }) =>
+    inventoryClient.post<{ success?: boolean; data?: UnitOfMeasure; message?: string }>('/api/inventory/products/uom/', data),
+
+  updateUnitOfMeasure: (id: string, data: Partial<UnitOfMeasure>) =>
+    inventoryClient.put<{ success?: boolean; data?: UnitOfMeasure; message?: string }>(`/api/inventory/products/uom/${id}/`, data),
+
+  deleteUnitOfMeasure: (id: string) =>
+    inventoryClient.delete<{ success?: boolean; message?: string }>(`/api/inventory/products/uom/${id}/`),
 
   // ── Legacy (backward compat) ──────────────────────────────────────────────
 
