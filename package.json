@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@ant-design/icons": "^6.1.1",
     "@emotion/cache": "^11.14.0",
     "@emotion/react": "^11.14.0",
     "@emotion/server": "^11.11.0",
@@ -18,8 +19,10 @@
     "@mui/x-data-grid": "^8.27.5",
     "@tanstack/react-query": "^5.90.21",
     "@tanstack/react-query-devtools": "^5.91.3",
+    "antd": "^6.3.6",
     "axios": "^1.13.6",
     "date-fns": "^4.1.0",
+    "lodash": "^4.18.1",
     "next": "15.3.9",
     "notistack": "^3.0.2",
     "prettier": "^3.8.1",
@@ -30,6 +33,7 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
+    "@types/lodash": "^4.17.24",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

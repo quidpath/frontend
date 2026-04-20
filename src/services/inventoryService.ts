@@ -211,6 +211,31 @@ const inventoryService = {
       `/api/inventory/products/integrated/${id}/`
     ),
 
+  // Query API for service-to-service calls
+  queryProduct: (id: string) =>
+    inventoryClient.get<Product>(`/api/inventory/products/${id}/`),
+
+  searchProducts: (query: string) =>
+    inventoryClient.get<{ count: number; products: Product[] }>('/api/inventory/products/search/', {
+      params: { q: query }
+    }),
+
+  getProductsBulk: (productIds: string[]) =>
+    inventoryClient.post<{ count: number; products: Product[] }>('/api/inventory/products/bulk/', {
+      product_ids: productIds
+    }),
+
+  getProductStock: (id: string) =>
+    inventoryClient.get<{
+      product_id: string;
+      product_name: string;
+      total_available: string;
+      by_location: Array<{ location: string; quantity: string }>;
+    }>(`/api/inventory/products/${id}/stock/`),
+
+  getProductsForSale: () =>
+    inventoryClient.get<{ count: number; products: Product[] }>('/api/inventory/products/for-sale/'),
+
   createProduct: (data: Omit<Product, 'id' | 'created_at' | 'category_name' | 'uom_name'>) => {
     // Backend expects decimal fields as strings
     const payload = {
