@@ -13,7 +13,7 @@ import projectsService from '@/services/projectsService';
 import taxService from '@/services/taxService';
 import financeService from '@/services/financeService';
 
-interface TestResult {
+export interface TestResult {
   module: string;
   endpoint: string;
   method: string;
@@ -26,8 +26,7 @@ export class EndpointTester {
   private results: TestResult[] = [];
 
   async testAll(): Promise<TestResult[]> {
-    console.log('🚀 Starting comprehensive endpoint testing...');
-    
+    this.results = [];
     await this.testAccounting();
     await this.testBanking();
     await this.testCRM();
@@ -37,7 +36,6 @@ export class EndpointTester {
     await this.testProjects();
     await this.testTax();
     await this.testFinance();
-
     return this.results;
   }
 
@@ -51,202 +49,78 @@ export class EndpointTester {
     try {
       await testFn();
       const duration = Date.now() - start;
-      this.results.push({
-        module,
-        endpoint,
-        method,
-        status: 'success',
-        message: `✅ Success (${duration}ms)`,
-        duration,
-      });
-      console.log(`✅ ${module} - ${method} ${endpoint} (${duration}ms)`);
+      this.results.push({ module, endpoint, method, status: 'success', message: `Success (${duration}ms)`, duration });
     } catch (error: any) {
       const duration = Date.now() - start;
-      this.results.push({
-        module,
-        endpoint,
-        method,
-        status: 'error',
-        message: `❌ Error: ${error.message}`,
-        duration,
-      });
-      console.error(`❌ ${module} - ${method} ${endpoint}:`, error.message);
+      const msg = error?.response?.data?.error || error?.message || 'Unknown error';
+      this.results.push({ module, endpoint, method, status: 'error', message: `Error: ${msg}`, duration });
     }
   }
 
-  // ACCOUNTING MODULE
   async testAccounting() {
-    console.log('\n📊 Testing ACCOUNTING endpoints...');
-    
-    await this.testEndpoint('Accounting', '/invoice/list/', 'GET', () =>
-      accountingService.getInvoices()
-    );
-    
-    await this.testEndpoint('Accounting', '/journal/list/', 'GET', () =>
-      accountingService.getJournalEntries()
-    );
-    
-    await this.testEndpoint('Accounting', '/expense/list/', 'GET', () =>
-      accountingService.getExpenses()
-    );
-    
-    await this.testEndpoint('Accounting', '/account/list/', 'GET', () =>
-      accountingService.getAccounts()
-    );
+    await this.testEndpoint('Accounting', '/invoice/list/', 'GET', () => accountingService.getInvoices());
+    await this.testEndpoint('Accounting', '/journal/list/', 'GET', () => accountingService.getJournalEntries());
+    await this.testEndpoint('Accounting', '/expense/list/', 'GET', () => accountingService.getExpenses());
   }
 
-  // BANKING MODULE
   async testBanking() {
-    console.log('\n🏦 Testing BANKING endpoints...');
-    
-    await this.testEndpoint('Banking', '/bank-account/list/', 'GET', () =>
-      bankingService.getBankAccounts()
-    );
-    
-    await this.testEndpoint('Banking', '/transaction/list/', 'GET', () =>
-      bankingService.getTransactions()
-    );
+    await this.testEndpoint('Banking', '/bank-account/list/', 'GET', () => bankingService.getBankAccounts());
+    await this.testEndpoint('Banking', '/transaction/list/', 'GET', () => bankingService.getTransactions());
   }
 
-  // CRM MODULE
   async testCRM() {
-    console.log('\n👥 Testing CRM endpoints...');
-    
-    await this.testEndpoint('CRM', '/api/crm/contacts/', 'GET', () =>
-      crmService.getContacts()
-    );
-    
-    await this.testEndpoint('CRM', '/api/crm/pipeline/opportunities/', 'GET', () =>
-      crmService.getDeals()
-    );
-    
-    await this.testEndpoint('CRM', '/api/crm/pipeline/stages/', 'GET', () =>
-      crmService.getPipelineStages()
-    );
-    
-    await this.testEndpoint('CRM', '/api/crm/campaigns/', 'GET', () =>
-      crmService.getCampaigns()
-    );
-    
-    await this.testEndpoint('CRM', '/api/crm/contacts/activities/', 'GET', () =>
-      crmService.getActivities()
-    );
+    await this.testEndpoint('CRM', '/api/crm/contacts/', 'GET', () => crmService.getContacts());
+    await this.testEndpoint('CRM', '/api/crm/pipeline/opportunities/', 'GET', () => crmService.getDeals());
+    await this.testEndpoint('CRM', '/api/crm/pipeline/stages/', 'GET', () => crmService.getPipelineStages());
+    await this.testEndpoint('CRM', '/api/crm/campaigns/', 'GET', () => crmService.getCampaigns());
+    await this.testEndpoint('CRM', '/api/crm/contacts/activities/', 'GET', () => crmService.getActivities());
   }
 
-  // HRM MODULE
   async testHRM() {
-    console.log('\n👔 Testing HRM endpoints...');
-    
-    await this.testEndpoint('HRM', '/api/hrm/employees/', 'GET', () =>
-      hrmService.getEmployees()
-    );
-    
-    await this.testEndpoint('HRM', '/api/hrm/org/departments/', 'GET', () =>
-      hrmService.getDepartments()
-    );
-    
-    await this.testEndpoint('HRM', '/api/hrm/org/positions/', 'GET', () =>
-      hrmService.getPositions()
-    );
-    
-    await this.testEndpoint('HRM', '/api/hrm/leaves/types/', 'GET', () =>
-      hrmService.getLeaveTypes()
-    );
-    
-    await this.testEndpoint('HRM', '/api/hrm/leaves/requests/', 'GET', () =>
-      hrmService.getLeaveRequests()
-    );
-    
-    await this.testEndpoint('HRM', '/api/hrm/payroll/runs/', 'GET', () =>
-      hrmService.getPayrollRuns()
-    );
+    await this.testEndpoint('HRM', '/api/hrm/employees/', 'GET', () => hrmService.getEmployees());
+    await this.testEndpoint('HRM', '/api/hrm/org/departments/', 'GET', () => hrmService.getDepartments());
+    await this.testEndpoint('HRM', '/api/hrm/org/positions/', 'GET', () => hrmService.getPositions());
+    await this.testEndpoint('HRM', '/api/hrm/leaves/types/', 'GET', () => hrmService.getLeaveTypes());
+    await this.testEndpoint('HRM', '/api/hrm/leaves/requests/', 'GET', () => hrmService.getLeaveRequests());
+    await this.testEndpoint('HRM', '/api/hrm/payroll/runs/', 'GET', () => hrmService.getPayrollRuns());
   }
 
-  // INVENTORY MODULE
   async testInventory() {
-    console.log('\n📦 Testing INVENTORY endpoints...');
-    
-    await this.testEndpoint('Inventory', '/api/inventory/products/integrated/', 'GET', () =>
-      inventoryService.getProducts()
-    );
-    
-    await this.testEndpoint('Inventory', '/api/inventory/warehouse/', 'GET', () =>
-      inventoryService.getWarehouses()
-    );
-    
-    await this.testEndpoint('Inventory', '/api/inventory/stock/moves/integrated/', 'GET', () =>
-      inventoryService.getStockMovements()
-    );
-    
-    await this.testEndpoint('Inventory', '/api/inventory/products/categories/', 'GET', () =>
-      inventoryService.getCategories()
-    );
-    
-    await this.testEndpoint('Inventory', '/api/inventory/products/uom/', 'GET', () =>
-      inventoryService.getUnitsOfMeasure()
-    );
+    await this.testEndpoint('Inventory', '/api/inventory/products/integrated/list/', 'GET', () => inventoryService.getProducts());
+    await this.testEndpoint('Inventory', '/api/inventory/warehouse/', 'GET', () => inventoryService.getWarehouses());
+    await this.testEndpoint('Inventory', '/api/inventory/stock/moves/integrated/list/', 'GET', () => inventoryService.getStockMovements());
+    await this.testEndpoint('Inventory', '/api/inventory/products/categories/', 'GET', () => inventoryService.getCategories());
+    await this.testEndpoint('Inventory', '/api/inventory/products/uom/', 'GET', () => inventoryService.getUnitsOfMeasure());
   }
 
-  // POS MODULE
   async testPOS() {
-    console.log('\n🛒 Testing POS endpoints...');
-    
-    await this.testEndpoint('POS', '/api/pos/orders/', 'GET', () =>
-      posService.getOrders()
-    );
-    
-    await this.testEndpoint('POS', '/api/pos/stores/', 'GET', () =>
-      posService.getStores()
-    );
+    await this.testEndpoint('POS', '/api/pos/orders/', 'GET', () => posService.getOrders());
+    await this.testEndpoint('POS', '/api/pos/stores/', 'GET', () => posService.getStores());
   }
 
-  // PROJECTS MODULE
   async testProjects() {
-    console.log('\n📋 Testing PROJECTS endpoints...');
-    
-    await this.testEndpoint('Projects', '/api/projects/', 'GET', () =>
-      projectsService.getProjects()
-    );
+    await this.testEndpoint('Projects', '/api/projects/', 'GET', () => projectsService.getProjects());
+    await this.testEndpoint('Projects', '/api/timelog/', 'GET', () => projectsService.getTimeLogs());
   }
 
-  // TAX MODULE
   async testTax() {
-    console.log('\n💰 Testing TAX endpoints...');
-    
-    await this.testEndpoint('Tax', '/get-tax-rate/', 'GET', () =>
-      taxService.getTaxRates()
-    );
+    await this.testEndpoint('Tax', '/get-tax-rate/', 'GET', () => taxService.getTaxRates());
   }
 
-  // FINANCE MODULE
   async testFinance() {
-    console.log('\n💵 Testing FINANCE endpoints...');
-    
-    await this.testEndpoint('Finance', '/customer/list/', 'GET', () =>
-      financeService.getCustomers()
-    );
-    
-    await this.testEndpoint('Finance', '/vendor/list/', 'GET', () =>
-      financeService.getVendors()
-    );
+    await this.testEndpoint('Finance', '/customer/list/', 'GET', () => financeService.getCustomers());
+    await this.testEndpoint('Finance', '/vendor/list/', 'GET', () => financeService.getVendors());
   }
 
-  // Generate Report
   generateReport(): string {
     const total = this.results.length;
+    if (total === 0) return 'No tests run yet.';
     const success = this.results.filter(r => r.status === 'success').length;
     const errors = this.results.filter(r => r.status === 'error').length;
     const avgDuration = this.results.reduce((sum, r) => sum + r.duration, 0) / total;
 
-    let report = '\n\n═══════════════════════════════════════════════════════\n';
-    report += '           ENDPOINT TESTING REPORT\n';
-    report += '═══════════════════════════════════════════════════════\n\n';
-    report += `Total Endpoints Tested: ${total}\n`;
-    report += `✅ Successful: ${success} (${((success/total)*100).toFixed(1)}%)\n`;
-    report += `❌ Failed: ${errors} (${((errors/total)*100).toFixed(1)}%)\n`;
-    report += `⏱️  Average Response Time: ${avgDuration.toFixed(0)}ms\n\n`;
+    let report = `Total: ${total} | Passed: ${success} | Failed: ${errors} | Avg: ${avgDuration.toFixed(0)}ms\n\n`;
 
-    // Group by module
     const byModule = this.results.reduce((acc, r) => {
       if (!acc[r.module]) acc[r.module] = [];
       acc[r.module].push(r);
@@ -254,22 +128,18 @@ export class EndpointTester {
     }, {} as Record<string, TestResult[]>);
 
     Object.entries(byModule).forEach(([module, results]) => {
-      const moduleSuccess = results.filter(r => r.status === 'success').length;
-      const moduleTotal = results.length;
-      report += `\n${module} (${moduleSuccess}/${moduleTotal})\n`;
-      report += '─'.repeat(50) + '\n';
+      const ms = results.filter(r => r.status === 'success').length;
+      report += `${module} (${ms}/${results.length})\n`;
       results.forEach(r => {
-        report += `  ${r.status === 'success' ? '✅' : '❌'} ${r.method} ${r.endpoint} (${r.duration}ms)\n`;
-        if (r.status === 'error') {
-          report += `     ${r.message}\n`;
-        }
+        report += `  ${r.status === 'success' ? '✅' : '❌'} ${r.method} ${r.endpoint} (${r.duration}ms)`;
+        if (r.status === 'error') report += ` — ${r.message}`;
+        report += '\n';
       });
+      report += '\n';
     });
 
-    report += '\n═══════════════════════════════════════════════════════\n';
     return report;
   }
 }
 
-// Export singleton instance
 export const endpointTester = new EndpointTester();

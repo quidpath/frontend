@@ -119,7 +119,7 @@ export default function TestModalsPage() {
       case 'warning':
         return <WarningIcon color="warning" />;
       default:
-        return null;
+        return <CheckCircleIcon color="disabled" />;
     }
   };
 
@@ -180,7 +180,7 @@ export default function TestModalsPage() {
           <AccordionDetails>
             <Grid container spacing={2}>
               {moduleModals.map((modal) => (
-                <Grid item xs={12} md={6} key={modal.name}>
+                <Grid size={{ xs: 12, md: 6 }} key={modal.name}>
                   <Card variant="outlined">
                     <CardContent>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 2 }}>
