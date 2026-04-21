@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Button, TextField, Grid, MenuItem, InputAdornment } from '@mui/material';
+import { Button, TextField, Grid, MenuItem, InputAdornment, CircularProgress } from '@mui/material';
 import UniversalModal from '@/components/ui/UniversalModal';
 import { Deal } from '@/services/crmService';
 import crmService from '@/services/crmService';
-import { useContacts } from '@/hooks/useCRM';
+import { useContacts, usePipelineStages } from '@/hooks/useCRM';
 
 interface DealModalProps {
   open: boolean;
@@ -18,8 +18,10 @@ const DEAL_STAGES = ['Qualification', 'Proposal', 'Negotiation', 'Closed Won', '
 
 export default function DealModal({ open, onClose, deal, onSuccess }: DealModalProps) {
   const [loading, setLoading] = useState(false);
-  const { data: contactsData } = useContacts();
+  const { data: contactsData, isLoading: contactsLoading } = useContacts();
+  const { data: stagesData, isLoading: stagesLoading } = usePipelineStages();
   const contacts = (contactsData as any)?.results ?? (contactsData as any)?.contacts ?? [];
+  const stages = (stagesData as any)?.results ?? (stagesData as any)?.stages ?? [];
   const [formData, setFormData] = useState({
     title: '',
     contact_id: '',
@@ -99,18 +101,52 @@ export default function DealModal({ open, onClose, deal, onSuccess }: DealModalP
           <TextField fullWidth label="Deal Title" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} required />
         </Grid>
         <Grid size={{ xs: 12, sm: 6 }}>
-          <TextField fullWidth select label="Contact" value={formData.contact_id} onChange={(e) => setFormData({ ...formData, contact_id: e.target.value })} required>
-            {contacts.length === 0
+          <TextField 
+            fullWidth 
+            select 
+            label="Contact" 
+            value={formData.contact_id} 
+            onChange={(e) => setFormData({ ...formData, contact_id: e.target.value })} 
+            required
+            disabled={contactsLoading}
+            InputProps={{
+              endAdornment: contactsLoading ? <CircularProgress size={20} /> : null,
+            }}
+          >
+            <MenuItem value="">Select Contact</MenuItem>
+            {contacts.length === 0 && !contactsLoading
               ? <MenuItem disabled value="">No contacts found</MenuItem>
-              : contacts.map((c: any) => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)
+              : contacts.map((c: any) => <MenuItem key={c.id} value={c.id}>{c.full_name || `${c.first_name} ${c.last_name}`}</MenuItem>)
             }
           </TextField>
         </Grid>
         <Grid size={{ xs: 12, sm: 6 }}>
-          <TextField fullWidth select label="Stage" value={formData.stage} onChange={(e) => setFormData({ ...formData, stage: e.target.value })}>
-            {DEAL_STAGES.map((stage) => (
-              <MenuItem key={stage} value={stage}>{stage}</MenuItem>
-            ))}
+          <TextField 
+            fullWidth 
+            select 
+            label="Stage" 
+            value={formData.stage} 
+            onChange={(e) => {
+              const selectedStage = stages.find((s: any) => s.name === e.target.value);
+              setFormData({ 
+                ...formData, 
+                stage: e.target.value,
+                probability: selectedStage ? String(selectedStage.probability) : formData.probability
+              });
+            }}
+            disabled={stagesLoading}
+            InputProps={{
+              endAdornment: stagesLoading ? <CircularProgress size={20} /> : null,
+            }}
+          >
+            {stages.length === 0 && !stagesLoading
+              ? <MenuItem disabled value="">No stages found</MenuItem>
+              : stages.map((stage: any) => (
+                  <MenuItem key={stage.id} value={stage.name}>
+                    {stage.name} ({stage.probability}%)
+                  </MenuItem>
+                ))
+            }
           </TextField>
         </Grid>
         <Grid size={{ xs: 12, sm: 6 }}>

@@ -7,10 +7,12 @@ import {
   Grid,
   MenuItem,
   InputAdornment,
+  CircularProgress,
 } from '@mui/material';
 import UniversalModal from '@/components/ui/UniversalModal';
 import { Expense } from '@/services/accountingService';
 import accountingService from '@/services/accountingService';
+import { useVendors } from '@/hooks/useFinance';
 
 interface ExpenseModalProps {
   open: boolean;
@@ -43,6 +45,8 @@ export default function ExpenseModal({
 }: ExpenseModalProps) {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const { data: vendorsData, isLoading: vendorsLoading } = useVendors();
+  const vendors = (vendorsData as any)?.vendors ?? (vendorsData as any)?.results ?? [];
   const [formData, setFormData] = useState({
     date: '',
     vendor: '',
@@ -184,14 +188,34 @@ export default function ExpenseModal({
         <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             fullWidth
+            select
             label="Vendor"
-            value={formData.vendor}
-            onChange={(e) => handleChange('vendor', e.target.value)}
+            value={formData.vendor_id}
+            onChange={(e) => {
+              const selectedVendor = vendors.find((v: any) => v.id === e.target.value);
+              handleChange('vendor_id', e.target.value);
+              if (selectedVendor) {
+                handleChange('vendor', selectedVendor.name);
+              }
+            }}
             error={!!errors.vendor}
-            helperText={errors.vendor}
-            placeholder="Enter vendor name"
+            helperText={errors.vendor || 'Select a vendor'}
             required
-          />
+            disabled={vendorsLoading}
+            InputProps={{
+              endAdornment: vendorsLoading ? <CircularProgress size={20} /> : null,
+            }}
+          >
+            <MenuItem value="">Select Vendor</MenuItem>
+            {vendors.length === 0 && !vendorsLoading
+              ? <MenuItem disabled value="">No vendors found</MenuItem>
+              : vendors.map((v: any) => (
+                  <MenuItem key={v.id} value={v.id}>
+                    {v.name}
+                  </MenuItem>
+                ))
+            }
+          </TextField>
         </Grid>
 
         <Grid size={{ xs: 12, sm: 6 }}>
