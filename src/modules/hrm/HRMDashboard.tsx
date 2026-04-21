@@ -31,15 +31,15 @@ const EMPLOYEE_COLUMNS: TableColumn<Employee>[] = [
         </Avatar>
         <Box>
           <Typography variant="body2" fontWeight={600}>{val as string}</Typography>
-          <Typography variant="caption" color="text.secondary">{(row as Employee).employee_id}</Typography>
+          <Typography variant="caption" color="text.secondary">{(row as Employee).employee_number}</Typography>
         </Box>
       </Box>
     ),
   },
-  { id: 'department', label: 'Department', sortable: true },
-  { id: 'position', label: 'Position' },
-  { id: 'join_date', label: 'Join Date', format: (val) => formatDate(val as string) },
-  { id: 'status', label: 'Status', format: (val) => <StatusChip status={val as string} /> },
+  { id: 'department_name', label: 'Department', sortable: true },
+  { id: 'position_title', label: 'Position' },
+  { id: 'date_joined', label: 'Join Date', format: (val) => formatDate(val as string) },
+  { id: 'employment_status', label: 'Status', format: (val) => <StatusChip status={val as string} /> },
 ];
 
 export default function HRMDashboard() {

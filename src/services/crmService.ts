@@ -1,16 +1,30 @@
 import { crmClient } from './apiClient';
 
+// ── Contact ──────────────────────────────────────────────────────────────────
+// Fields match the backend Contact model exactly.
 export interface Contact {
   id: string;
-  name: string;
+  corporate_id?: string;
+  company?: string;          // FK UUID to Company
+  company_name?: string;     // read-only
+  salutation?: string;
+  first_name: string;
+  last_name: string;
+  full_name?: string;        // read-only computed
   email: string;
-  phone: string;
-  company: string;
-  type: 'lead' | 'prospect' | 'customer';
-  status: 'active' | 'inactive';
-  source?: string;
+  phone?: string;
+  mobile?: string;
+  job_title?: string;
+  department?: string;
+  address?: string;
+  city?: string;
+  country?: string;
+  linkedin?: string;
+  twitter?: string;
+  description?: string;      // was "notes" in old frontend
+  tags?: string[];
   assigned_to?: string;
-  notes?: string;
+  is_active: boolean;        // was "status" enum in old frontend
   created_at: string;
   updated_at?: string;
 }
@@ -22,7 +36,7 @@ export interface ContactListResponse {
   previous: string | null;
 }
 
-// Deals map to "opportunities" in the backend pipeline
+// ── Deal (Opportunity) ────────────────────────────────────────────────────────
 export interface Deal {
   id: string;
   title: string;
@@ -46,6 +60,7 @@ export interface DealListResponse {
   previous: string | null;
 }
 
+// ── Pipeline Stage ────────────────────────────────────────────────────────────
 export interface PipelineStage {
   id: string;
   name: string;
@@ -60,6 +75,7 @@ export interface PipelineStageListResponse {
   previous: string | null;
 }
 
+// ── Campaign ──────────────────────────────────────────────────────────────────
 export interface Campaign {
   id: string;
   name: string;
@@ -81,16 +97,19 @@ export interface CampaignListResponse {
   previous: string | null;
 }
 
-// Activities live under /api/crm/contacts/activities/
+// ── Activity ──────────────────────────────────────────────────────────────────
+// Backend model uses activity_type, not type.
 export interface Activity {
   id: string;
-  type: 'call' | 'meeting' | 'email' | 'task' | 'note';
+  activity_type: 'call' | 'email' | 'meeting' | 'task' | 'note' | 'demo' | 'follow_up';
+  status: 'planned' | 'done' | 'cancelled';
   subject: string;
   description?: string;
-  contact_id?: string;
-  deal_id?: string;
-  due_date?: string;
-  completed: boolean;
+  contact?: string;          // FK UUID
+  company?: string;          // FK UUID
+  scheduled_at?: string;
+  done_at?: string;
+  duration_minutes?: number;
   assigned_to?: string;
   created_at: string;
 }
@@ -102,31 +121,29 @@ export interface ActivityListResponse {
   previous: string | null;
 }
 
+// ── Summary ───────────────────────────────────────────────────────────────────
 export interface CRMSummary {
   total_contacts: number;
   total_contacts_previous?: number;
   total_contacts_change?: number;
   total_contacts_trend?: 'up' | 'down' | 'neutral';
-  
   total_deals: number;
   total_deals_previous?: number;
   total_deals_change?: number;
   total_deals_trend?: 'up' | 'down' | 'neutral';
-  
   pipeline_value: number;
   pipeline_value_previous?: number;
   pipeline_value_change?: number;
   pipeline_value_trend?: 'up' | 'down' | 'neutral';
-  
   won_deals_this_month: number;
   conversion_rate: number;
   conversion_rate_previous?: number;
   conversion_rate_change?: number;
   conversion_rate_trend?: 'up' | 'down' | 'neutral';
-  
   active_campaigns: number;
 }
 
+// ── Service ───────────────────────────────────────────────────────────────────
 const crmService = {
   // Contacts — /api/crm/contacts/
   getContacts: (params?: Record<string, unknown>) =>
@@ -135,44 +152,13 @@ const crmService = {
   getContact: (id: string) =>
     crmClient.get<Contact>(`/api/crm/contacts/${id}/`),
 
-  createContact: (data: Omit<Contact, 'id' | 'created_at' | 'updated_at'>) => {
-    // Parse name into first_name and last_name
-    const nameParts = data.name.trim().split(' ');
-    const firstName = nameParts[0];
-    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : firstName;
-    
-    // Map frontend fields to backend model fields
-    const backendData = {
-      first_name: firstName,
-      last_name: lastName,
-      email: data.email,
-      phone: data.phone,
-      // company: data.company, // May need to be company_id (FK)
-      is_active: data.status === 'active', // Map status to is_active boolean
-      description: data.notes, // Map notes to description
-      // Note: 'type' and 'source' fields may not exist in backend Contact model
-    };
-    return crmClient.post<Contact>('/api/crm/contacts/', backendData);
-  },
+  createContact: (data: Omit<Contact, 'id' | 'created_at' | 'updated_at' | 'full_name' | 'company_name'>) =>
+    crmClient.post<Contact>('/api/crm/contacts/', data),
 
   updateContact: (id: string, data: Partial<Contact>) => {
-    // Map frontend fields to backend model fields for update
-    const backendData: Record<string, unknown> = {};
-    
-    // Handle name if provided
-    if (data.name) {
-      const nameParts = data.name.trim().split(' ');
-      backendData.first_name = nameParts[0];
-      backendData.last_name = nameParts.length > 1 ? nameParts.slice(1).join(' ') : nameParts[0];
-    }
-    
-    if (data.email !== undefined) backendData.email = data.email;
-    if (data.phone !== undefined) backendData.phone = data.phone;
-    if (data.status !== undefined) backendData.is_active = data.status === 'active';
-    if (data.notes !== undefined) backendData.description = data.notes;
-    if (data.assigned_to !== undefined) backendData.assigned_to = data.assigned_to;
-    
-    return crmClient.put<Contact>(`/api/crm/contacts/${id}/`, backendData);
+    // Strip read-only fields before sending
+    const { full_name, company_name, ...payload } = data;
+    return crmClient.put<Contact>(`/api/crm/contacts/${id}/`, payload);
   },
 
   deleteContact: (id: string) =>
@@ -275,11 +261,11 @@ const crmService = {
   getTags: () =>
     crmClient.get('/api/crm/contacts/tags/'),
 
-  // Convert contact to customer — /api/crm/contacts/{id}/convert/
+  // Convert contact to customer
   convertContact: (id: string, data?: Record<string, unknown>) =>
     crmClient.post(`/api/crm/contacts/${id}/convert/`, data ?? {}),
 
-  // Mark deal as won — /api/crm/pipeline/opportunities/{id}/win/
+  // Mark deal as won
   winDeal: (id: string, data?: Record<string, unknown>) =>
     crmClient.post(`/api/crm/pipeline/opportunities/${id}/win/`, data ?? {}),
 

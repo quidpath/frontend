@@ -1,19 +1,28 @@
 import { hrmClient } from './apiClient';
 
+// ── Employee ──────────────────────────────────────────────────────────────────
+// Fields match the backend Employee model exactly.
 export interface Employee {
   id: string;
-  employee_id: string;
-  full_name: string;
-  email: string;
+  employee_number: string;      // was "employee_id"
+  first_name: string;           // split from "full_name"
+  last_name: string;            // split from "full_name"
+  full_name?: string;           // read-only computed
+  work_email: string;           // was "email"
+  personal_email?: string;
   phone?: string;
-  department?: string;
-  department_id?: string;
-  position?: string;
-  status: 'active' | 'on_leave' | 'terminated';
-  join_date: string;
+  department_id?: string;       // FK UUID
+  department_name?: string;     // read-only
+  position_id?: string;         // FK UUID, was "position" string
+  position_title?: string;      // read-only
+  employment_status: 'active' | 'on_leave' | 'terminated';  // was "status"
+  date_joined: string;          // was "join_date"
   termination_date?: string;
   salary?: number;
-  avatar?: string;
+  date_of_birth?: string;
+  gender?: string;
+  marital_status?: string;
+  national_id?: string;
   created_at: string;
 }
 
@@ -24,6 +33,7 @@ export interface EmployeeListResponse {
   previous: string | null;
 }
 
+// ── Department ────────────────────────────────────────────────────────────────
 export interface Department {
   id: string;
   name: string;
@@ -42,6 +52,7 @@ export interface DepartmentListResponse {
   previous: string | null;
 }
 
+// ── Position ──────────────────────────────────────────────────────────────────
 export interface Position {
   id: string;
   title: string;
@@ -57,6 +68,7 @@ export interface PositionListResponse {
   previous: string | null;
 }
 
+// ── Leave ─────────────────────────────────────────────────────────────────────
 export interface LeaveType {
   id: string;
   name: string;
@@ -85,6 +97,7 @@ export interface LeaveRequestListResponse {
   previous: string | null;
 }
 
+// ── Payroll ───────────────────────────────────────────────────────────────────
 export interface PayrollRun {
   id: string;
   period: string;
@@ -111,12 +124,12 @@ export interface SalaryComponent {
   is_taxable: boolean;
 }
 
+// ── Summary ───────────────────────────────────────────────────────────────────
 export interface HRMSummary {
   total_employees: number;
   total_employees_previous?: number;
   total_employees_change?: number;
   total_employees_trend?: 'up' | 'down' | 'neutral';
-  
   new_this_month: number;
   on_leave_today: number;
   pending_leaves: number;
@@ -124,6 +137,7 @@ export interface HRMSummary {
   open_positions?: number;
 }
 
+// ── Service ───────────────────────────────────────────────────────────────────
 const hrmService = {
   // Employees — /api/hrm/employees/
   getEmployees: (params?: Record<string, unknown>) =>
@@ -132,48 +146,32 @@ const hrmService = {
   getEmployee: (id: string) =>
     hrmClient.get<Employee>(`/api/hrm/employees/${id}/`),
 
-  createEmployee: (data: { full_name: string; email: string; phone?: string; department_id?: string; position?: string; join_date?: string; employee_id?: string }) => {
-    // Parse full name into first_name and last_name
-    const nameParts = data.full_name.trim().split(' ');
-    const firstName = nameParts[0];
-    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : firstName;
-    
-    // Map frontend fields to backend model fields
-    const backendData = {
-      first_name: firstName,
-      last_name: lastName,
-      employee_number: data.employee_id || '', // Map employee_id to employee_number
-      work_email: data.email, // Map email to work_email
-      phone: data.phone,
-      department: data.department_id, // FK to Department
-      position: data.position, // FK to Position
-      date_joined: data.join_date || new Date().toISOString().split('T')[0], // Map join_date to date_joined
-      employment_status: 'active', // Default status
+  createEmployee: (data: {
+    first_name: string;
+    last_name: string;
+    work_email: string;
+    phone?: string;
+    department_id?: string;
+    position_id?: string;
+    date_joined?: string;
+    employee_number?: string;
+    salary?: number;
+    date_of_birth?: string;
+    gender?: string;
+    national_id?: string;
+  }) => {
+    const payload = {
+      ...data,
+      date_joined: data.date_joined ?? new Date().toISOString().split('T')[0],
+      employment_status: 'active',
     };
-    return hrmClient.post<Employee>('/api/hrm/employees/', backendData);
+    return hrmClient.post<Employee>('/api/hrm/employees/', payload);
   },
 
   updateEmployee: (id: string, data: Partial<Employee>) => {
-    // Map frontend fields to backend model fields for update
-    const backendData: Record<string, unknown> = {};
-    
-    // Handle full_name if provided
-    if (data.full_name) {
-      const nameParts = data.full_name.trim().split(' ');
-      backendData.first_name = nameParts[0];
-      backendData.last_name = nameParts.length > 1 ? nameParts.slice(1).join(' ') : nameParts[0];
-    }
-    
-    if (data.employee_id !== undefined) backendData.employee_number = data.employee_id;
-    if (data.email !== undefined) backendData.work_email = data.email;
-    if (data.phone !== undefined) backendData.phone = data.phone;
-    if (data.department_id !== undefined) backendData.department = data.department_id;
-    if (data.position !== undefined) backendData.position = data.position;
-    if (data.join_date !== undefined) backendData.date_joined = data.join_date;
-    if (data.status !== undefined) backendData.employment_status = data.status;
-    if (data.salary !== undefined) backendData.salary = data.salary;
-    
-    return hrmClient.put<Employee>(`/api/hrm/employees/${id}/`, backendData);
+    // Strip read-only fields
+    const { full_name, department_name, position_title, ...payload } = data;
+    return hrmClient.put<Employee>(`/api/hrm/employees/${id}/`, payload);
   },
 
   deleteEmployee: (id: string) =>
@@ -230,7 +228,13 @@ const hrmService = {
   getLeaveRequest: (id: string) =>
     hrmClient.get<LeaveRequest>(`/api/hrm/leaves/requests/${id}/`),
 
-  requestLeave: (data: { employee_id: string; leave_type: string; start_date: string; end_date: string; reason: string }) =>
+  requestLeave: (data: {
+    employee_id: string;
+    leave_type: string;
+    start_date: string;
+    end_date: string;
+    reason: string;
+  }) =>
     hrmClient.post<LeaveRequest>('/api/hrm/leaves/requests/', data),
 
   updateLeaveRequest: (id: string, data: Partial<LeaveRequest>) =>

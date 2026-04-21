@@ -20,59 +20,55 @@ export default function ContactModal({ open, onClose, contact, onSuccess }: Cont
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState({
-    name: '',
+    first_name: '',
+    last_name: '',
     email: '',
     phone: '',
-    company: '',
-    type: 'lead' as 'lead' | 'prospect' | 'customer',
-    status: 'active' as 'active' | 'inactive',
-    source: '',
-    notes: '',
+    company: '',       // FK UUID (optional)
+    is_active: true,
+    description: '',   // was "notes"
   });
 
   useEffect(() => {
     if (contact) {
       setFormData({
-        name: contact.name || '',
+        first_name: contact.first_name || '',
+        last_name: contact.last_name || '',
         email: contact.email || '',
         phone: contact.phone || '',
         company: contact.company || '',
-        type: contact.type || 'lead',
-        status: contact.status || 'active',
-        source: contact.source || '',
-        notes: contact.notes || '',
+        is_active: contact.is_active ?? true,
+        description: contact.description || '',
       });
     } else {
       setFormData({
-        name: '',
+        first_name: '',
+        last_name: '',
         email: '',
         phone: '',
         company: '',
-        type: 'lead',
-        status: 'active',
-        source: '',
-        notes: '',
+        is_active: true,
+        description: '',
       });
     }
     setErrors({});
   }, [contact, open]);
 
   const handleChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [field]: field === 'is_active' ? value === 'true' : value,
+    }));
     if (errors[field]) {
-      setErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
-        return newErrors;
-      });
+      setErrors((prev) => { const e = { ...prev }; delete e[field]; return e; });
     }
   };
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
-    if (!formData.name) newErrors.name = 'Name is required';
+    if (!formData.first_name) newErrors.first_name = 'First name is required';
+    if (!formData.last_name) newErrors.last_name = 'Last name is required';
     if (!formData.email) newErrors.email = 'Email is required';
-    if (!formData.phone) newErrors.phone = 'Phone is required';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -101,7 +97,7 @@ export default function ContactModal({ open, onClose, contact, onSuccess }: Cont
       open={open}
       onClose={onClose}
       title={contact ? 'Edit Contact' : 'New Contact'}
-      subtitle={contact ? `Editing ${contact.name}` : 'Add a new contact to your CRM'}
+      subtitle={contact ? `Editing ${contact.first_name} ${contact.last_name}` : 'Add a new contact to your CRM'}
       maxWidth="md"
       loading={loading}
       actions={
@@ -115,40 +111,28 @@ export default function ContactModal({ open, onClose, contact, onSuccess }: Cont
     >
       <Grid container spacing={2.5}>
         <Grid size={{ xs: 12, sm: 6 }}>
-          <TextField fullWidth label="Name" value={formData.name} onChange={(e) => handleChange('name', e.target.value)} error={!!errors.name} helperText={errors.name} required />
+          <TextField fullWidth label="First Name" value={formData.first_name} onChange={(e) => handleChange('first_name', e.target.value)} error={!!errors.first_name} helperText={errors.first_name} required />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <TextField fullWidth label="Last Name" value={formData.last_name} onChange={(e) => handleChange('last_name', e.target.value)} error={!!errors.last_name} helperText={errors.last_name} required />
         </Grid>
         <Grid size={{ xs: 12, sm: 6 }}>
           <TextField fullWidth label="Email" type="email" value={formData.email} onChange={(e) => handleChange('email', e.target.value)} error={!!errors.email} helperText={errors.email} required />
         </Grid>
         <Grid size={{ xs: 12, sm: 6 }}>
-          <TextField fullWidth label="Phone" value={formData.phone} onChange={(e) => handleChange('phone', e.target.value)} error={!!errors.phone} helperText={errors.phone} required />
+          <TextField fullWidth label="Phone" value={formData.phone} onChange={(e) => handleChange('phone', e.target.value)} />
         </Grid>
         <Grid size={{ xs: 12, sm: 6 }}>
           <TextField fullWidth label="Company" value={formData.company} onChange={(e) => handleChange('company', e.target.value)} />
         </Grid>
-        <Grid size={{ xs: 12, sm: 4 }}>
-          <TextField fullWidth select label="Type" value={formData.type} onChange={(e) => handleChange('type', e.target.value)}>
-            {CONTACT_TYPES.map((type) => (
-              <MenuItem key={type} value={type}>{type.charAt(0).toUpperCase() + type.slice(1)}</MenuItem>
-            ))}
-          </TextField>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 4 }}>
-          <TextField fullWidth select label="Status" value={formData.status} onChange={(e) => handleChange('status', e.target.value)}>
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <TextField fullWidth select label="Status" value={formData.is_active ? 'active' : 'inactive'} onChange={(e) => handleChange('is_active', e.target.value === 'active' ? 'true' : 'false')}>
             <MenuItem value="active">Active</MenuItem>
             <MenuItem value="inactive">Inactive</MenuItem>
           </TextField>
         </Grid>
-        <Grid size={{ xs: 12, sm: 4 }}>
-          <TextField fullWidth select label="Source" value={formData.source} onChange={(e) => handleChange('source', e.target.value)}>
-            <MenuItem value=""><em>Select source</em></MenuItem>
-            {CONTACT_SOURCES.map((source) => (
-              <MenuItem key={source} value={source}>{source}</MenuItem>
-            ))}
-          </TextField>
-        </Grid>
         <Grid size={{ xs: 12 }}>
-          <TextField fullWidth label="Notes" value={formData.notes} onChange={(e) => handleChange('notes', e.target.value)} multiline rows={3} />
+          <TextField fullWidth label="Notes" value={formData.description} onChange={(e) => handleChange('description', e.target.value)} multiline rows={3} />
         </Grid>
         {errors.submit && (
           <Grid size={{ xs: 12 }}>

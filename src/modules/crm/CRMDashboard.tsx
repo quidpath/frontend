@@ -115,16 +115,17 @@ export default function CRMDashboard() {
     commonActions.view(() => { setSelectedItem(contact); setContactModalOpen(true); }),
     commonActions.edit(() => { setSelectedItem(contact); setContactModalOpen(true); }),
     {
-      label: contact.type === 'lead' ? 'Convert to Prospect' : 'Convert to Customer',
+      label: 'Convert to Customer',
       onClick: () => {
+        const displayName = `${contact.first_name} ${contact.last_name}`.trim();
         setConfirmDialog({
           open: true,
           title: 'Convert Contact',
-          message: `Convert ${contact.name} to ${contact.type === 'lead' ? 'prospect' : 'customer'}?`,
+          message: `Convert ${displayName} to customer?`,
           severity: 'info',
           onConfirm: async () => {
             try {
-              await crmService.convertContact(contact.id, { type: contact.type === 'lead' ? 'prospect' : 'customer' });
+              await crmService.convertContact(contact.id, {});
               showSuccess('Contact converted successfully');
               refetchContacts();
             } catch (error) {
@@ -133,13 +134,14 @@ export default function CRMDashboard() {
           },
         });
       },
-      disabled: contact.type === 'customer',
+      disabled: !contact.is_active,
     },
     commonActions.delete(() => {
+      const displayName = `${contact.first_name} ${contact.last_name}`.trim();
       setConfirmDialog({
         open: true,
         title: 'Delete Contact',
-        message: `Are you sure you want to delete ${contact.name}? This action cannot be undone.`,
+        message: `Are you sure you want to delete ${displayName}? This action cannot be undone.`,
         severity: 'error',
         onConfirm: () => handleDeleteContact(contact.id),
       });
@@ -196,12 +198,11 @@ export default function CRMDashboard() {
   ];
 
   const CONTACT_COLUMNS: TableColumn<Contact>[] = [
-    { id: 'name', label: 'Name', sortable: true, minWidth: 160 },
+    { id: 'full_name', label: 'Name', sortable: true, minWidth: 160, format: (_, row) => `${row.first_name} ${row.last_name}`.trim() },
     { id: 'email', label: 'Email', sortable: true, minWidth: 180 },
     { id: 'phone', label: 'Phone', minWidth: 130 },
-    { id: 'company', label: 'Company', sortable: true, minWidth: 150 },
-    { id: 'type', label: 'Type', format: (val) => <StatusChip status={val as string} /> },
-    { id: 'status', label: 'Status', format: (val) => <StatusChip status={val as string} /> },
+    { id: 'company_name', label: 'Company', sortable: true, minWidth: 150 },
+    { id: 'is_active', label: 'Status', format: (val) => <StatusChip status={val ? 'active' : 'inactive'} /> },
     { id: 'actions', label: 'Actions', align: 'right', format: (_, row) => <ActionMenu actions={getContactActions(row)} /> },
   ];
 
@@ -228,10 +229,10 @@ export default function CRMDashboard() {
   ];
 
   const ACTIVITY_COLUMNS: TableColumn<Activity>[] = [
-    { id: 'type', label: 'Type', format: (val) => <StatusChip status={val as string} /> },
+    { id: 'activity_type', label: 'Type', format: (val) => <StatusChip status={val as string} /> },
     { id: 'subject', label: 'Subject', sortable: true, minWidth: 200 },
-    { id: 'due_date', label: 'Due Date', format: (val) => val ? formatDate(val as string) : '—' },
-    { id: 'completed', label: 'Status', format: (val) => <StatusChip status={val ? 'completed' : 'pending'} /> },
+    { id: 'scheduled_at', label: 'Scheduled', format: (val) => val ? formatDate(val as string) : '—' },
+    { id: 'status', label: 'Status', format: (val) => <StatusChip status={val as string} /> },
     { id: 'created_at', label: 'Created', format: (val) => formatDate(val as string) },
   ];
 

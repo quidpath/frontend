@@ -15,6 +15,7 @@ import {
   TableCell,
   TableHead,
   TableRow,
+  CircularProgress,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -48,8 +49,8 @@ export default function InvoiceModal({
 }: InvoiceModalProps) {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const { data: taxRatesData } = useTaxRates();
-  const { data: customersData } = useCustomers();
+  const { data: taxRatesData, isLoading: taxRatesLoading } = useTaxRates();
+  const { data: customersData, isLoading: customersLoading } = useCustomers();
   const taxRates = (taxRatesData as any)?.results ?? (taxRatesData as any)?.tax_rates ?? [];
   const customers = (customersData as any)?.customers ?? [];
   const [formData, setFormData] = useState({

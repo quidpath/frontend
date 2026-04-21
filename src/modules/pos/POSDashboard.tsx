@@ -181,7 +181,6 @@ export default function POSDashboard() {
       <OrderModal
         open={orderModalOpen}
         onClose={() => { setOrderModalOpen(false); setSelectedItem(null); }}
-        order={selectedItem as POSOrder}
         onSuccess={() => {
           refetchOrders();
           setOrderModalOpen(false);

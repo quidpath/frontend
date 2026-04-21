@@ -7,6 +7,8 @@ import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import UniversalModal from '@/components/ui/UniversalModal';
 import { StockMovement } from '@/services/inventoryService';
 import inventoryService from '@/services/inventoryService';
+import WarehouseDropdown from '../components/WarehouseDropdown';
+import UomDropdown from '../components/UomDropdown';
 
 interface StockMovementModalProps {
   open: boolean;
@@ -225,7 +227,7 @@ export default function StockMovementModal({ open, onClose, movement, onSuccess 
         </Grid>
 
         {/* Quantity and Cost */}
-        <Grid size={{ xs: 12, sm: 6 }}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <TextField
             fullWidth
             label="Quantity"
@@ -237,7 +239,7 @@ export default function StockMovementModal({ open, onClose, movement, onSuccess 
           />
         </Grid>
 
-        <Grid size={{ xs: 12, sm: 6 }}>
+        <Grid size={{ xs: 12, sm: 4 }}>
           <TextField
             fullWidth
             label="Unit Cost"
@@ -249,29 +251,37 @@ export default function StockMovementModal({ open, onClose, movement, onSuccess 
           />
         </Grid>
 
+        <Grid size={{ xs: 12, sm: 4 }}>
+          <UomDropdown
+            value={formData.uom_id}
+            onChange={(value) => setFormData({ ...formData, uom_id: value })}
+            disabled={loading || !!movement}
+            required
+            showManageButton={false}
+          />
+        </Grid>
+
         {/* Locations */}
         {(formData.move_type === 'delivery' || formData.move_type === 'transfer') && (
           <Grid size={{ xs: 12, sm: 6 }}>
-            <TextField
-              fullWidth
-              label="From Location"
+            <WarehouseDropdown
               value={formData.location_from_id}
-              onChange={(e) => setFormData({ ...formData, location_from_id: e.target.value })}
+              onChange={(value) => setFormData({ ...formData, location_from_id: value })}
+              label="From Warehouse"
               disabled={loading || !!movement}
-              placeholder="Location UUID"
+              showManageButton={false}
             />
           </Grid>
         )}
 
         {(formData.move_type === 'receipt' || formData.move_type === 'transfer' || formData.move_type === 'adjustment') && (
           <Grid size={{ xs: 12, sm: 6 }}>
-            <TextField
-              fullWidth
-              label="To Location"
+            <WarehouseDropdown
               value={formData.location_to_id}
-              onChange={(e) => setFormData({ ...formData, location_to_id: e.target.value })}
+              onChange={(value) => setFormData({ ...formData, location_to_id: value })}
+              label="To Warehouse"
               disabled={loading || !!movement}
-              placeholder="Location UUID"
+              showManageButton={false}
             />
           </Grid>
         )}

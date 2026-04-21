@@ -6,6 +6,9 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import UniversalModal from '@/components/ui/UniversalModal';
 import { Product } from '@/services/inventoryService';
 import inventoryService from '@/services/inventoryService';
+import CategoryDropdown from '../components/CategoryDropdown';
+import UomDropdown from '../components/UomDropdown';
+import CategoryManagementModal from './CategoryManagementModal';
 
 interface ProductModalProps {
   open: boolean;
@@ -16,6 +19,7 @@ interface ProductModalProps {
 
 export default function ProductModal({ open, onClose, product, onSuccess }: ProductModalProps) {
   const [loading, setLoading] = useState(false);
+  const [managementModalOpen, setManagementModalOpen] = useState(false);
   const [syncStatus, setSyncStatus] = useState<{
     synced: string[];
     errors: string[];
@@ -23,14 +27,15 @@ export default function ProductModal({ open, onClose, product, onSuccess }: Prod
   
   const [formData, setFormData] = useState({
     name: '',
-    sku: '',
+    internal_reference: '',   // was "sku"
     barcode: '',
-    category: '',
+    category_id: '',          // was "category"
     description: '',
-    unit_price: '',
-    cost_price: '',
-    reorder_point: '',
-    unit_of_measure: 'pcs',
+    list_price: '',           // was "unit_price"
+    standard_price: '',       // was "cost_price"
+    min_qty: '',              // was "reorder_point"
+    reorder_qty: '',
+    uom_id: 'pcs',            // was "unit_of_measure"
     is_active: true,
     product_type: 'storable' as 'storable' | 'consumable' | 'service',
     costing_method: 'avco' as 'fifo' | 'avco' | 'standard',
@@ -42,14 +47,15 @@ export default function ProductModal({ open, onClose, product, onSuccess }: Prod
     if (product) {
       setFormData({
         name: product.name || '',
-        sku: product.sku || '',
+        internal_reference: product.internal_reference || '',
         barcode: product.barcode || '',
-        category: product.category || '',
+        category_id: product.category_id || '',
         description: product.description || '',
-        unit_price: String(product.unit_price || ''),
-        cost_price: String(product.cost_price || ''),
-        reorder_point: String(product.reorder_point || ''),
-        unit_of_measure: product.unit_of_measure || 'pcs',
+        list_price: String(product.list_price || ''),
+        standard_price: String(product.standard_price || ''),
+        min_qty: String(product.min_qty || ''),
+        reorder_qty: String(product.reorder_qty || ''),
+        uom_id: product.uom_id || 'pcs',
         is_active: product.is_active ?? true,
         product_type: product.product_type || 'storable',
         costing_method: product.costing_method || 'avco',
@@ -59,14 +65,15 @@ export default function ProductModal({ open, onClose, product, onSuccess }: Prod
     } else {
       setFormData({
         name: '',
-        sku: '',
+        internal_reference: '',
         barcode: '',
-        category: '',
+        category_id: '',
         description: '',
-        unit_price: '',
-        cost_price: '',
-        reorder_point: '10',
-        unit_of_measure: 'pcs',
+        list_price: '',
+        standard_price: '',
+        min_qty: '10',
+        reorder_qty: '50',
+        uom_id: 'pcs',
         is_active: true,
         product_type: 'storable',
         costing_method: 'avco',
@@ -84,9 +91,10 @@ export default function ProductModal({ open, onClose, product, onSuccess }: Prod
     try {
       const payload = {
         ...formData,
-        unit_price: Number(formData.unit_price),
-        cost_price: Number(formData.cost_price),
-        reorder_point: Number(formData.reorder_point),
+        list_price: Number(formData.list_price),
+        standard_price: Number(formData.standard_price),
+        min_qty: Number(formData.min_qty),
+        reorder_qty: Number(formData.reorder_qty),
       };
       
       if (product) {
@@ -176,42 +184,21 @@ export default function ProductModal({ open, onClose, product, onSuccess }: Prod
         </Grid>
         
         <Grid size={{ xs: 12, sm: 8 }}>
-          <TextField 
-            fullWidth 
-            label="Product Name" 
-            value={formData.name} 
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })} 
-            required 
-            disabled={loading}
-          />
+          <TextField fullWidth label="Product Name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required disabled={loading} />
         </Grid>
         <Grid size={{ xs: 12, sm: 4 }}>
-          <TextField 
-            fullWidth 
-            label="SKU" 
-            value={formData.sku} 
-            onChange={(e) => setFormData({ ...formData, sku: e.target.value })} 
-            required 
-            disabled={loading}
-          />
+          <TextField fullWidth label="SKU / Internal Reference" value={formData.internal_reference} onChange={(e) => setFormData({ ...formData, internal_reference: e.target.value })} required disabled={loading} />
         </Grid>
         
         <Grid size={{ xs: 12, sm: 6 }}>
-          <TextField 
-            fullWidth 
-            label="Barcode" 
-            value={formData.barcode} 
-            onChange={(e) => setFormData({ ...formData, barcode: e.target.value })} 
-            disabled={loading}
-          />
+          <TextField fullWidth label="Barcode" value={formData.barcode} onChange={(e) => setFormData({ ...formData, barcode: e.target.value })} disabled={loading} />
         </Grid>
         <Grid size={{ xs: 12, sm: 6 }}>
-          <TextField 
-            fullWidth 
-            label="Category" 
-            value={formData.category} 
-            onChange={(e) => setFormData({ ...formData, category: e.target.value })} 
+          <CategoryDropdown
+            value={formData.category_id}
+            onChange={(value) => setFormData({ ...formData, category_id: value })}
             disabled={loading}
+            onManageClick={() => setManagementModalOpen(true)}
           />
         </Grid>
         
@@ -235,38 +222,13 @@ export default function ProductModal({ open, onClose, product, onSuccess }: Prod
         </Grid>
         
         <Grid size={{ xs: 12, sm: 4 }}>
-          <TextField 
-            fullWidth 
-            label="Unit Price" 
-            type="number" 
-            value={formData.unit_price} 
-            onChange={(e) => setFormData({ ...formData, unit_price: e.target.value })} 
-            InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }} 
-            required 
-            disabled={loading}
-          />
+          <TextField fullWidth label="Selling Price" type="number" value={formData.list_price} onChange={(e) => setFormData({ ...formData, list_price: e.target.value })} InputProps={{ startAdornment: <InputAdornment position="start">KES</InputAdornment> }} required disabled={loading} />
         </Grid>
         <Grid size={{ xs: 12, sm: 4 }}>
-          <TextField 
-            fullWidth 
-            label="Cost Price" 
-            type="number" 
-            value={formData.cost_price} 
-            onChange={(e) => setFormData({ ...formData, cost_price: e.target.value })} 
-            InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }} 
-            required 
-            disabled={loading}
-          />
+          <TextField fullWidth label="Cost Price" type="number" value={formData.standard_price} onChange={(e) => setFormData({ ...formData, standard_price: e.target.value })} InputProps={{ startAdornment: <InputAdornment position="start">KES</InputAdornment> }} required disabled={loading} />
         </Grid>
         <Grid size={{ xs: 12, sm: 4 }}>
-          <TextField 
-            fullWidth 
-            label="Reorder Point" 
-            type="number" 
-            value={formData.reorder_point} 
-            onChange={(e) => setFormData({ ...formData, reorder_point: e.target.value })} 
-            disabled={loading}
-          />
+          <TextField fullWidth label="Min Qty (Reorder Point)" type="number" value={formData.min_qty} onChange={(e) => setFormData({ ...formData, min_qty: e.target.value })} disabled={loading} />
         </Grid>
 
         {/* Settings */}
@@ -277,12 +239,12 @@ export default function ProductModal({ open, onClose, product, onSuccess }: Prod
         </Grid>
         
         <Grid size={{ xs: 12, sm: 6 }}>
-          <TextField 
-            fullWidth 
-            label="Unit of Measure" 
-            value={formData.unit_of_measure} 
-            onChange={(e) => setFormData({ ...formData, unit_of_measure: e.target.value })} 
+          <UomDropdown
+            value={formData.uom_id}
+            onChange={(value) => setFormData({ ...formData, uom_id: value })}
             disabled={loading}
+            required
+            onManageClick={() => setManagementModalOpen(true)}
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6 }}>
@@ -364,6 +326,15 @@ export default function ProductModal({ open, onClose, product, onSuccess }: Prod
           </Grid>
         )}
       </Grid>
+
+      {/* Category Management Modal */}
+      <CategoryManagementModal
+        open={managementModalOpen}
+        onClose={() => setManagementModalOpen(false)}
+        onSuccess={() => {
+          // Refresh dropdowns will happen automatically via their refresh buttons
+        }}
+      />
     </UniversalModal>
   );
 }

@@ -212,3 +212,15 @@ export function useCRMSummary() {
     staleTime: 60_000,
   });
 }
+
+// Pipeline Stages
+export function usePipelineStages(params?: Record<string, unknown>) {
+  return useQuery({
+    queryKey: ['crm', 'pipeline-stages', params],
+    queryFn: async () => {
+      const { data } = await crmService.getPipelineStages(params);
+      return data;
+    },
+    staleTime: 60_000,
+  });
+}
