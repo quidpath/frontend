@@ -123,7 +123,14 @@ export default function BankingDashboard() {
   ];
 
   const ACCOUNT_COLUMNS: TableColumn<BankAccount>[] = [
-    { id: 'bank_name', label: 'Bank', sortable: true, minWidth: 150 },
+    { 
+      id: 'account_type', 
+      label: 'Type', 
+      sortable: true, 
+      minWidth: 120,
+      format: (val) => <StatusChip status={String(val).replace('_', ' ')} />
+    },
+    { id: 'bank_name', label: 'Bank/Provider', sortable: true, minWidth: 150 },
     { id: 'account_name', label: 'Account Name', sortable: true, minWidth: 180 },
     { id: 'account_number', label: 'Account Number', minWidth: 140 },
     { id: 'currency', label: 'Currency', minWidth: 80 },

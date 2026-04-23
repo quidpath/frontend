@@ -1,7 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Button, TextField, Grid, MenuItem, FormControlLabel, Checkbox } from '@mui/material';
+import { 
+  Button, TextField, Grid, MenuItem, FormControlLabel, Checkbox, 
+  Typography, Box, Divider, Alert 
+} from '@mui/material';
 import UniversalModal from '@/components/ui/UniversalModal';
 import { BankAccount } from '@/services/bankingService';
 import bankingService from '@/services/bankingService';
@@ -15,14 +18,43 @@ interface BankAccountModalProps {
 
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'KES', 'UGX', 'TZS'];
 
+const ACCOUNT_TYPES = [
+  { value: 'bank', label: 'Bank Account', description: 'Traditional bank account' },
+  { value: 'sacco', label: 'SACCO Account', description: 'Savings and Credit Cooperative' },
+  { value: 'mobile_money', label: 'Mobile Money', description: 'M-Pesa, Airtel Money, etc.' },
+  { value: 'till', label: 'Till Number', description: 'Business till or paybill' },
+  { value: 'cash', label: 'Cash Account', description: 'Physical cash management' },
+  { value: 'investment', label: 'Investment Account', description: 'Investment or savings account' },
+  { value: 'other', label: 'Other', description: 'Other account type' },
+];
+
 export default function BankAccountModal({ open, onClose, account, onSuccess }: BankAccountModalProps) {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    account_type: 'bank' | 'sacco' | 'mobile_money' | 'till' | 'cash' | 'investment' | 'other';
+    bank_name: string;
+    account_name: string;
+    account_number: string;
+    currency: string;
+    provider_name: string;
+    branch_code: string;
+    swift_code: string;
+    opening_balance: number;
+    opening_balance_date: string;
+    is_default: boolean;
+    is_active: boolean;
+  }>({
+    account_type: 'bank',
     bank_name: '',
     account_name: '',
     account_number: '',
     currency: 'USD',
+    provider_name: '',
+    branch_code: '',
+    swift_code: '',
+    opening_balance: 0,
+    opening_balance_date: new Date().toISOString().split('T')[0],
     is_default: false,
     is_active: true,
   });
@@ -30,19 +62,31 @@ export default function BankAccountModal({ open, onClose, account, onSuccess }: 
   useEffect(() => {
     if (account) {
       setFormData({
+        account_type: account.account_type || 'bank',
         bank_name: account.bank_name || '',
         account_name: account.account_name || '',
         account_number: account.account_number || '',
         currency: account.currency || 'USD',
+        provider_name: account.provider_name || '',
+        branch_code: account.branch_code || '',
+        swift_code: account.swift_code || '',
+        opening_balance: account.opening_balance || 0,
+        opening_balance_date: account.opening_balance_date || new Date().toISOString().split('T')[0],
         is_default: account.is_default || false,
         is_active: account.is_active ?? true,
       });
     } else {
       setFormData({
+        account_type: 'bank',
         bank_name: '',
         account_name: '',
         account_number: '',
         currency: 'USD',
+        provider_name: '',
+        branch_code: '',
+        swift_code: '',
+        opening_balance: 0,
+        opening_balance_date: new Date().toISOString().split('T')[0],
         is_default: false,
         is_active: true,
       });
@@ -50,7 +94,7 @@ export default function BankAccountModal({ open, onClose, account, onSuccess }: 
     setErrors({});
   }, [account, open]);
 
-  const handleChange = (field: string, value: string | boolean) => {
+  const handleChange = (field: string, value: string | boolean | number) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors((prev) => {
@@ -61,11 +105,74 @@ export default function BankAccountModal({ open, onClose, account, onSuccess }: 
     }
   };
 
+  const getFieldLabel = (field: string) => {
+    const accountType = formData.account_type;
+    switch (field) {
+      case 'bank_name':
+        if (accountType === 'sacco') return 'SACCO Name';
+        if (accountType === 'mobile_money') return 'Provider Name';
+        if (accountType === 'till') return 'Service Provider';
+        if (accountType === 'cash') return 'Cash Location/Name';
+        if (accountType === 'investment') return 'Institution Name';
+        return 'Bank Name';
+      case 'account_number':
+        if (accountType === 'mobile_money') return 'Phone Number';
+        if (accountType === 'till') return 'Till Number';
+        if (accountType === 'cash') return 'Cash ID/Reference';
+        return 'Account Number';
+      case 'account_name':
+        if (accountType === 'cash') return 'Cash Account Name';
+        return 'Account Name';
+      default:
+        return field.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }
+  };
+
+  const getFieldPlaceholder = (field: string) => {
+    const accountType = formData.account_type;
+    switch (field) {
+      case 'bank_name':
+        if (accountType === 'sacco') return 'e.g., Stima SACCO';
+        if (accountType === 'mobile_money') return 'e.g., Safaricom, Airtel';
+        if (accountType === 'till') return 'e.g., Safaricom';
+        if (accountType === 'cash') return 'e.g., Main Office Cash';
+        return 'e.g., Equity Bank';
+      case 'account_number':
+        if (accountType === 'mobile_money') return 'e.g., +254712345678';
+        if (accountType === 'till') return 'e.g., 123456';
+        if (accountType === 'cash') return 'e.g., CASH-001';
+        return 'e.g., 1234567890';
+      case 'provider_name':
+        return 'Additional provider information';
+      case 'branch_code':
+        if (accountType === 'sacco') return 'Branch or location code';
+        return 'Branch code';
+      default:
+        return '';
+    }
+  };
+
+  const shouldShowField = (field: string) => {
+    const accountType = formData.account_type;
+    switch (field) {
+      case 'provider_name':
+        return ['mobile_money', 'till', 'other'].includes(accountType);
+      case 'branch_code':
+        return ['bank', 'sacco'].includes(accountType);
+      case 'swift_code':
+        return accountType === 'bank';
+      default:
+        return true;
+    }
+  };
+
   const validate = () => {
     const newErrors: Record<string, string> = {};
-    if (!formData.bank_name) newErrors.bank_name = 'Bank name is required';
-    if (!formData.account_name) newErrors.account_name = 'Account name is required';
-    if (!formData.account_number) newErrors.account_number = 'Account number is required';
+    if (!formData.account_type) newErrors.account_type = 'Account type is required';
+    if (!formData.bank_name) newErrors.bank_name = `${getFieldLabel('bank_name')} is required`;
+    if (!formData.account_name) newErrors.account_name = `${getFieldLabel('account_name')} is required`;
+    if (!formData.account_number) newErrors.account_number = `${getFieldLabel('account_number')} is required`;
+    if (formData.opening_balance < 0) newErrors.opening_balance = 'Opening balance cannot be negative';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -82,20 +189,23 @@ export default function BankAccountModal({ open, onClose, account, onSuccess }: 
       }
       onSuccess();
     } catch (error: unknown) {
-      console.error('Error saving bank account:', error);
-      setErrors({ submit: 'Failed to save bank account. Please try again.' });
+      console.error('Error saving account:', error);
+      const errorMsg = (error as any)?.response?.data?.message || 'Failed to save account. Please try again.';
+      setErrors({ submit: errorMsg });
     } finally {
       setLoading(false);
     }
   };
 
+  const selectedAccountType = ACCOUNT_TYPES.find(type => type.value === formData.account_type);
+
   return (
     <UniversalModal
       open={open}
       onClose={onClose}
-      title={account ? 'Edit Bank Account' : 'New Bank Account'}
-      subtitle={account ? `Editing ${account.account_name}` : 'Add a new bank account'}
-      maxWidth="sm"
+      title={account ? 'Edit Account' : 'New Account'}
+      subtitle={account ? `Editing ${account.account_name}` : 'Add a new financial account'}
+      maxWidth="md"
       loading={loading}
       actions={
         <>
@@ -110,7 +220,40 @@ export default function BankAccountModal({ open, onClose, account, onSuccess }: 
         <Grid size={{ xs: 12 }}>
           <TextField
             fullWidth
-            label="Bank Name"
+            select
+            label="Account Type"
+            value={formData.account_type}
+            onChange={(e) => handleChange('account_type', e.target.value)}
+            error={!!errors.account_type}
+            helperText={errors.account_type}
+            required
+          >
+            {ACCOUNT_TYPES.map((type) => (
+              <MenuItem key={type.value} value={type.value}>
+                <Box>
+                  <Typography variant="body2" fontWeight="medium">{type.label}</Typography>
+                  <Typography variant="caption" color="text.secondary">{type.description}</Typography>
+                </Box>
+              </MenuItem>
+            ))}
+          </TextField>
+        </Grid>
+
+        {selectedAccountType && (
+          <Grid size={{ xs: 12 }}>
+            <Alert severity="info" sx={{ mb: 1 }}>
+              <Typography variant="body2">
+                <strong>{selectedAccountType.label}:</strong> {selectedAccountType.description}
+              </Typography>
+            </Alert>
+          </Grid>
+        )}
+
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <TextField
+            fullWidth
+            label={getFieldLabel('bank_name')}
+            placeholder={getFieldPlaceholder('bank_name')}
             value={formData.bank_name}
             onChange={(e) => handleChange('bank_name', e.target.value)}
             error={!!errors.bank_name}
@@ -118,10 +261,11 @@ export default function BankAccountModal({ open, onClose, account, onSuccess }: 
             required
           />
         </Grid>
-        <Grid size={{ xs: 12 }}>
+
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             fullWidth
-            label="Account Name"
+            label={getFieldLabel('account_name')}
             value={formData.account_name}
             onChange={(e) => handleChange('account_name', e.target.value)}
             error={!!errors.account_name}
@@ -129,10 +273,12 @@ export default function BankAccountModal({ open, onClose, account, onSuccess }: 
             required
           />
         </Grid>
+
         <Grid size={{ xs: 12, sm: 8 }}>
           <TextField
             fullWidth
-            label="Account Number"
+            label={getFieldLabel('account_number')}
+            placeholder={getFieldPlaceholder('account_number')}
             value={formData.account_number}
             onChange={(e) => handleChange('account_number', e.target.value)}
             error={!!errors.account_number}
@@ -140,6 +286,7 @@ export default function BankAccountModal({ open, onClose, account, onSuccess }: 
             required
           />
         </Grid>
+
         <Grid size={{ xs: 12, sm: 4 }}>
           <TextField
             fullWidth
@@ -153,7 +300,77 @@ export default function BankAccountModal({ open, onClose, account, onSuccess }: 
             ))}
           </TextField>
         </Grid>
+
+        {shouldShowField('provider_name') && (
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <TextField
+              fullWidth
+              label="Provider Details"
+              placeholder={getFieldPlaceholder('provider_name')}
+              value={formData.provider_name}
+              onChange={(e) => handleChange('provider_name', e.target.value)}
+            />
+          </Grid>
+        )}
+
+        {shouldShowField('branch_code') && (
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <TextField
+              fullWidth
+              label="Branch Code"
+              placeholder={getFieldPlaceholder('branch_code')}
+              value={formData.branch_code}
+              onChange={(e) => handleChange('branch_code', e.target.value)}
+            />
+          </Grid>
+        )}
+
+        {shouldShowField('swift_code') && (
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <TextField
+              fullWidth
+              label="SWIFT/BIC Code"
+              placeholder="e.g., EQBLKENA"
+              value={formData.swift_code}
+              onChange={(e) => handleChange('swift_code', e.target.value)}
+            />
+          </Grid>
+        )}
+
         <Grid size={{ xs: 12 }}>
+          <Divider sx={{ my: 1 }} />
+          <Typography variant="subtitle2" sx={{ mb: 2 }}>Opening Balance</Typography>
+        </Grid>
+
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <TextField
+            fullWidth
+            type="number"
+            label="Opening Balance"
+            value={formData.opening_balance}
+            onChange={(e) => handleChange('opening_balance', Number(e.target.value))}
+            error={!!errors.opening_balance}
+            helperText={errors.opening_balance || 'Balance when account was added to system'}
+            inputProps={{ min: 0, step: 0.01 }}
+          />
+        </Grid>
+
+        <Grid size={{ xs: 12, sm: 6 }}>
+          <TextField
+            fullWidth
+            type="date"
+            label="Opening Balance Date"
+            value={formData.opening_balance_date}
+            onChange={(e) => handleChange('opening_balance_date', e.target.value)}
+            InputLabelProps={{ shrink: true }}
+          />
+        </Grid>
+
+        <Grid size={{ xs: 12 }}>
+          <Divider sx={{ my: 1 }} />
+        </Grid>
+
+        <Grid size={{ xs: 12, sm: 6 }}>
           <FormControlLabel
             control={
               <Checkbox
@@ -164,7 +381,8 @@ export default function BankAccountModal({ open, onClose, account, onSuccess }: 
             label="Set as default account"
           />
         </Grid>
-        <Grid size={{ xs: 12 }}>
+
+        <Grid size={{ xs: 12, sm: 6 }}>
           <FormControlLabel
             control={
               <Checkbox
@@ -175,9 +393,10 @@ export default function BankAccountModal({ open, onClose, account, onSuccess }: 
             label="Active"
           />
         </Grid>
+
         {errors.submit && (
           <Grid size={{ xs: 12 }}>
-            <div style={{ color: '#d32f2f', fontSize: '0.875rem' }}>{errors.submit}</div>
+            <Alert severity="error">{errors.submit}</Alert>
           </Grid>
         )}
       </Grid>

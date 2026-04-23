@@ -554,7 +554,33 @@ function BankAccountsPanel({ can }: { can: boolean }) {
   const list = rows<BankAccount>(data, 'bank_accounts', 'results');
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<BankAccount | null>(null);
-  const [form, setForm] = useState({ bank_name: '', account_name: '', account_number: '', currency: 'KES', is_default: false, is_active: true });
+  const [form, setForm] = useState<{
+    account_type: 'bank' | 'sacco' | 'mobile_money' | 'till' | 'cash' | 'investment' | 'other';
+    bank_name: string;
+    account_name: string;
+    account_number: string;
+    currency: string;
+    provider_name: string;
+    branch_code: string;
+    swift_code: string;
+    opening_balance: number;
+    opening_balance_date: string;
+    is_default: boolean;
+    is_active: boolean;
+  }>({ 
+    account_type: 'bank', 
+    bank_name: '', 
+    account_name: '', 
+    account_number: '', 
+    currency: 'KES', 
+    provider_name: '',
+    branch_code: '',
+    swift_code: '',
+    opening_balance: 0,
+    opening_balance_date: new Date().toISOString().split('T')[0],
+    is_default: false, 
+    is_active: true 
+  });
   const [err, setErr] = useState('');
 
   const save = useMutation({
@@ -567,29 +593,92 @@ function BankAccountsPanel({ can }: { can: boolean }) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['banking', 'accounts'] }),
   });
 
-  const openAdd = () => { setEditing(null); setForm({ bank_name: '', account_name: '', account_number: '', currency: 'KES', is_default: false, is_active: true }); setErr(''); setOpen(true); };
-  const openEdit = (r: BankAccount) => { setEditing(r); setForm({ bank_name: r.bank_name, account_name: r.account_name, account_number: r.account_number, currency: r.currency, is_default: r.is_default, is_active: r.is_active }); setErr(''); setOpen(true); };
+  const openAdd = () => { 
+    setEditing(null); 
+    setForm({ 
+      account_type: 'bank', 
+      bank_name: '', 
+      account_name: '', 
+      account_number: '', 
+      currency: 'KES', 
+      provider_name: '',
+      branch_code: '',
+      swift_code: '',
+      opening_balance: 0,
+      opening_balance_date: new Date().toISOString().split('T')[0],
+      is_default: false, 
+      is_active: true 
+    }); 
+    setErr(''); 
+    setOpen(true); 
+  };
+  
+  const openEdit = (r: BankAccount) => { 
+    setEditing(r); 
+    setForm({ 
+      account_type: (r as any).account_type || 'bank',
+      bank_name: r.bank_name, 
+      account_name: r.account_name, 
+      account_number: r.account_number, 
+      currency: r.currency, 
+      provider_name: (r as any).provider_name || '',
+      branch_code: (r as any).branch_code || '',
+      swift_code: (r as any).swift_code || '',
+      opening_balance: (r as any).opening_balance || 0,
+      opening_balance_date: (r as any).opening_balance_date || new Date().toISOString().split('T')[0],
+      is_default: r.is_default, 
+      is_active: r.is_active 
+    }); 
+    setErr(''); 
+    setOpen(true); 
+  };
 
   return (
     <>
-      <CrudTable title="Bank Accounts" subtitle="Company accounts used for transactions and transfers"
+      <CrudTable title="Financial Accounts" subtitle="Bank accounts, SACCOs, mobile money, and other financial accounts"
         columns={[
-          { key: 'bank_name', label: 'Bank' }, { key: 'account_name', label: 'Account Name' },
-          { key: 'account_number', label: 'Account Number' }, { key: 'currency', label: 'Currency' },
+          { key: 'account_type', label: 'Type', render: (r) => <Chip label={String((r as any).account_type || 'bank').replace('_', ' ').toUpperCase()} size="small" /> },
+          { key: 'bank_name', label: 'Bank/Provider' }, 
+          { key: 'account_name', label: 'Account Name' },
+          { key: 'account_number', label: 'Account Number' }, 
+          { key: 'currency', label: 'Currency' },
+          { key: 'balance', label: 'Balance', render: (r) => r.balance ? `${r.currency} ${Number(r.balance).toLocaleString()}` : '—' },
           { key: 'is_default', label: 'Default', render: (r) => r.is_default ? <Chip label="Default" color="primary" size="small" /> : null },
           { key: 'is_active', label: 'Status', render: (r) => <Chip label={r.is_active ? 'Active' : 'Inactive'} color={r.is_active ? 'success' : 'default'} size="small" /> },
         ]}
         rows={list} loading={isLoading} canAdd={can} canEdit={can} canDelete={can}
-        onAdd={openAdd} onEdit={openEdit} onDelete={(r) => del.mutate(r.id)} emptyMessage="No bank accounts yet" />
-      <FormModal open={open} onClose={() => setOpen(false)} title={editing ? 'Edit Bank Account' : 'Add Bank Account'} onSubmit={() => save.mutate()} loading={save.isPending}>
+        onAdd={openAdd} onEdit={openEdit} onDelete={(r) => del.mutate(r.id)} emptyMessage="No accounts yet" />
+      <FormModal open={open} onClose={() => setOpen(false)} title={editing ? 'Edit Account' : 'Add Account'} onSubmit={() => save.mutate()} loading={save.isPending}>
         <Err msg={err} />
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <TextField label="Bank Name" value={form.bank_name} onChange={(e) => setForm({ ...form, bank_name: e.target.value })} required fullWidth />
+          <TextField select label="Account Type" value={form.account_type} onChange={(e) => setForm({ ...form, account_type: e.target.value as 'bank' | 'sacco' | 'mobile_money' | 'till' | 'cash' | 'investment' | 'other' })} fullWidth>
+            <MenuItem value="bank">Bank Account</MenuItem>
+            <MenuItem value="sacco">SACCO Account</MenuItem>
+            <MenuItem value="mobile_money">Mobile Money</MenuItem>
+            <MenuItem value="till">Till Number</MenuItem>
+            <MenuItem value="cash">Cash Account</MenuItem>
+            <MenuItem value="investment">Investment Account</MenuItem>
+            <MenuItem value="other">Other</MenuItem>
+          </TextField>
+          <TextField label={form.account_type === 'sacco' ? 'SACCO Name' : form.account_type === 'mobile_money' ? 'Provider Name' : 'Bank Name'} 
+                     value={form.bank_name} onChange={(e) => setForm({ ...form, bank_name: e.target.value })} required fullWidth />
           <TextField label="Account Name" value={form.account_name} onChange={(e) => setForm({ ...form, account_name: e.target.value })} required fullWidth />
-          <TextField label="Account Number" value={form.account_number} onChange={(e) => setForm({ ...form, account_number: e.target.value })} required fullWidth />
+          <TextField label={form.account_type === 'mobile_money' ? 'Phone Number' : form.account_type === 'till' ? 'Till Number' : 'Account Number'} 
+                     value={form.account_number} onChange={(e) => setForm({ ...form, account_number: e.target.value })} required fullWidth />
           <TextField select label="Currency" value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })} fullWidth>
             {['KES', 'USD', 'EUR', 'GBP', 'UGX', 'TZS'].map((c) => <MenuItem key={c} value={c}>{c}</MenuItem>)}
           </TextField>
+          {['mobile_money', 'till', 'other'].includes(form.account_type) && (
+            <TextField label="Provider Details" value={form.provider_name} onChange={(e) => setForm({ ...form, provider_name: e.target.value })} fullWidth />
+          )}
+          {['bank', 'sacco'].includes(form.account_type) && (
+            <TextField label="Branch Code" value={form.branch_code} onChange={(e) => setForm({ ...form, branch_code: e.target.value })} fullWidth />
+          )}
+          {form.account_type === 'bank' && (
+            <TextField label="SWIFT Code" value={form.swift_code} onChange={(e) => setForm({ ...form, swift_code: e.target.value })} fullWidth />
+          )}
+          <TextField type="number" label="Opening Balance" value={form.opening_balance} onChange={(e) => setForm({ ...form, opening_balance: Number(e.target.value) })} fullWidth />
+          <TextField type="date" label="Opening Balance Date" value={form.opening_balance_date} onChange={(e) => setForm({ ...form, opening_balance_date: e.target.value })} fullWidth InputLabelProps={{ shrink: true }} />
           <FormControlLabel control={<Checkbox checked={form.is_default} onChange={(e) => setForm({ ...form, is_default: e.target.checked })} />} label="Set as default account" />
           <FormControlLabel control={<Checkbox checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />} label="Active" />
         </Box>

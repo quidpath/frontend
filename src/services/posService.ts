@@ -12,6 +12,11 @@ export interface POSOrder {
   payment_method: string;
   status: 'pending' | 'completed' | 'cancelled';
   created_at: string;
+  accounting_sync?: {
+    success: boolean;
+    invoice_number?: string;
+    error?: string;
+  };
 }
 
 export interface POSOrderItem {
@@ -164,6 +169,26 @@ const posService = {
 
   createOrder: (data: Omit<POSOrder, 'id' | 'created_at' | 'order_number'>) =>
     posClient.post<POSOrder>('/api/pos/orders/', data),
+
+  // Create order with immediate payment processing
+  createOrderWithPayment: (data: {
+    customer_name?: string;
+    customer_id?: string;
+    mark_as_paid?: boolean;
+    payment_account_id?: string;
+    notes?: string;
+    items: Array<{
+      product_id: string;
+      quantity: number;
+      unit_price: number;
+      discount_percent?: number;
+    }>;
+    payments?: Array<{
+      method: string;
+      amount: number;
+      reference?: string;
+    }>;
+  }) => posClient.post<POSOrder>('/api/pos/orders/', data),
 
   addOrderLine: (orderId: string, data: Record<string, unknown>) =>
     posClient.post(`/api/pos/orders/${orderId}/lines/`, data),

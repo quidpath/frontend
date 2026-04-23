@@ -3,14 +3,19 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Button, TextField, Grid, MenuItem, IconButton, Box, Typography, 
-  Autocomplete, CircularProgress, Checkbox, FormControlLabel, Alert 
+  Autocomplete, CircularProgress, Checkbox, FormControlLabel, Alert,
+  Divider, Chip, Card, CardContent
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
+import PaymentIcon from '@mui/icons-material/Payment';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import UniversalModal from '@/components/ui/UniversalModal';
 import posService from '@/services/posService';
 import inventoryService from '@/services/inventoryService';
 import { useProducts } from '@/hooks/useInventory';
+import { usePaymentAccounts } from '@/hooks/useBanking';
+import { useQuery } from '@tanstack/react-query';
 
 interface OrderModalProps {
   open: boolean;
@@ -26,7 +31,19 @@ interface OrderItem {
   total: number;
 }
 
-const PAYMENT_METHODS = ['Cash', 'Card', 'Mobile Money', 'Bank Transfer'];
+interface PaymentMethod {
+  method: string;
+  amount: number;
+  reference: string;
+}
+
+const PAYMENT_METHODS = [
+  { value: 'cash', label: 'Cash' },
+  { value: 'card', label: 'Card' },
+  { value: 'mpesa', label: 'M-Pesa' },
+  { value: 'bank', label: 'Bank Transfer' },
+  { value: 'other', label: 'Other' }
+];
 
 export default function OrderModal({ open, onClose, onSuccess }: OrderModalProps) {
   const [loading, setLoading] = useState(false);
@@ -34,24 +51,34 @@ export default function OrderModal({ open, onClose, onSuccess }: OrderModalProps
   const { data: productsData, isLoading: productsLoading } = useProducts();
   const products = (productsData as any)?.results ?? [];
   
+  // Fetch payment accounts (bank accounts + chart of accounts)
+  const { data: paymentAccounts, isLoading: paymentAccountsLoading } = usePaymentAccounts();
+  
   const [formData, setFormData] = useState({
     customer_name: '',
-    payment_method: 'Cash',
     discount: 0,
     tax: 0,
     include_tax: false,
     items: [] as OrderItem[],
+    // Payment fields
+    payment_account_id: '',
+    payment_methods: [] as PaymentMethod[],
+    mark_as_paid: false,
+    notes: '',
   });
 
   useEffect(() => {
     if (open) {
       setFormData({
         customer_name: '',
-        payment_method: 'Cash',
         discount: 0,
         tax: 0,
         include_tax: false,
         items: [{ product_id: '', product_name: '', quantity: 1, unit_price: 0, total: 0 }],
+        payment_account_id: '',
+        payment_methods: [{ method: 'cash', amount: 0, reference: '' }],
+        mark_as_paid: false,
+        notes: '',
       });
       setErrors({});
     }
@@ -109,15 +136,40 @@ export default function OrderModal({ open, onClose, onSuccess }: OrderModalProps
     }));
   };
 
+  const addPaymentMethod = () => {
+    setFormData((prev) => ({
+      ...prev,
+      payment_methods: [...prev.payment_methods, { method: 'cash', amount: 0, reference: '' }],
+    }));
+  };
+
+  const removePaymentMethod = (index: number) => {
+    if (formData.payment_methods.length === 1) return;
+    setFormData((prev) => ({
+      ...prev,
+      payment_methods: prev.payment_methods.filter((_, i) => i !== index),
+    }));
+  };
+
+  const handlePaymentMethodChange = (index: number, field: keyof PaymentMethod, value: string | number) => {
+    const newPaymentMethods = [...formData.payment_methods];
+    newPaymentMethods[index] = { ...newPaymentMethods[index], [field]: value };
+    setFormData((prev) => ({ ...prev, payment_methods: newPaymentMethods }));
+  };
+
   const calculateTotals = () => {
     const subtotal = formData.items.reduce((sum, item) => sum + item.total, 0);
     const taxAmount = formData.include_tax ? formData.tax : 0;
     const total = subtotal + taxAmount - formData.discount;
-    return { subtotal, taxAmount, total };
+    const totalPaid = formData.payment_methods.reduce((sum, payment) => sum + payment.amount, 0);
+    const change = totalPaid - total;
+    return { subtotal, taxAmount, total, totalPaid, change };
   };
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
+    
+    // Validate items
     if (formData.items.length === 0) {
       newErrors.items = 'At least one item is required';
     }
@@ -127,6 +179,26 @@ export default function OrderModal({ open, onClose, onSuccess }: OrderModalProps
     if (invalidItems.length > 0) {
       newErrors.items = 'All items must have valid product, quantity, and price';
     }
+
+    // Validate payment if marking as paid
+    if (formData.mark_as_paid) {
+      if (!formData.payment_account_id) {
+        newErrors.payment_account_id = 'Payment account is required when marking as paid';
+      }
+      
+      const { total, totalPaid } = calculateTotals();
+      if (totalPaid < total) {
+        newErrors.payment_methods = `Insufficient payment. Required: ${total.toFixed(2)}, Received: ${totalPaid.toFixed(2)}`;
+      }
+      
+      const invalidPayments = formData.payment_methods.filter(
+        payment => !payment.method || payment.amount <= 0
+      );
+      if (invalidPayments.length > 0) {
+        newErrors.payment_methods = 'All payment methods must have valid method and amount';
+      }
+    }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -138,25 +210,37 @@ export default function OrderModal({ open, onClose, onSuccess }: OrderModalProps
     try {
       const { subtotal, taxAmount, total } = calculateTotals();
       
-      // Create order with items
+      // Create complete order with items and payments in one request
       const orderData = {
         customer_name: formData.customer_name || 'Walk-in Customer',
+        mark_as_paid: formData.mark_as_paid,
+        payment_account_id: formData.mark_as_paid ? formData.payment_account_id : undefined,
+        notes: formData.notes,
         items: formData.items.map(item => ({
           product_id: item.product_id,
-          product_name: item.product_name,
           quantity: item.quantity,
           unit_price: item.unit_price,
-          total: item.total,
+          discount_percent: 0, // Can be enhanced later
         })),
-        subtotal,
-        tax: taxAmount,
-        discount: formData.discount,
-        total,
-        payment_method: formData.payment_method,
-        status: 'completed',
+        payments: formData.mark_as_paid ? formData.payment_methods.map(pm => ({
+          method: pm.method,
+          amount: pm.amount,
+          reference: pm.reference || '',
+        })) : undefined,
       };
 
-      await posService.createOrder(orderData as any);
+      const response = await posService.createOrder(orderData as any);
+      
+      // Show success message with accounting sync status if applicable
+      if (formData.mark_as_paid && response.data.accounting_sync) {
+        const syncStatus = response.data.accounting_sync;
+        if (syncStatus.success) {
+          console.log(`Order created and synced to accounting. Invoice: ${syncStatus.invoice_number}`);
+        } else {
+          console.warn(`Order created but accounting sync failed: ${syncStatus.error}`);
+        }
+      }
+
       onSuccess();
       onClose();
     } catch (error: any) {
@@ -168,21 +252,21 @@ export default function OrderModal({ open, onClose, onSuccess }: OrderModalProps
     }
   };
 
-  const { subtotal, taxAmount, total } = calculateTotals();
+  const { subtotal, taxAmount, total, totalPaid, change } = calculateTotals();
 
   return (
     <UniversalModal
       open={open}
       onClose={onClose}
       title="New POS Order"
-      subtitle="Create a new point of sale order"
+      subtitle="Create a new point of sale order with payment processing and accounting sync"
       maxWidth="lg"
       loading={loading}
       actions={
         <>
           <Button onClick={onClose} disabled={loading}>Cancel</Button>
           <Button variant="contained" onClick={handleSubmit} disabled={loading}>
-            Complete Order
+            {formData.mark_as_paid ? 'Complete Order & Payment' : 'Save as Draft'}
           </Button>
         </>
       }
@@ -200,16 +284,13 @@ export default function OrderModal({ open, onClose, onSuccess }: OrderModalProps
         <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             fullWidth
-            select
-            label="Payment Method"
-            value={formData.payment_method}
-            onChange={(e) => handleChange('payment_method', e.target.value)}
-            required
-          >
-            {PAYMENT_METHODS.map((method) => (
-              <MenuItem key={method} value={method}>{method}</MenuItem>
-            ))}
-          </TextField>
+            multiline
+            rows={1}
+            label="Notes"
+            value={formData.notes}
+            onChange={(e) => handleChange('notes', e.target.value)}
+            placeholder="Order notes..."
+          />
         </Grid>
 
         <Grid size={{ xs: 12 }}>
@@ -304,7 +385,7 @@ export default function OrderModal({ open, onClose, onSuccess }: OrderModalProps
               </Grid>
               <Grid size={{ xs: 6 }}>
                 <Typography variant="body1" align="right" fontWeight="medium">
-                  {subtotal.toFixed(2)}
+                  ${subtotal.toFixed(2)}
                 </Typography>
               </Grid>
 
@@ -335,7 +416,7 @@ export default function OrderModal({ open, onClose, onSuccess }: OrderModalProps
                   </Grid>
                   <Grid size={{ xs: 6 }}>
                     <Typography variant="body1" align="right" sx={{ mt: 1 }}>
-                      +{taxAmount.toFixed(2)}
+                      +${taxAmount.toFixed(2)}
                     </Typography>
                   </Grid>
                 </>
@@ -354,7 +435,7 @@ export default function OrderModal({ open, onClose, onSuccess }: OrderModalProps
               </Grid>
               <Grid size={{ xs: 6 }}>
                 <Typography variant="body1" align="right" sx={{ mt: 1 }}>
-                  -{formData.discount.toFixed(2)}
+                  -${formData.discount.toFixed(2)}
                 </Typography>
               </Grid>
 
@@ -366,7 +447,7 @@ export default function OrderModal({ open, onClose, onSuccess }: OrderModalProps
                     </Grid>
                     <Grid size={{ xs: 6 }}>
                       <Typography variant="h6" fontWeight="bold" align="right" color="primary">
-                        {total.toFixed(2)}
+                        ${total.toFixed(2)}
                       </Typography>
                     </Grid>
                   </Grid>
@@ -374,6 +455,193 @@ export default function OrderModal({ open, onClose, onSuccess }: OrderModalProps
               </Grid>
             </Grid>
           </Box>
+        </Grid>
+
+        {/* Payment Section */}
+        <Grid size={{ xs: 12 }}>
+          <Divider sx={{ my: 2 }} />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+            <PaymentIcon color="primary" />
+            <Typography variant="h6">Payment Information</Typography>
+          </Box>
+          
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={formData.mark_as_paid}
+                onChange={(e) => handleChange('mark_as_paid', e.target.checked)}
+              />
+            }
+            label="Mark as Paid (Complete Payment Now)"
+            sx={{ mb: 2 }}
+          />
+
+          {formData.mark_as_paid && (
+            <Card variant="outlined" sx={{ mb: 2 }}>
+              <CardContent>
+                <Grid container spacing={2}>
+                  <Grid size={{ xs: 12 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                      <AccountBalanceIcon fontSize="small" />
+                      <Typography variant="subtitle2">Payment Account</Typography>
+                    </Box>
+                    <Autocomplete
+                      options={paymentAccounts}
+                      getOptionLabel={(option: any) => option.display_name}
+                      loading={paymentAccountsLoading}
+                      value={paymentAccounts.find((acc: any) => acc.id === formData.payment_account_id) || null}
+                      onChange={(_, newValue) => handleChange('payment_account_id', newValue?.id || '')}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Select Payment Account"
+                          required
+                          error={!!errors.payment_account_id}
+                          helperText={errors.payment_account_id}
+                          InputProps={{
+                            ...params.InputProps,
+                            endAdornment: (
+                              <>
+                                {paymentAccountsLoading ? <CircularProgress size={20} /> : null}
+                                {params.InputProps.endAdornment}
+                              </>
+                            ),
+                          }}
+                        />
+                      )}
+                      renderOption={(props, option: any) => (
+                        <Box component="li" {...props}>
+                          <Box>
+                            <Typography variant="body2" fontWeight="medium">
+                              {option.display_name}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {option.description}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      )}
+                    />
+                  </Grid>
+
+                  <Grid size={{ xs: 12 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                      <Typography variant="subtitle2">Payment Methods</Typography>
+                      <Button size="small" startIcon={<AddIcon />} onClick={addPaymentMethod}>
+                        Add Payment Method
+                      </Button>
+                    </Box>
+                    
+                    {formData.payment_methods.map((payment, index) => (
+                      <Grid container spacing={1.5} key={index} sx={{ mb: 1.5 }}>
+                        <Grid size={{ xs: 12, sm: 3 }}>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            select
+                            label="Method"
+                            value={payment.method}
+                            onChange={(e) => handlePaymentMethodChange(index, 'method', e.target.value)}
+                            required
+                          >
+                            {PAYMENT_METHODS.map((method) => (
+                              <MenuItem key={method.value} value={method.value}>
+                                {method.label}
+                              </MenuItem>
+                            ))}
+                          </TextField>
+                        </Grid>
+                        <Grid size={{ xs: 6, sm: 3 }}>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            type="number"
+                            label="Amount"
+                            value={payment.amount}
+                            onChange={(e) => handlePaymentMethodChange(index, 'amount', Number(e.target.value))}
+                            inputProps={{ min: 0, step: 0.01 }}
+                            required
+                          />
+                        </Grid>
+                        <Grid size={{ xs: 5, sm: 4 }}>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            label="Reference"
+                            value={payment.reference}
+                            onChange={(e) => handlePaymentMethodChange(index, 'reference', e.target.value)}
+                            placeholder="Transaction ref..."
+                          />
+                        </Grid>
+                        <Grid size={{ xs: 1, sm: 2 }}>
+                          <IconButton 
+                            size="small" 
+                            color="error" 
+                            onClick={() => removePaymentMethod(index)} 
+                            disabled={formData.payment_methods.length === 1}
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </Grid>
+                      </Grid>
+                    ))}
+                    
+                    {errors.payment_methods && (
+                      <Alert severity="error" sx={{ mt: 1 }}>{errors.payment_methods}</Alert>
+                    )}
+                  </Grid>
+
+                  {/* Payment Summary */}
+                  <Grid size={{ xs: 12 }}>
+                    <Box sx={{ bgcolor: 'grey.100', p: 2, borderRadius: 1, mt: 2 }}>
+                      <Grid container spacing={1}>
+                        <Grid size={{ xs: 6 }}>
+                          <Typography variant="body2">Order Total:</Typography>
+                        </Grid>
+                        <Grid size={{ xs: 6 }}>
+                          <Typography variant="body2" align="right" fontWeight="medium">
+                            ${total.toFixed(2)}
+                          </Typography>
+                        </Grid>
+                        <Grid size={{ xs: 6 }}>
+                          <Typography variant="body2">Total Paid:</Typography>
+                        </Grid>
+                        <Grid size={{ xs: 6 }}>
+                          <Typography variant="body2" align="right" fontWeight="medium" color={totalPaid >= total ? 'success.main' : 'error.main'}>
+                            ${totalPaid.toFixed(2)}
+                          </Typography>
+                        </Grid>
+                        {change > 0 && (
+                          <>
+                            <Grid size={{ xs: 6 }}>
+                              <Typography variant="body2" fontWeight="bold">Change:</Typography>
+                            </Grid>
+                            <Grid size={{ xs: 6 }}>
+                              <Typography variant="body2" align="right" fontWeight="bold" color="success.main">
+                                ${change.toFixed(2)}
+                              </Typography>
+                            </Grid>
+                          </>
+                        )}
+                        {totalPaid < total && (
+                          <>
+                            <Grid size={{ xs: 6 }}>
+                              <Typography variant="body2" color="error">Remaining:</Typography>
+                            </Grid>
+                            <Grid size={{ xs: 6 }}>
+                              <Typography variant="body2" align="right" color="error">
+                                ${(total - totalPaid).toFixed(2)}
+                              </Typography>
+                            </Grid>
+                          </>
+                        )}
+                      </Grid>
+                    </Box>
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
+          )}
         </Grid>
 
         {errors.submit && (

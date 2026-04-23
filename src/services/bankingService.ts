@@ -2,13 +2,20 @@ import { gatewayClient } from './apiClient';
 
 export interface BankAccount {
   id: string;
+  account_type: 'bank' | 'sacco' | 'mobile_money' | 'till' | 'cash' | 'investment' | 'other';
   bank_name: string;
   account_name: string;
   account_number: string;
   currency: string;
+  provider_name?: string;
+  branch_code?: string;
+  swift_code?: string;
+  opening_balance: number;
+  opening_balance_date: string;
   is_default: boolean;
   is_active: boolean;
   balance?: number;
+  display_name?: string;
   created_at: string;
 }
 
@@ -68,10 +75,10 @@ const bankingService = {
   getBankAccount: (id: string) =>
     gatewayClient.get<BankAccount>(`/bank-account/get/`, { params: { id } }),
 
-  createBankAccount: (data: Omit<BankAccount, 'id' | 'created_at' | 'balance'>) =>
+  createBankAccount: (data: Omit<BankAccount, 'id' | 'created_at' | 'balance' | 'display_name'>) =>
     gatewayClient.post<BankAccount>('/bank-account/add/', data),
 
-  updateBankAccount: (id: string, data: Partial<BankAccount>) =>
+  updateBankAccount: (id: string, data: Partial<Omit<BankAccount, 'id' | 'created_at' | 'balance' | 'display_name'>>) =>
     gatewayClient.put<BankAccount>('/bank-account/update/', { id, ...data }),
 
   deleteBankAccount: (id: string) =>
@@ -104,6 +111,13 @@ const bankingService = {
 
   createInternalTransfer: (data: Omit<InternalTransfer, 'id' | 'created_at' | 'from_account_name' | 'to_account_name'>) =>
     gatewayClient.post('/internal-transfer/create/', data),
+
+  // Data Validation
+  validateDataIntegrity: () =>
+    gatewayClient.get('/data/validate/'),
+
+  fixDataIntegrityIssues: () =>
+    gatewayClient.post('/data/fix/', {}),
 };
 
 export default bankingService;
