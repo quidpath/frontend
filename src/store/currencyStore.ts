@@ -1,7 +1,8 @@
 /**
  * Currency store — persisted via localStorage.
- * Uses Frankfurter (https://api.frankfurter.app) — free, no API key, open-source.
- * Rates are fetched once per session and cached for 1 hour.
+ * Rates are fetched from backend proxy endpoint (avoids CORS).
+ * Backend fetches from Frankfurter API server-side.
+ * Rates are cached for 1 hour.
  */
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
@@ -59,7 +60,10 @@ export const useCurrencyStore = create<CurrencyState>()(
   )
 );
 
-/** Convert an amount from baseCurrency to the selected display currency. */
+/** 
+ * Convert an amount from one currency to another using exchange rates.
+ * Handles cross-currency conversion properly.
+ */
 export function convertAmount(
   amount: number,
   rates: Record<string, number>,
@@ -69,10 +73,14 @@ export function convertAmount(
   if (from === to || !amount) return amount;
   if (Object.keys(rates).length === 0) return amount;
 
-  // Frankfurter returns rates relative to the base (from).
-  // If from === base, rate[to] gives direct conversion.
-  // If from !== base, convert via USD as pivot.
-  const rate = rates[to];
-  if (!rate) return amount;
-  return amount * rate;
+  // Get rates for both currencies
+  const fromRate = rates[from];
+  const toRate = rates[to];
+  
+  // If either rate is missing, return original amount
+  if (!fromRate || !toRate) return amount;
+  
+  // Convert: amount in 'from' currency -> base currency -> 'to' currency
+  // Formula: (amount / fromRate) * toRate
+  return (amount / fromRate) * toRate;
 }
