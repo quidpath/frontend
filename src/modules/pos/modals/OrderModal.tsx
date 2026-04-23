@@ -12,8 +12,6 @@ import PaymentIcon from '@mui/icons-material/Payment';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import UniversalModal from '@/components/ui/UniversalModal';
 import posService from '@/services/posService';
-import inventoryService from '@/services/inventoryService';
-import { useProducts } from '@/hooks/useInventory';
 import { usePaymentAccounts } from '@/hooks/useBanking';
 import { useQuery } from '@tanstack/react-query';
 
@@ -48,8 +46,17 @@ const PAYMENT_METHODS = [
 export default function OrderModal({ open, onClose, onSuccess }: OrderModalProps) {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const { data: productsData, isLoading: productsLoading } = useProducts();
-  const products = (productsData as any)?.results ?? [];
+  
+  // Fetch products from POS service (not inventory directly)
+  const { data: productsData, isLoading: productsLoading } = useQuery({
+    queryKey: ['pos', 'products'],
+    queryFn: async () => {
+      const response = await posService.getProducts();
+      return response.data;
+    },
+    staleTime: 30_000,
+  });
+  const products = (productsData as any)?.products ?? [];
   
   // Fetch payment accounts (bank accounts + chart of accounts)
   const { data: paymentAccounts, isLoading: paymentAccountsLoading } = usePaymentAccounts();

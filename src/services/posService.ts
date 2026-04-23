@@ -281,6 +281,22 @@ const posService = {
   // Summary
   getSummary: () =>
     posClient.get<POSSummary>('/api/pos/summary/'),
+
+  // Products — /api/pos/products/
+  getProducts: (params?: Record<string, unknown>) =>
+    posClient.get<{ count: number; products: any[] }>('/api/pos/products/', { params }),
+
+  getProduct: (id: string) =>
+    posClient.get(`/api/pos/products/${id}/`),
+
+  searchProducts: (query: string) =>
+    posClient.get<{ count: number; products: any[] }>('/api/pos/products/search/', { params: { q: query } }),
+
+  getProductsBulk: (productIds: string[]) =>
+    posClient.post<{ count: number; products: any[] }>('/api/pos/products/bulk/', { product_ids: productIds }),
+
+  checkStock: (productId: string) =>
+    posClient.get(`/api/pos/products/${productId}/stock/`),
 };
 
 export default posService;
