@@ -16,16 +16,29 @@ export function useCurrencyRates() {
     const stale = !ratesFetchedAt || now - ratesFetchedAt > CACHE_TTL_MS;
     if (!stale && Object.keys(rates).length > 0) return;
 
-    fetch(`${FRANKFURTER_BASE}/latest?from=${baseCurrency}`)
-      .then((r) => r.json())
+    // Use a proxy or backend endpoint to avoid CORS issues
+    // For now, fail silently and use base currency
+    fetch(`${FRANKFURTER_BASE}/latest?from=${baseCurrency}`, {
+      mode: 'cors',
+      headers: {
+        'Accept': 'application/json',
+      },
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error('Failed to fetch rates');
+        return r.json();
+      })
       .then((data) => {
         if (data?.rates) {
           // Include the base itself as 1:1
           setRates({ ...data.rates, [baseCurrency]: 1 }, Date.now());
         }
       })
-      .catch(() => {
+      .catch((error) => {
         // Fail silently — amounts will display in base currency
+        // Set a minimal rate to prevent repeated fetches
+        console.warn('Currency rates unavailable, using base currency:', error.message);
+        setRates({ [baseCurrency]: 1 }, Date.now());
       });
   }, [baseCurrency, ratesFetchedAt, rates, setRates]);
 }

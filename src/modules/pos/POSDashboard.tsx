@@ -71,7 +71,7 @@ export default function POSDashboard() {
     { id: 'order_number', label: 'Order #', format: (val) => <Typography variant="body2" fontWeight={600} color="primary.dark">{val as string}</Typography> },
     { id: 'customer_name', label: 'Customer', sortable: true },
     { id: 'total', label: 'Total', align: 'right', sortable: true, format: (val) => <Typography variant="body2" fontWeight={600}>{formatCurrency(Number(val))}</Typography> },
-    { id: 'payment_method', label: 'Payment', format: (val) => <Chip label={(val as string).toUpperCase()} size="small" sx={{ fontSize: '0.7rem', fontWeight: 600, height: 20, borderRadius: '4px' }} /> },
+    { id: 'payment_method', label: 'Payment', format: (val) => <Chip label={val ? (val as string).toUpperCase() : 'N/A'} size="small" sx={{ fontSize: '0.7rem', fontWeight: 600, height: 20, borderRadius: '4px' }} /> },
     { id: 'status', label: 'Status', format: (val) => <StatusChip status={val as string} /> },
     { id: 'created_at', label: 'Time', format: (val) => formatDate(val as string) },
     { id: 'actions', label: 'Actions', align: 'right', format: (_, row) => <ActionMenu actions={getOrderActions(row)} /> },
