@@ -68,22 +68,22 @@ export default function POSDashboard() {
   ];
 
   const ORDER_COLUMNS: TableColumn<POSOrder>[] = [
-    { id: 'order_number', label: 'Order #', format: (val) => <Typography variant="body2" fontWeight={600} color="primary.dark">{val as string}</Typography> },
-    { id: 'customer_name', label: 'Customer', sortable: true },
-    { id: 'total', label: 'Total', align: 'right', sortable: true, format: (val) => <Typography variant="body2" fontWeight={600}>{formatCurrency(Number(val))}</Typography> },
+    { id: 'order_number', label: 'Order #', format: (val) => <Typography variant="body2" fontWeight={600} color="primary.dark">{(val as string) || 'N/A'}</Typography> },
+    { id: 'customer_name', label: 'Customer', sortable: true, format: (val) => (val as string) || '—' },
+    { id: 'total', label: 'Total', align: 'right', sortable: true, format: (val) => <Typography variant="body2" fontWeight={600}>{formatCurrency(Number(val || 0))}</Typography> },
     { id: 'payment_method', label: 'Payment', format: (val) => <Chip label={val ? (val as string).toUpperCase() : 'N/A'} size="small" sx={{ fontSize: '0.7rem', fontWeight: 600, height: 20, borderRadius: '4px' }} /> },
     { id: 'status', label: 'Status', format: (val) => <StatusChip status={val as string} /> },
-    { id: 'created_at', label: 'Time', format: (val) => formatDate(val as string) },
+    { id: 'created_at', label: 'Time', format: (val) => val ? formatDate(val as string) : '—' },
     { id: 'actions', label: 'Actions', align: 'right', format: (_, row) => <ActionMenu actions={getOrderActions(row)} /> },
   ];
 
   const SESSION_COLUMNS: TableColumn<POSSession>[] = [
-    { id: 'terminal_name', label: 'Terminal', sortable: true },
-    { id: 'opened_by', label: 'Opened By', sortable: true },
-    { id: 'opened_at', label: 'Opened', format: (val) => formatDate(val as string) },
+    { id: 'terminal_name', label: 'Terminal', sortable: true, format: (val) => (val as string) || '—' },
+    { id: 'opened_by', label: 'Opened By', sortable: true, format: (val) => (val as string) || '—' },
+    { id: 'opened_at', label: 'Opened', format: (val) => val ? formatDate(val as string) : '—' },
     { id: 'closed_at', label: 'Closed', format: (val) => val ? formatDate(val as string) : '—' },
-    { id: 'opening_cash', label: 'Opening Cash', align: 'right', format: (val) => formatCurrency(Number(val)) },
-    { id: 'total_sales', label: 'Total Sales', align: 'right', format: (val) => formatCurrency(Number(val)) },
+    { id: 'opening_cash', label: 'Opening Cash', align: 'right', format: (val) => formatCurrency(Number(val || 0)) },
+    { id: 'total_sales', label: 'Total Sales', align: 'right', format: (val) => formatCurrency(Number(val || 0)) },
     { id: 'status', label: 'Status', format: (val) => <StatusChip status={val as string} /> },
     { id: 'actions', label: 'Actions', align: 'right', format: (_, row) => <ActionMenu actions={getSessionActions(row)} /> },
   ];

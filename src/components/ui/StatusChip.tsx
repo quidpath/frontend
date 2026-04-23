@@ -42,12 +42,30 @@ const STATUS_COLORS: Record<string, { bg: string; text: string; dot: string }> =
 };
 
 interface StatusChipProps {
-  status: string;
+  status: string | null | undefined;
   label?: string;
   size?: ChipProps['size'];
 }
 
 export default function StatusChip({ status, label, size = 'small' }: StatusChipProps) {
+  // Handle null/undefined status
+  if (!status) {
+    return (
+      <Chip
+        size={size}
+        label="N/A"
+        sx={{
+          backgroundColor: alpha('#64748B', 0.1),
+          color: '#334155',
+          fontWeight: 600,
+          fontSize: '0.7rem',
+          height: size === 'small' ? 22 : 28,
+          borderRadius: '5px',
+        }}
+      />
+    );
+  }
+
   const key = status.toLowerCase().replace(/ /g, '_');
   const colors = STATUS_COLORS[key] || { bg: alpha('#64748B', 0.1), text: '#334155', dot: '#64748B' };
   const displayLabel = label || status.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
