@@ -532,6 +532,7 @@ function FeaturesSection() {
 
 function PricingSection() {
   const { data: allPlans, isLoading } = usePlans();
+  const [selectedType, setSelectedType] = useState<'individual' | 'organization'>('organization');
 
   // Filter out testing plans and separate by type
   const individualPlans = (allPlans || []).filter(
@@ -554,34 +555,26 @@ function PricingSection() {
       );
     }
     
-    // Add description if available
-    if (plan.description) {
-      features.push(plan.description);
-    }
-    
-    // Parse limits object for features
-    if (plan.limits && typeof plan.limits === 'object') {
-      Object.entries(plan.limits).forEach(([key, value]) => {
-        if (typeof value === 'boolean' && value) {
-          // Convert snake_case to Title Case
-          const label = key.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-          features.push(label);
-        } else if (typeof value === 'number' && value > 0) {
-          const label = key.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-          features.push(`${label}: ${value}`);
-        } else if (typeof value === 'string' && value) {
-          const label = key.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-          features.push(`${label}: ${value}`);
-        }
-      });
-    }
-    
-    // Add pricing info
-    if (plan.price_quarterly) {
-      features.push(`Quarterly: KES ${plan.price_quarterly.toLocaleString()}`);
-    }
-    if (plan.price_yearly) {
-      features.push(`Yearly: KES ${plan.price_yearly.toLocaleString()}`);
+    // Add key features based on tier
+    const tier = plan.tier.toLowerCase();
+    if (tier.includes('starter') || tier.includes('basic')) {
+      features.push('Core modules access');
+      features.push('Email support');
+      features.push('Basic reporting');
+      features.push('Mobile app access');
+    } else if (tier.includes('growth') || tier.includes('professional')) {
+      features.push('All modules access');
+      features.push('Priority support');
+      features.push('Advanced analytics');
+      features.push('API access');
+      features.push('Custom workflows');
+    } else if (tier.includes('enterprise') || tier.includes('premium')) {
+      features.push('Unlimited everything');
+      features.push('24/7 dedicated support');
+      features.push('Custom integrations');
+      features.push('SLA guarantees');
+      features.push('Onboarding specialist');
+      features.push('White-label options');
     }
     
     // Additional user pricing
@@ -593,8 +586,8 @@ function PricingSection() {
   };
 
   // Determine which plans to display
-  const displayPlans = organizationPlans.length > 0 ? organizationPlans : individualPlans;
-  const planType = organizationPlans.length > 0 ? 'Organization' : 'Individual';
+  const displayPlans = selectedType === 'organization' ? organizationPlans : individualPlans;
+  const signupPath = selectedType === 'organization' ? '/signup/corporate' : '/signup/individual';
 
   return (
     <Box sx={{ py: 10, backgroundColor: '#FFFFFF' }}>
@@ -606,25 +599,89 @@ function PricingSection() {
           <Typography variant="h3" fontWeight={700} sx={{ mt: 1, mb: 2 }}>
             Simple, transparent pricing
           </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 420, mx: 'auto', mb: 2 }}>
-            {planType} plans — All plans include a 30-day free trial.
+          <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 520, mx: 'auto', mb: 4 }}>
+            Choose the plan that fits your needs. All plans include a 30-day free trial.
           </Typography>
-          {individualPlans.length > 0 && organizationPlans.length > 0 && (
-            <Typography variant="caption" color="text.secondary">
-              Showing {planType} plans • {planType === 'Organization' ? individualPlans.length : organizationPlans.length} {planType === 'Organization' ? 'Individual' : 'Organization'} plans also available
-            </Typography>
-          )}
+
+          {/* Plan Type Toggle */}
+          <Box
+            sx={{
+              display: 'inline-flex',
+              p: 0.5,
+              borderRadius: 2,
+              backgroundColor: 'grey.100',
+              border: '1px solid',
+              borderColor: 'grey.200',
+            }}
+          >
+            <Button
+              variant={selectedType === 'individual' ? 'contained' : 'text'}
+              onClick={() => setSelectedType('individual')}
+              sx={{
+                px: 3,
+                py: 1,
+                borderRadius: 1.5,
+                textTransform: 'none',
+                fontWeight: 600,
+                ...(selectedType === 'individual'
+                  ? {
+                      background: 'linear-gradient(135deg, #43A047, #2E7D32)',
+                      color: '#fff',
+                      boxShadow: '0 2px 8px rgba(67,160,71,0.25)',
+                      '&:hover': {
+                        background: 'linear-gradient(135deg, #388E3C, #1B5E20)',
+                      },
+                    }
+                  : {
+                      color: 'text.secondary',
+                      '&:hover': {
+                        backgroundColor: 'grey.200',
+                      },
+                    }),
+              }}
+            >
+              Individual
+            </Button>
+            <Button
+              variant={selectedType === 'organization' ? 'contained' : 'text'}
+              onClick={() => setSelectedType('organization')}
+              sx={{
+                px: 3,
+                py: 1,
+                borderRadius: 1.5,
+                textTransform: 'none',
+                fontWeight: 600,
+                ...(selectedType === 'organization'
+                  ? {
+                      background: 'linear-gradient(135deg, #43A047, #2E7D32)',
+                      color: '#fff',
+                      boxShadow: '0 2px 8px rgba(67,160,71,0.25)',
+                      '&:hover': {
+                        background: 'linear-gradient(135deg, #388E3C, #1B5E20)',
+                      },
+                    }
+                  : {
+                      color: 'text.secondary',
+                      '&:hover': {
+                        backgroundColor: 'grey.200',
+                      },
+                    }),
+              }}
+            >
+              Organization
+            </Button>
+          </Box>
         </Box>
 
         <Grid container spacing={3} justifyContent="center">
           {isLoading
             ? Array.from({ length: 3 }).map((_, i) => (
                 <Grid key={i} size={{ xs: 12, sm: 6, md: 4 }}>
-                  <Card>
+                  <Card sx={{ height: 480 }}>
                     <CardContent>
                       <Skeleton height={28} width="60%" sx={{ mb: 1 }} />
                       <Skeleton height={52} width="40%" sx={{ mb: 2 }} />
-                      {Array.from({ length: 4 }).map((_, j) => (
+                      {Array.from({ length: 6 }).map((_, j) => (
                         <Skeleton key={j} height={16} sx={{ mb: 1 }} />
                       ))}
                     </CardContent>
@@ -637,11 +694,19 @@ function PricingSection() {
                   <Card>
                     <CardContent sx={{ textAlign: 'center', py: 6 }}>
                       <Typography variant="h6" color="text.secondary" gutterBottom>
-                        No plans available
+                        No {selectedType} plans available
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         Please contact sales for pricing information.
                       </Typography>
+                      <Button
+                        variant="outlined"
+                        component={Link}
+                        href="/contact"
+                        sx={{ mt: 3 }}
+                      >
+                        Contact Sales
+                      </Button>
                     </CardContent>
                   </Card>
                 </Grid>
@@ -649,97 +714,197 @@ function PricingSection() {
             : displayPlans.map((plan: any, index: number) => {
                 const isHighlighted = index === 1 || plan.tier.toLowerCase().includes('growth') || plan.tier.toLowerCase().includes('professional');
                 const features = formatFeatures(plan);
+                const maxFeatures = 6; // Limit features to prevent overflow
                 
                 return (
                   <Grid key={plan.id} size={{ xs: 12, sm: 6, md: 4 }}>
                     <Card
                       sx={{
                         height: '100%',
+                        minHeight: 500,
+                        maxHeight: 540,
+                        display: 'flex',
+                        flexDirection: 'column',
                         position: 'relative',
+                        transition: 'all 0.3s ease',
+                        overflow: 'hidden',
                         ...(isHighlighted
                           ? {
                               border: '2px solid',
                               borderColor: 'primary.main',
                               boxShadow: `0 8px 32px ${alpha('#43A047', 0.18)}`,
-                              transform: { md: 'scale(1.03)' },
+                              transform: { md: 'scale(1.02)' },
+                              zIndex: 1,
                             }
-                          : {}),
+                          : {
+                              border: '1px solid',
+                              borderColor: 'divider',
+                            }),
+                        '&:hover': {
+                          transform: isHighlighted ? { md: 'scale(1.04)' } : 'translateY(-4px)',
+                          boxShadow: isHighlighted 
+                            ? `0 12px 40px ${alpha('#43A047', 0.25)}` 
+                            : '0 8px 24px rgba(0,0,0,0.1)',
+                        },
                       }}
                     >
+                      {/* Top border for highlighted card */}
                       {isHighlighted && (
                         <Box
                           sx={{
                             position: 'absolute',
-                            top: -14,
-                            left: '50%',
-                            transform: 'translateX(-50%)',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            height: 4,
+                            background: 'linear-gradient(90deg, #43A047, #2E7D32)',
                           }}
-                        >
-                          <Chip
-                            label="Most Popular"
-                            size="small"
-                            sx={{
-                              background: 'linear-gradient(135deg, #43A047, #2E7D32)',
-                              color: '#fff',
-                              fontWeight: 700,
-                              fontSize: '0.7rem',
-                            }}
-                          />
-                        </Box>
+                        />
                       )}
-                      <CardContent sx={{ p: 3.5 }}>
-                        <Typography variant="h6" fontWeight={700} sx={{ mb: 0.5 }}>
-                          {plan.name}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary" sx={{ mb: 2, display: 'block' }}>
-                          {plan.tier.charAt(0).toUpperCase() + plan.tier.slice(1)} • {plan.plan_type}
-                        </Typography>
-                        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, mb: 3 }}>
-                          <Typography variant="h3" fontWeight={800} color="text.primary">
-                            KES {plan.price_monthly.toLocaleString()}
+                      
+                      <CardContent sx={{ p: 3, pb: 2, flex: 1, display: 'flex', flexDirection: 'column', pt: isHighlighted ? 4 : 3 }}>
+                        {/* Most Popular Badge */}
+                        {isHighlighted && (
+                          <Box sx={{ position: 'absolute', top: 12, right: 12 }}>
+                            <Chip
+                              label="Most Popular"
+                              size="small"
+                              sx={{
+                                background: 'linear-gradient(135deg, #43A047, #2E7D32)',
+                                color: '#fff',
+                                fontWeight: 700,
+                                fontSize: '0.65rem',
+                                height: 20,
+                                px: 0.5,
+                              }}
+                            />
+                          </Box>
+                        )}
+
+                        {/* Header */}
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="h5" fontWeight={700} sx={{ mb: 0.5, fontSize: '1.35rem' }}>
+                            {plan.name}
                           </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            / month
+                          <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'capitalize', fontSize: '0.7rem' }}>
+                            {plan.tier} • {selectedType}
                           </Typography>
                         </Box>
 
+                        {/* Pricing */}
+                        <Box sx={{ mb: 2.5 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+                            <Typography variant="h3" fontWeight={800} color="text.primary" sx={{ fontSize: '2rem' }}>
+                              KES {plan.price_monthly.toLocaleString()}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8rem' }}>
+                              /mo
+                            </Typography>
+                          </Box>
+                          {plan.price_yearly && (
+                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', display: 'block', mt: 0.5 }}>
+                              or KES {plan.price_yearly.toLocaleString()}/yr (save {Math.round((1 - (plan.price_yearly / (plan.price_monthly * 12))) * 100)}%)
+                            </Typography>
+                          )}
+                        </Box>
+
+                        {/* CTA Button */}
                         <Button
                           fullWidth
                           variant={isHighlighted ? 'contained' : 'outlined'}
                           component={Link}
-                          href={`/signup/corporate?plan=${plan.id}&trial=true`}
+                          href={`${signupPath}?plan=${plan.id}&trial=true`}
                           sx={{
-                            mb: 3,
+                            mb: 2.5,
+                            py: 1,
+                            fontWeight: 600,
+                            fontSize: '0.875rem',
                             ...(isHighlighted
                               ? {
                                   background: 'linear-gradient(135deg, #43A047, #2E7D32)',
                                   boxShadow: '0 2px 12px rgba(67,160,71,0.3)',
+                                  '&:hover': {
+                                    background: 'linear-gradient(135deg, #388E3C, #1B5E20)',
+                                    boxShadow: '0 4px 16px rgba(67,160,71,0.4)',
+                                  },
                                 }
-                              : {}),
+                              : {
+                                  borderColor: 'primary.main',
+                                  color: 'primary.main',
+                                  '&:hover': {
+                                    borderColor: 'primary.dark',
+                                    backgroundColor: alpha('#43A047', 0.04),
+                                  },
+                                }),
                           }}
                         >
                           Start Free Trial
                         </Button>
 
-                        <List dense disablePadding>
-                          {features.map((feature: string, idx: number) => (
-                            <ListItem key={idx} disablePadding sx={{ py: 0.5 }}>
-                              <ListItemIcon sx={{ minWidth: 28 }}>
-                                <CheckCircleIcon sx={{ fontSize: 16, color: 'primary.main' }} />
-                              </ListItemIcon>
-                              <ListItemText
-                                primary={feature}
-                                primaryTypographyProps={{ variant: 'body2', color: 'text.secondary' }}
-                              />
-                            </ListItem>
-                          ))}
-                        </List>
+                        {/* Features List */}
+                        <Box sx={{ flex: 1, minHeight: 0 }}>
+                          <List dense disablePadding sx={{ 
+                            maxHeight: '100%',
+                            overflow: 'auto',
+                            '&::-webkit-scrollbar': { width: 4 },
+                            '&::-webkit-scrollbar-thumb': { 
+                              backgroundColor: alpha('#43A047', 0.3),
+                              borderRadius: 2,
+                            },
+                          }}>
+                            {features.slice(0, maxFeatures).map((feature: string, idx: number) => (
+                              <ListItem key={idx} disablePadding sx={{ py: 0.4, alignItems: 'flex-start' }}>
+                                <ListItemIcon sx={{ minWidth: 24, mt: 0.2 }}>
+                                  <CheckCircleIcon sx={{ fontSize: 14, color: 'primary.main' }} />
+                                </ListItemIcon>
+                                <ListItemText
+                                  primary={feature}
+                                  primaryTypographyProps={{ 
+                                    variant: 'body2', 
+                                    color: 'text.secondary',
+                                    sx: { lineHeight: 1.4, fontSize: '0.8rem' }
+                                  }}
+                                />
+                              </ListItem>
+                            ))}
+                            {features.length > maxFeatures && (
+                              <ListItem disablePadding sx={{ py: 0.4 }}>
+                                <ListItemIcon sx={{ minWidth: 24 }}>
+                                  <CheckCircleIcon sx={{ fontSize: 14, color: 'primary.main', opacity: 0.5 }} />
+                                </ListItemIcon>
+                                <ListItemText
+                                  primary={`+${features.length - maxFeatures} more features`}
+                                  primaryTypographyProps={{ 
+                                    variant: 'body2', 
+                                    color: 'text.secondary',
+                                    sx: { lineHeight: 1.4, fontSize: '0.8rem', fontStyle: 'italic' }
+                                  }}
+                                />
+                              </ListItem>
+                            )}
+                          </List>
+                        </Box>
                       </CardContent>
                     </Card>
                   </Grid>
                 );
               })}
         </Grid>
+
+        {/* Additional Info */}
+        <Box sx={{ textAlign: 'center', mt: 6 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            All plans include: SSL encryption • Daily backups • 99.9% uptime SLA • Email support
+          </Typography>
+          <Button
+            variant="text"
+            component={Link}
+            href="/contact"
+            sx={{ color: 'primary.main', fontWeight: 600 }}
+          >
+            Need a custom plan? Contact our sales team →
+          </Button>
+        </Box>
       </Container>
     </Box>
   );

@@ -6,6 +6,7 @@ import { PlusOutlined, DeleteOutlined, ShoppingCartOutlined } from '@ant-design/
 import ProductSelector from '@/modules/inventory/components/ProductSelector';
 import posService from '@/services/posService';
 import { Product as BaseProduct } from '@/services/inventoryService';
+import { useCurrency } from '@/hooks/useCurrency';
 
 const { Text, Title } = Typography;
 
@@ -37,6 +38,10 @@ const OrderModalNew: React.FC<OrderModalNewProps> = ({ open, onClose, sessionId,
   const [loading, setLoading] = useState(false);
   const [orderLines, setOrderLines] = useState<OrderLine[]>([]);
   const [orderId, setOrderId] = useState<string | null>(null);
+  const { currency, getCurrencySymbol, formatRaw } = useCurrency();
+  
+  // Get currency symbol for display
+  const currencySymbol = getCurrencySymbol(currency);
 
   useEffect(() => {
     if (open && !orderId) {
@@ -236,7 +241,7 @@ const OrderModalNew: React.FC<OrderModalNewProps> = ({ open, onClose, sessionId,
       dataIndex: 'unit_price',
       key: 'unit_price',
       width: 120,
-      render: (value: number) => `KES ${value.toLocaleString()}`,
+      render: (value: number) => `${currencySymbol} ${value.toLocaleString()}`,
     },
     {
       title: 'Discount %',
@@ -261,7 +266,7 @@ const OrderModalNew: React.FC<OrderModalNewProps> = ({ open, onClose, sessionId,
       key: 'subtotal',
       width: 120,
       render: (value: number) => (
-        <Text strong>KES {value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+        <Text strong>{currencySymbol} {value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
       ),
     },
     {
@@ -367,14 +372,14 @@ const OrderModalNew: React.FC<OrderModalNewProps> = ({ open, onClose, sessionId,
                     <Row justify="space-between">
                       <Text>Subtotal:</Text>
                       <Text strong>
-                        KES {subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        {currencySymbol} {subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </Text>
                     </Row>
                     {discount > 0 && (
                       <Row justify="space-between">
                         <Text>Discount:</Text>
                         <Text type="danger">
-                          -KES {discount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          -{currencySymbol} {discount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </Text>
                       </Row>
                     )}
@@ -384,7 +389,7 @@ const OrderModalNew: React.FC<OrderModalNewProps> = ({ open, onClose, sessionId,
                         Total:
                       </Title>
                       <Title level={5} style={{ margin: 0 }}>
-                        KES {total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        {currencySymbol} {total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </Title>
                     </Row>
                   </Space>

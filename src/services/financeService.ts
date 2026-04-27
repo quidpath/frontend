@@ -99,8 +99,22 @@ export interface AccountListResponse { accounts: Account[]; total: number }
 // ─── Banking ──────────────────────────────────────────────────────────────────
 
 export interface BankAccount {
-  id: string; bank_name: string; account_name: string; account_number: string;
-  currency: string; is_default: boolean; is_active: boolean; balance?: number; created_at: string;
+  id: string;
+  account_type: 'bank' | 'sacco' | 'mobile_money' | 'till' | 'cash' | 'investment' | 'other';
+  bank_name: string;
+  account_name: string;
+  account_number: string;
+  currency: string;
+  provider_name?: string;
+  branch_code?: string;
+  swift_code?: string;
+  opening_balance: number;
+  opening_balance_date: string;
+  is_default: boolean;
+  is_active: boolean;
+  balance?: number;
+  display_name?: string;
+  created_at: string;
 }
 export interface BankTransaction {
   id: string; bank_account_id: string; bank_account_name?: string;

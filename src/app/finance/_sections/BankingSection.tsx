@@ -15,96 +15,32 @@ import ActionMenu, { commonActions } from '@/components/ui/ActionMenu';
 import { formatCurrency, formatDate } from '@/utils/formatters';
 import { TableColumn } from '@/types';
 import {
-  useBankAccounts, useCreateBankAccount, useUpdateBankAccount, useDeleteBankAccount,
+  useBankAccounts, useDeleteBankAccount,
   useTransactions, useCreateTransaction, useDeleteTransaction,
   useInternalTransfers, useCreateTransfer, useDeleteTransfer,
 } from '@/hooks/useFinance';
 import financeService from '@/services/financeService';
 import type { BankAccount, BankTransaction, InternalTransfer, BankReconciliation } from '@/services/financeService';
 import type { SectionProps } from './_shared';
+import BankAccountModalEnhanced from '@/modules/banking/modals/BankAccountModal';
 
 // ─── Bank Account Modal ───────────────────────────────────────────────────────
 function BankAccountModal({ open, onClose, record, onSuccess }: {
   open: boolean; onClose: () => void; record?: BankAccount | null;
   onSuccess: (m: string, s?: 'success' | 'error') => void;
 }) {
-  const create = useCreateBankAccount();
-  const update = useUpdateBankAccount();
-  const saving = create.isPending || update.isPending;
-  const [form, setForm] = useState({
-    bank_name: '', account_name: '', account_number: '', currency: 'KES', opening_balance: '',
-  });
-
-  useEffect(() => {
-    if (!open) return;
-    if (record) {
-      setForm({ bank_name: record.bank_name, account_name: record.account_name, account_number: record.account_number, currency: record.currency, opening_balance: '' });
-    } else {
-      setForm({ bank_name: '', account_name: '', account_number: '', currency: 'KES', opening_balance: '' });
-    }
-  }, [record, open]);
-
-  const f = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) => setForm(p => ({ ...p, [k]: e.target.value }));
-
-  const handleSave = async () => {
-    try {
-      const payload: Record<string, unknown> = {
-        bank_name: form.bank_name,
-        account_name: form.account_name,
-        account_number: form.account_number,
-        currency: form.currency,
-      };
-      if (!record && form.opening_balance) {
-        payload.opening_balance = Number(form.opening_balance);
-      }
-      if (record) await update.mutateAsync({ id: record.id, ...payload });
-      else await create.mutateAsync(payload);
-      onSuccess(record ? 'Account updated' : 'Account added');
-      onClose();
-    } catch (e: any) {
-      onSuccess(e?.response?.data?.message || 'Failed to save account', 'error');
-    }
+  const handleSuccess = () => {
+    onSuccess(record ? 'Account updated' : 'Account added');
+    onClose();
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ display: 'flex', alignItems: 'center' }}>
-        {record ? 'Edit Bank Account' : 'Add Bank Account'}
-        <IconButton size="small" sx={{ ml: 'auto' }} onClick={onClose}><CloseIcon /></IconButton>
-      </DialogTitle>
-      <DialogContent dividers>
-        <Stack spacing={2}>
-          <TextField label="Bank Name" size="small" fullWidth value={form.bank_name} onChange={f('bank_name')} />
-          <TextField label="Account Name" size="small" fullWidth value={form.account_name} onChange={f('account_name')} />
-          <TextField label="Account Number" size="small" fullWidth value={form.account_number} onChange={f('account_number')} />
-          <FormControl fullWidth size="small">
-            <InputLabel>Currency</InputLabel>
-            <Select value={form.currency} label="Currency" onChange={e => setForm(p => ({ ...p, currency: e.target.value }))}>
-              {['KES', 'USD', 'EUR', 'GBP', 'UGX', 'TZS'].map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)}
-            </Select>
-          </FormControl>
-          {!record && (
-            <TextField
-              label="Opening Balance"
-              size="small"
-              type="number"
-              fullWidth
-              value={form.opening_balance}
-              onChange={f('opening_balance')}
-              helperText="The current balance in this account. Creates an opening deposit transaction."
-              inputProps={{ min: 0, step: 0.01 }}
-            />
-          )}
-        </Stack>
-      </DialogContent>
-      <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={onClose} variant="outlined">Cancel</Button>
-        <Button variant="contained" onClick={handleSave} disabled={saving}
-          startIcon={saving ? <CircularProgress size={14} color="inherit" /> : undefined}>
-          Save
-        </Button>
-      </DialogActions>
-    </Dialog>
+    <BankAccountModalEnhanced
+      open={open}
+      onClose={onClose}
+      account={record}
+      onSuccess={handleSuccess}
+    />
   );
 }
 
