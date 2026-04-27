@@ -124,12 +124,12 @@ export default function InventoryDashboard() {
   ];
 
   const PRODUCT_COLUMNS: TableColumn<Product>[] = [
-    { id: 'sku', label: 'SKU', sortable: true, minWidth: 100 },
+    { id: 'internal_reference', label: 'SKU', sortable: true, minWidth: 100 },
     { id: 'name', label: 'Product', sortable: true, minWidth: 200 },
-    { id: 'category', label: 'Category', sortable: true },
-    { id: 'quantity_on_hand', label: 'Stock', align: 'right', sortable: true },
-    { id: 'unit_price', label: 'Price', align: 'right', format: (val) => formatCurrency(Number(val)) },
-    { id: 'cost_price', label: 'Cost', align: 'right', format: (val) => formatCurrency(Number(val)) },
+    { id: 'category_name', label: 'Category', sortable: true },
+    { id: 'quantity_on_hand', label: 'Stock', align: 'right', sortable: true, format: (val) => Number(val || 0).toFixed(2) },
+    { id: 'list_price', label: 'Price', align: 'right', format: (val) => formatCurrency(Number(val)) },
+    { id: 'standard_price', label: 'Cost', align: 'right', format: (val) => formatCurrency(Number(val)) },
     { id: 'is_active', label: 'Status', format: (val) => <StatusChip status={val ? 'active' : 'inactive'} /> },
     { id: 'actions', label: 'Actions', align: 'right', format: (_, row) => <ActionMenu actions={getProductActions(row)} /> },
   ];

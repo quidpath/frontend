@@ -9,6 +9,7 @@ import inventoryService from '@/services/inventoryService';
 import CategoryDropdown from '../components/CategoryDropdown';
 import UomDropdown from '../components/UomDropdown';
 import CategoryManagementModal from './CategoryManagementModal';
+import WarehouseDropdown from '../components/WarehouseDropdown';
 
 interface ProductModalProps {
   open: boolean;
@@ -41,6 +42,9 @@ export default function ProductModal({ open, onClose, product, onSuccess }: Prod
     costing_method: 'avco' as 'fifo' | 'avco' | 'standard',
     can_be_sold: true,
     can_be_purchased: true,
+    // Initial stock fields
+    initial_stock: '',
+    warehouse_id: '',
   });
 
   useEffect(() => {
@@ -61,6 +65,8 @@ export default function ProductModal({ open, onClose, product, onSuccess }: Prod
         costing_method: product.costing_method || 'avco',
         can_be_sold: product.can_be_sold ?? true,
         can_be_purchased: product.can_be_purchased ?? true,
+        initial_stock: '',
+        warehouse_id: '',
       });
     } else {
       setFormData({
@@ -79,6 +85,8 @@ export default function ProductModal({ open, onClose, product, onSuccess }: Prod
         costing_method: 'avco',
         can_be_sold: true,
         can_be_purchased: true,
+        initial_stock: '0',
+        warehouse_id: '',
       });
     }
     setSyncStatus(null);
@@ -97,8 +105,11 @@ export default function ProductModal({ open, onClose, product, onSuccess }: Prod
         reorder_qty: Number(formData.reorder_qty),
       };
       
+      // Remove initial stock fields from product payload
+      const { initial_stock, warehouse_id, ...productPayload } = payload;
+      
       if (product) {
-        const response = await inventoryService.updateProduct(product.id, payload);
+        const response = await inventoryService.updateProduct(product.id, productPayload);
         setSyncStatus({
           synced: response.data.integration?.synced_services || [],
           errors: response.data.integration?.errors || [],
@@ -107,7 +118,25 @@ export default function ProductModal({ open, onClose, product, onSuccess }: Prod
           onSuccess(response.data.integration?.synced_services);
         }, 1500);
       } else {
-        const response = await inventoryService.createProduct(payload as any);
+        const response = await inventoryService.createProduct(productPayload as any);
+        const createdProductId = response.data.product?.id;
+        
+        // If initial stock is provided, create a stock adjustment
+        if (Number(initial_stock) > 0 && warehouse_id && createdProductId) {
+          try {
+            await inventoryService.adjustStock({
+              product_id: createdProductId,
+              location_id: warehouse_id,
+              quantity: Number(initial_stock),
+              reason: 'Initial stock',
+              unit_cost: Number(formData.standard_price) || 0,
+            });
+          } catch (stockError) {
+            console.error('Failed to add initial stock:', stockError);
+            // Don't fail the whole operation if stock addition fails
+          }
+        }
+        
         setSyncStatus({
           synced: response.data.integration?.synced_services || [],
           errors: response.data.integration?.errors || [],
@@ -230,6 +259,39 @@ export default function ProductModal({ open, onClose, product, onSuccess }: Prod
         <Grid size={{ xs: 12, sm: 4 }}>
           <TextField fullWidth label="Min Qty (Reorder Point)" type="number" value={formData.min_qty} onChange={(e) => setFormData({ ...formData, min_qty: e.target.value })} disabled={loading} />
         </Grid>
+
+        {/* Initial Stock - Only for new products */}
+        {!product && formData.product_type === 'storable' && (
+          <>
+            <Grid size={{ xs: 12 }}>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ mt: 1 }}>
+                Initial Stock (Optional)
+              </Typography>
+            </Grid>
+            
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField 
+                fullWidth 
+                label="Initial Stock Quantity" 
+                type="number" 
+                value={formData.initial_stock} 
+                onChange={(e) => setFormData({ ...formData, initial_stock: e.target.value })} 
+                disabled={loading}
+                helperText="Leave as 0 if you'll add stock later"
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <WarehouseDropdown
+                value={formData.warehouse_id}
+                onChange={(value) => setFormData({ ...formData, warehouse_id: value })}
+                disabled={loading || !formData.initial_stock || Number(formData.initial_stock) <= 0}
+                required={Number(formData.initial_stock) > 0}
+                helperText={Number(formData.initial_stock) > 0 ? "Required when adding initial stock" : ""}
+                onManageClick={() => setManagementModalOpen(true)}
+              />
+            </Grid>
+          </>
+        )}
 
         {/* Settings */}
         <Grid size={{ xs: 12 }}>
