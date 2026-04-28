@@ -135,10 +135,11 @@ export default function InventoryDashboard() {
   ];
 
   const WAREHOUSE_COLUMNS: TableColumn<Warehouse>[] = [
-    { id: 'code', label: 'Code', sortable: true },
+    { id: 'short_name', label: 'Code', sortable: true },
     { id: 'name', label: 'Warehouse', sortable: true, minWidth: 180 },
-    { id: 'location', label: 'Location', minWidth: 150 },
-    { id: 'manager', label: 'Manager' },
+    { id: 'city', label: 'City' },
+    { id: 'country', label: 'Country' },
+    { id: 'location_count', label: 'Locations', align: 'right' },
     { id: 'is_active', label: 'Status', format: (val) => <StatusChip status={val ? 'active' : 'inactive'} /> },
     { id: 'actions', label: 'Actions', align: 'right', format: (_, row) => <ActionMenu actions={getWarehouseActions(row)} /> },
   ];

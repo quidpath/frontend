@@ -10,6 +10,7 @@ import CategoryDropdown from '../components/CategoryDropdown';
 import UomDropdown from '../components/UomDropdown';
 import CategoryManagementModal from './CategoryManagementModal';
 import WarehouseDropdown from '../components/WarehouseDropdown';
+import StorageLocationDropdown from '../components/StorageLocationDropdown';
 
 interface ProductModalProps {
   open: boolean;
@@ -45,6 +46,7 @@ export default function ProductModal({ open, onClose, product, onSuccess }: Prod
     // Initial stock fields
     initial_stock: '',
     warehouse_id: '',
+    location_id: '',
   });
 
   useEffect(() => {
@@ -67,6 +69,7 @@ export default function ProductModal({ open, onClose, product, onSuccess }: Prod
         can_be_purchased: product.can_be_purchased ?? true,
         initial_stock: '',
         warehouse_id: '',
+        location_id: '',
       });
     } else {
       setFormData({
@@ -87,6 +90,7 @@ export default function ProductModal({ open, onClose, product, onSuccess }: Prod
         can_be_purchased: true,
         initial_stock: '0',
         warehouse_id: '',
+        location_id: '',
       });
     }
     setSyncStatus(null);
@@ -106,7 +110,7 @@ export default function ProductModal({ open, onClose, product, onSuccess }: Prod
       };
       
       // Remove initial stock fields from product payload
-      const { initial_stock, warehouse_id, ...productPayload } = payload;
+      const { initial_stock, warehouse_id, location_id, ...productPayload } = payload;
       
       if (product) {
         const response = await inventoryService.updateProduct(product.id, productPayload);
@@ -122,11 +126,11 @@ export default function ProductModal({ open, onClose, product, onSuccess }: Prod
         const createdProductId = response.data.product?.id;
         
         // If initial stock is provided, create a stock adjustment
-        if (Number(initial_stock) > 0 && warehouse_id && createdProductId) {
+        if (Number(initial_stock) > 0 && location_id && createdProductId) {
           try {
             await inventoryService.adjustStock({
               product_id: createdProductId,
-              location_id: warehouse_id,
+              location_id: location_id,
               quantity: Number(initial_stock),
               reason: 'Initial stock',
               unit_cost: Number(formData.standard_price) || 0,
@@ -283,11 +287,24 @@ export default function ProductModal({ open, onClose, product, onSuccess }: Prod
             <Grid size={{ xs: 12, sm: 6 }}>
               <WarehouseDropdown
                 value={formData.warehouse_id}
-                onChange={(value) => setFormData({ ...formData, warehouse_id: value })}
+                onChange={(value) => {
+                  setFormData({ ...formData, warehouse_id: value, location_id: '' });
+                }}
                 disabled={loading || !formData.initial_stock || Number(formData.initial_stock) <= 0}
                 required={Number(formData.initial_stock) > 0}
+                helperText={Number(formData.initial_stock) > 0 ? "Select warehouse for initial stock" : ""}
+                showManageButton={false}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <StorageLocationDropdown
+                warehouseId={formData.warehouse_id}
+                value={formData.location_id}
+                onChange={(value) => setFormData({ ...formData, location_id: value })}
+                disabled={loading || !formData.warehouse_id || !formData.initial_stock || Number(formData.initial_stock) <= 0}
+                required={Number(formData.initial_stock) > 0}
                 helperText={Number(formData.initial_stock) > 0 ? "Required when adding initial stock" : ""}
-                onManageClick={() => setManagementModalOpen(true)}
+                showManageButton={false}
               />
             </Grid>
           </>

@@ -182,7 +182,7 @@ function WarehousesPanel({ can }: { can: boolean }) {
   const list = rows<Warehouse>(data, 'warehouses', 'results');
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Warehouse | null>(null);
-  const [form, setForm] = useState({ name: '', code: '', location: '', is_active: true });
+  const [form, setForm] = useState({ name: '', short_name: '', city: '', country: 'Kenya', is_active: true });
   const [err, setErr] = useState('');
 
   const save = useMutation({
@@ -195,14 +195,17 @@ function WarehousesPanel({ can }: { can: boolean }) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['inventory', 'warehouses'] }),
   });
 
-  const openAdd = () => { setEditing(null); setForm({ name: '', code: '', location: '', is_active: true }); setErr(''); setOpen(true); };
-  const openEdit = (r: Warehouse) => { setEditing(r); setForm({ name: r.name, code: r.code, location: r.location, is_active: r.is_active }); setErr(''); setOpen(true); };
+  const openAdd = () => { setEditing(null); setForm({ name: '', short_name: '', city: '', country: 'Kenya', is_active: true }); setErr(''); setOpen(true); };
+  const openEdit = (r: Warehouse) => { setEditing(r); setForm({ name: r.name, short_name: r.short_name, city: r.city || '', country: r.country || 'Kenya', is_active: r.is_active }); setErr(''); setOpen(true); };
 
   return (
     <>
       <CrudTable title="Warehouses" subtitle="Storage locations used in stock movements"
         columns={[
-          { key: 'name', label: 'Name' }, { key: 'code', label: 'Code' }, { key: 'location', label: 'Location' },
+          { key: 'name', label: 'Name' }, 
+          { key: 'short_name', label: 'Code' }, 
+          { key: 'city', label: 'City' },
+          { key: 'country', label: 'Country' },
           { key: 'is_active', label: 'Status', render: (r) => <Chip label={r.is_active ? 'Active' : 'Inactive'} color={r.is_active ? 'success' : 'default'} size="small" /> },
         ]}
         rows={list} loading={isLoading} canAdd={can} canEdit={can} canDelete={can}
@@ -211,8 +214,9 @@ function WarehousesPanel({ can }: { can: boolean }) {
         <Err msg={err} />
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <TextField label="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required fullWidth />
-          <TextField label="Code" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required fullWidth />
-          <TextField label="Location" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} fullWidth />
+          <TextField label="Short Code" value={form.short_name} onChange={(e) => setForm({ ...form, short_name: e.target.value })} required fullWidth helperText="Used as prefix for location codes" />
+          <TextField label="City" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} fullWidth />
+          <TextField label="Country" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} fullWidth />
           <FormControlLabel control={<Checkbox checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />} label="Active" />
         </Box>
       </FormModal>

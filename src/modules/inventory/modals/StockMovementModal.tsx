@@ -8,7 +8,9 @@ import UniversalModal from '@/components/ui/UniversalModal';
 import { StockMovement } from '@/services/inventoryService';
 import inventoryService from '@/services/inventoryService';
 import WarehouseDropdown from '../components/WarehouseDropdown';
+import StorageLocationDropdown from '../components/StorageLocationDropdown';
 import UomDropdown from '../components/UomDropdown';
+import ProductSelectorMUI from '../components/ProductSelectorMUI';
 
 interface StockMovementModalProps {
   open: boolean;
@@ -29,12 +31,15 @@ export default function StockMovementModal({ open, onClose, movement, onSuccess 
     reference: '',
     move_type: 'receipt' as 'receipt' | 'delivery' | 'adjustment' | 'transfer',
     product_id: '',
+    product_name: '',
     quantity: '',
     unit_cost: '',
+    warehouse_from_id: '',
     location_from_id: '',
+    warehouse_to_id: '',
     location_to_id: '',
     notes: '',
-    uom_id: 'pcs',
+    uom_id: '',
   });
 
   useEffect(() => {
@@ -43,30 +48,70 @@ export default function StockMovementModal({ open, onClose, movement, onSuccess 
         reference: movement.reference || '',
         move_type: movement.movement_type,
         product_id: movement.product_id || '',
+        product_name: movement.product_name || '',
         quantity: String(movement.quantity || ''),
         unit_cost: String(movement.unit_cost || ''),
+        warehouse_from_id: '',
         location_from_id: '',
-        location_to_id: movement.warehouse_id || '',
+        warehouse_to_id: movement.warehouse_id || '',
+        location_to_id: '',
         notes: movement.notes || '',
-        uom_id: 'pcs',
+        uom_id: '',
       });
     } else {
       setFormData({
         reference: '',
         move_type: 'receipt',
         product_id: '',
+        product_name: '',
         quantity: '',
         unit_cost: '',
+        warehouse_from_id: '',
         location_from_id: '',
+        warehouse_to_id: '',
         location_to_id: '',
         notes: '',
-        uom_id: 'pcs',
+        uom_id: '',
       });
     }
     setSyncStatus(null);
   }, [movement, open]);
 
   const handleSubmit = async () => {
+    // Validation
+    if (!formData.product_id) {
+      alert('Please select a product');
+      return;
+    }
+    if (!formData.quantity || Number(formData.quantity) <= 0) {
+      alert('Please enter a valid quantity');
+      return;
+    }
+    if (!formData.uom_id) {
+      alert('Please select a unit of measure');
+      return;
+    }
+
+    // Validate locations based on move type
+    if (formData.move_type === 'receipt' || formData.move_type === 'adjustment') {
+      if (!formData.location_to_id) {
+        alert('Please select a destination location');
+        return;
+      }
+    }
+    if (formData.move_type === 'delivery') {
+      if (!formData.location_from_id) {
+        alert('Please select a source location');
+        return;
+      }
+    }
+    if (formData.move_type === 'transfer') {
+      if (!formData.location_from_id || !formData.location_to_id) {
+        alert('Please select both source and destination locations');
+        return;
+      }
+    }
+    
     setLoading(true);
     setSyncStatus(null);
     
@@ -101,7 +146,7 @@ export default function StockMovementModal({ open, onClose, movement, onSuccess 
       console.error('Error saving stock movement:', error);
       setSyncStatus({
         synced: [],
-        errors: [error.response?.data?.message || 'Failed to save stock movement'],
+        errors: [error.response?.data?.error || error.response?.data?.message || 'Failed to save stock movement'],
         accountingCreated: false,
       });
       setLoading(false);
@@ -117,6 +162,9 @@ export default function StockMovementModal({ open, onClose, movement, onSuccess 
     };
     return descriptions[type] || '';
   };
+
+  const showFromLocation = formData.move_type === 'delivery' || formData.move_type === 'transfer';
+  const showToLocation = formData.move_type === 'receipt' || formData.move_type === 'transfer' || formData.move_type === 'adjustment';
 
   return (
     <UniversalModal
@@ -162,9 +210,9 @@ export default function StockMovementModal({ open, onClose, movement, onSuccess 
               </Alert>
             )}
             {syncStatus.errors.length > 0 && (
-              <Alert severity="warning" sx={{ mt: syncStatus.synced.length > 0 ? 1 : 0 }}>
+              <Alert severity="error" sx={{ mt: syncStatus.synced.length > 0 ? 1 : 0 }}>
                 <Typography variant="body2" fontWeight={600} gutterBottom>
-                  Some services failed to sync:
+                  Errors occurred:
                 </Typography>
                 <Box sx={{ mt: 1 }}>
                   {syncStatus.errors.map((error, idx) => (
@@ -180,12 +228,18 @@ export default function StockMovementModal({ open, onClose, movement, onSuccess 
 
         {/* Movement Type */}
         <Grid size={{ xs: 12 }}>
+          <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+            Movement Details
+          </Typography>
+        </Grid>
+        
+        <Grid size={{ xs: 12, sm: 6 }}>
           <TextField
             fullWidth
             label="Movement Type"
             select
             value={formData.move_type}
-            onChange={(e) => setFormData({ ...formData, move_type: e.target.value as any })}
+            onChange={(e) => setFormData({ ...formData, move_type: e.target.value as any, location_from_id: '', location_to_id: '', warehouse_from_id: '', warehouse_to_id: '' })}
             disabled={loading || !!movement}
             required
           >
@@ -213,16 +267,27 @@ export default function StockMovementModal({ open, onClose, movement, onSuccess 
           />
         </Grid>
 
-        {/* Product */}
-        <Grid size={{ xs: 12, sm: 6 }}>
-          <TextField
-            fullWidth
-            label="Product ID"
+        {/* Product Selection */}
+        <Grid size={{ xs: 12 }}>
+          <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ mt: 1 }}>
+            Product & Quantity
+          </Typography>
+        </Grid>
+        
+        <Grid size={{ xs: 12 }}>
+          <ProductSelectorMUI
             value={formData.product_id}
-            onChange={(e) => setFormData({ ...formData, product_id: e.target.value })}
+            onChange={(value, product) => {
+              setFormData({ 
+                ...formData, 
+                product_id: value, 
+                product_name: product?.name || '',
+                uom_id: product?.uom_id || '',
+                unit_cost: product ? String(product.standard_price) : ''
+              });
+            }}
             disabled={loading || !!movement}
             required
-            placeholder="Product UUID"
           />
         </Grid>
 
@@ -236,6 +301,7 @@ export default function StockMovementModal({ open, onClose, movement, onSuccess 
             onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
             disabled={loading || !!movement}
             required
+            inputProps={{ min: 0, step: 0.01 }}
           />
         </Grid>
 
@@ -248,6 +314,7 @@ export default function StockMovementModal({ open, onClose, movement, onSuccess 
             onChange={(e) => setFormData({ ...formData, unit_cost: e.target.value })}
             disabled={loading || !!movement}
             placeholder="Optional"
+            inputProps={{ min: 0, step: 0.01 }}
           />
         </Grid>
 
@@ -255,35 +322,71 @@ export default function StockMovementModal({ open, onClose, movement, onSuccess 
           <UomDropdown
             value={formData.uom_id}
             onChange={(value) => setFormData({ ...formData, uom_id: value })}
-            disabled={loading || !!movement}
+            disabled={loading || !!movement || !formData.product_id}
             required
             showManageButton={false}
           />
         </Grid>
 
         {/* Locations */}
-        {(formData.move_type === 'delivery' || formData.move_type === 'transfer') && (
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <WarehouseDropdown
-              value={formData.location_from_id}
-              onChange={(value) => setFormData({ ...formData, location_from_id: value })}
-              label="From Warehouse"
-              disabled={loading || !!movement}
-              showManageButton={false}
-            />
+        {(showFromLocation || showToLocation) && (
+          <Grid size={{ xs: 12 }}>
+            <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ mt: 1 }}>
+              Storage Locations
+            </Typography>
           </Grid>
         )}
+        
+        {showFromLocation && (
+          <>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <WarehouseDropdown
+                value={formData.warehouse_from_id}
+                onChange={(value) => setFormData({ ...formData, warehouse_from_id: value, location_from_id: '' })}
+                label="From Warehouse"
+                disabled={loading || !!movement}
+                required
+                showManageButton={false}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <StorageLocationDropdown
+                warehouseId={formData.warehouse_from_id}
+                value={formData.location_from_id}
+                onChange={(value) => setFormData({ ...formData, location_from_id: value })}
+                label="From Location"
+                disabled={loading || !!movement || !formData.warehouse_from_id}
+                required
+                showManageButton={false}
+              />
+            </Grid>
+          </>
+        )}
 
-        {(formData.move_type === 'receipt' || formData.move_type === 'transfer' || formData.move_type === 'adjustment') && (
-          <Grid size={{ xs: 12, sm: 6 }}>
-            <WarehouseDropdown
-              value={formData.location_to_id}
-              onChange={(value) => setFormData({ ...formData, location_to_id: value })}
-              label="To Warehouse"
-              disabled={loading || !!movement}
-              showManageButton={false}
-            />
-          </Grid>
+        {showToLocation && (
+          <>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <WarehouseDropdown
+                value={formData.warehouse_to_id}
+                onChange={(value) => setFormData({ ...formData, warehouse_to_id: value, location_to_id: '' })}
+                label="To Warehouse"
+                disabled={loading || !!movement}
+                required
+                showManageButton={false}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <StorageLocationDropdown
+                warehouseId={formData.warehouse_to_id}
+                value={formData.location_to_id}
+                onChange={(value) => setFormData({ ...formData, location_to_id: value })}
+                label="To Location"
+                disabled={loading || !!movement || !formData.warehouse_to_id}
+                required
+                showManageButton={false}
+              />
+            </Grid>
+          </>
         )}
 
         {/* Notes */}

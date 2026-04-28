@@ -121,7 +121,7 @@ export default function WarehouseDropdown({
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Typography variant="body2">{warehouse.name}</Typography>
             <Typography variant="caption" color="text.secondary">
-              ({warehouse.code})
+              ({warehouse.short_name})
             </Typography>
           </Box>
         </MenuItem>

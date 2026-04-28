@@ -42,19 +42,48 @@ export interface ProductListResponse {
 export interface Warehouse {
   id: string;
   name: string;
-  code: string;
-  location: string;
+  short_name: string;  // was "code"
+  address_line1?: string;
+  address_line2?: string;
+  city?: string;
+  country?: string;
+  phone?: string;
+  email?: string;
   is_active: boolean;
-  capacity?: number;
-  manager?: string;
+  location_count?: number;
   created_at: string;
+  updated_at: string;
+}
+
+export interface StorageLocation {
+  id: string;
+  warehouse: string;
+  warehouse_name?: string;
+  parent?: string;
+  parent_name?: string;
+  name: string;
+  complete_name: string;
+  location_type: 'internal' | 'vendor' | 'customer' | 'transit' | 'virtual' | 'scrap';
+  barcode?: string;
+  is_active: boolean;
+  posx?: number;
+  posy?: number;
+  posz?: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface WarehouseListResponse {
   results: Warehouse[];
   count: number;
-  next: string | null;
-  previous: string | null;
+  next?: string | null;
+  previous?: string | null;
+}
+
+export interface StorageLocationListResponse {
+  results?: StorageLocation[];
+  data?: StorageLocation[];
+  count?: number;
 }
 
 // ── Stock Movement ────────────────────────────────────────────────────────────
@@ -336,16 +365,33 @@ const inventoryService = {
     inventoryClient.get<WarehouseListResponse>('/api/inventory/warehouse/', { params }),
 
   getWarehouse: (id: string) =>
-    inventoryClient.get<Warehouse>(`/api/inventory/warehouse/${id}/`),
+    inventoryClient.get<{ success?: boolean; data?: Warehouse }>(`/api/inventory/warehouse/${id}/`),
 
-  createWarehouse: (data: Omit<Warehouse, 'id' | 'created_at'>) =>
-    inventoryClient.post<Warehouse>('/api/inventory/warehouse/', data),
+  createWarehouse: (data: Omit<Warehouse, 'id' | 'created_at' | 'updated_at' | 'location_count'>) =>
+    inventoryClient.post<{ success?: boolean; data?: Warehouse; message?: string }>('/api/inventory/warehouse/', data),
 
   updateWarehouse: (id: string, data: Partial<Warehouse>) =>
-    inventoryClient.put<Warehouse>(`/api/inventory/warehouse/${id}/`, data),
+    inventoryClient.put<{ success?: boolean; data?: Warehouse; message?: string }>(`/api/inventory/warehouse/${id}/`, data),
 
   deleteWarehouse: (id: string) =>
-    inventoryClient.delete(`/api/inventory/warehouse/${id}/`),
+    inventoryClient.delete<{ success?: boolean; message?: string }>(`/api/inventory/warehouse/${id}/`),
+
+  // ── Storage Locations ─────────────────────────────────────────────────────
+
+  getStorageLocations: (warehouseId: string, params?: Record<string, unknown>) =>
+    inventoryClient.get<StorageLocationListResponse>(`/api/inventory/warehouse/${warehouseId}/locations/`, { params }),
+
+  getStorageLocation: (id: string) =>
+    inventoryClient.get<{ success?: boolean; data?: StorageLocation }>(`/api/inventory/warehouse/locations/${id}/`),
+
+  createStorageLocation: (warehouseId: string, data: Omit<StorageLocation, 'id' | 'created_at' | 'updated_at' | 'complete_name' | 'warehouse_name' | 'parent_name'>) =>
+    inventoryClient.post<{ success?: boolean; data?: StorageLocation; message?: string }>(`/api/inventory/warehouse/${warehouseId}/locations/`, data),
+
+  updateStorageLocation: (id: string, data: Partial<StorageLocation>) =>
+    inventoryClient.put<{ success?: boolean; data?: StorageLocation; message?: string }>(`/api/inventory/warehouse/locations/${id}/`, data),
+
+  deleteStorageLocation: (id: string) =>
+    inventoryClient.delete<{ success?: boolean; message?: string }>(`/api/inventory/warehouse/locations/${id}/`),
 
   // ── Summary ───────────────────────────────────────────────────────────────
 
