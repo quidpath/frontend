@@ -1,88 +1,79 @@
-import { useQuery } from '@tanstack/react-query';
+/**
+ * QuidPath ERP - HRM Hooks
+ * React Query hooks for HRM module
+ */
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import hrmService from '@/services/hrmService';
 
 export const HRM_KEYS = {
   all: ['hrm'] as const,
-  employees: (params?: Record<string, unknown>) => ['hrm', 'employees', params] as const,
-  departments: (params?: Record<string, unknown>) => ['hrm', 'departments', params] as const,
-  leaves: (params?: Record<string, unknown>) => ['hrm', 'leaves', params] as const,
-  payroll: (params?: Record<string, unknown>) => ['hrm', 'payroll', params] as const,
-  summary: () => ['hrm', 'summary'] as const,
+  employees: () => ['hrm', 'employees'] as const,
+  employee: (id: string) => ['hrm', 'employees', id] as const,
+  payroll: () => ['hrm', 'payroll'] as const,
 };
 
-export function useEmployees(params?: Record<string, unknown>) {
+// Employees
+export const useEmployees = (params?: any) => {
   return useQuery({
-    queryKey: HRM_KEYS.employees(params),
-    queryFn: async () => {
-      const { data } = await hrmService.getEmployees(params);
-      return data;
-    },
-    staleTime: 30_000,
+    queryKey: [...HRM_KEYS.employees(), params],
+    queryFn: () => hrmService.employees.list(params),
   });
-}
+};
 
-export function useDepartments(params?: Record<string, unknown>) {
+export const useEmployee = (id: string) => {
   return useQuery({
-    queryKey: HRM_KEYS.departments(params),
-    queryFn: async () => {
-      const { data } = await hrmService.getDepartments(params);
-      return data;
-    },
-    staleTime: 30_000,
+    queryKey: HRM_KEYS.employee(id),
+    queryFn: () => hrmService.employees.get(id),
+    enabled: !!id,
   });
-}
+};
 
-export function useLeaveRequests(params?: Record<string, unknown>) {
-  return useQuery({
-    queryKey: HRM_KEYS.leaves(params),
-    queryFn: async () => {
-      const { data } = await hrmService.getLeaveRequests(params);
-      return data;
+export const useCreateEmployee = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: hrmService.employees.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: HRM_KEYS.employees() });
     },
-    staleTime: 30_000,
   });
-}
+};
 
-export function usePayrollRuns(params?: Record<string, unknown>) {
-  return useQuery({
-    queryKey: HRM_KEYS.payroll(params),
-    queryFn: async () => {
-      const { data } = await hrmService.getPayrollRuns(params);
-      return data;
+export const useUpdateEmployee = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
+      hrmService.employees.update(id, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: HRM_KEYS.employees() });
+      queryClient.invalidateQueries({ queryKey: HRM_KEYS.employee(variables.id) });
     },
-    staleTime: 30_000,
   });
-}
+};
 
-export function useHRMSummary() {
-  return useQuery({
-    queryKey: HRM_KEYS.summary(),
-    queryFn: async () => {
-      const { data } = await hrmService.getSummary();
-      return data;
+export const useDeleteEmployee = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: hrmService.employees.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: HRM_KEYS.employees() });
     },
-    staleTime: 60_000,
   });
-}
+};
 
-export function usePositions(params?: Record<string, unknown>) {
+// Payroll
+export const usePayroll = (params?: any) => {
   return useQuery({
-    queryKey: ['hrm', 'positions', params],
-    queryFn: async () => {
-      const { data } = await hrmService.getPositions(params);
-      return data;
-    },
-    staleTime: 30_000,
+    queryKey: [...HRM_KEYS.payroll(), params],
+    queryFn: () => hrmService.payroll.list(params),
   });
-}
+};
 
-export function useLeaveTypes() {
-  return useQuery({
-    queryKey: ['hrm', 'leave-types'],
-    queryFn: async () => {
-      const { data } = await hrmService.getLeaveTypes();
-      return data;
+export const useProcessPayroll = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: hrmService.payroll.process,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: HRM_KEYS.payroll() });
     },
-    staleTime: 60_000,
   });
-}
+};

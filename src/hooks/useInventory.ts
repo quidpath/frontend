@@ -1,85 +1,100 @@
-import { useQuery } from '@tanstack/react-query';
+/**
+ * QuidPath ERP - Inventory Hooks
+ * React Query hooks for inventory module
+ */
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import inventoryService from '@/services/inventoryService';
 
 export const INVENTORY_KEYS = {
   all: ['inventory'] as const,
-  products: (params?: Record<string, unknown>) => ['inventory', 'products', params] as const,
-  warehouses: (params?: Record<string, unknown>) => ['inventory', 'warehouses', params] as const,
-  movements: (params?: Record<string, unknown>) => ['inventory', 'movements', params] as const,
-  summary: () => ['inventory', 'summary'] as const,
-  integrationHealth: () => ['inventory', 'integration-health'] as const,
+  products: () => ['inventory', 'products'] as const,
+  product: (id: string) => ['inventory', 'products', id] as const,
+  warehouses: () => ['inventory', 'warehouses'] as const,
+  stock: (productId: string) => ['inventory', 'stock', productId] as const,
 };
 
-/**
- * Hook to fetch products with pagination and search
- * Uses integrated endpoint for full sync status
- */
-export function useProducts(params?: Record<string, unknown>) {
+// Products
+export const useProducts = (params?: any) => {
   return useQuery({
-    queryKey: INVENTORY_KEYS.products(params),
-    queryFn: async () => {
-      const { data } = await inventoryService.getProducts(params);
-      return data;
-    },
-    staleTime: 30_000,
+    queryKey: [...INVENTORY_KEYS.products(), params],
+    queryFn: () => inventoryService.products.list(params),
   });
-}
+};
 
-/**
- * Hook to fetch warehouses
- */
-export function useWarehouses(params?: Record<string, unknown>) {
+export const useProduct = (id: string) => {
   return useQuery({
-    queryKey: INVENTORY_KEYS.warehouses(params),
-    queryFn: async () => {
-      const { data } = await inventoryService.getWarehouses(params);
-      return data;
-    },
-    staleTime: 30_000,
+    queryKey: INVENTORY_KEYS.product(id),
+    queryFn: () => inventoryService.products.get(id),
+    enabled: !!id,
   });
-}
+};
 
-/**
- * Hook to fetch stock movements
- * Uses integrated endpoint for full sync status
- */
-export function useStockMovements(params?: Record<string, unknown>) {
-  return useQuery({
-    queryKey: INVENTORY_KEYS.movements(params),
-    queryFn: async () => {
-      const { data } = await inventoryService.getStockMovements(params);
-      return data;
+export const useCreateProduct = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: inventoryService.products.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: INVENTORY_KEYS.products() });
     },
-    staleTime: 30_000,
   });
-}
+};
 
-/**
- * Hook to fetch inventory summary metrics
- */
-export function useInventorySummary() {
-  return useQuery({
-    queryKey: INVENTORY_KEYS.summary(),
-    queryFn: async () => {
-      const { data } = await inventoryService.getSummary();
-      return data;
+export const useUpdateProduct = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
+      inventoryService.products.update(id, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: INVENTORY_KEYS.products() });
+      queryClient.invalidateQueries({ queryKey: INVENTORY_KEYS.product(variables.id) });
     },
-    staleTime: 60_000,
   });
-}
+};
 
-/**
- * Hook to check integration health for all services
- * Monitors: Accounting, POS, CRM, HRM, Projects
- */
-export function useIntegrationHealth() {
-  return useQuery({
-    queryKey: INVENTORY_KEYS.integrationHealth(),
-    queryFn: async () => {
-      const { data } = await inventoryService.checkIntegrationHealth();
-      return data;
+export const useDeleteProduct = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: inventoryService.products.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: INVENTORY_KEYS.products() });
     },
-    staleTime: 60_000, // Refresh every minute
-    refetchInterval: 60_000, // Auto-refresh every minute
   });
-}
+};
+
+// Warehouses
+export const useWarehouses = (params?: any) => {
+  return useQuery({
+    queryKey: [...INVENTORY_KEYS.warehouses(), params],
+    queryFn: () => inventoryService.warehouses.list(params),
+  });
+};
+
+export const useCreateWarehouse = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: inventoryService.warehouses.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: INVENTORY_KEYS.warehouses() });
+    },
+  });
+};
+
+// Stock
+export const useStockLevels = (productId: string, params?: any) => {
+  return useQuery({
+    queryKey: [...INVENTORY_KEYS.stock(productId), params],
+    queryFn: () => inventoryService.stock.getLevels(productId, params),
+    enabled: !!productId,
+  });
+};
+
+export const useMoveStock = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: inventoryService.stock.move,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: INVENTORY_KEYS.products() });
+      queryClient.invalidateQueries({ queryKey: ['inventory', 'stock'] });
+    },
+  });
+};

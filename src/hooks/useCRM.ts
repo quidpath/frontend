@@ -1,226 +1,92 @@
+/**
+ * QuidPath ERP - CRM Hooks
+ * React Query hooks for CRM module
+ */
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import crmService, {
-  Contact,
-  ContactListResponse,
-  Deal,
-  DealListResponse,
-  Campaign,
-  CampaignListResponse,
-  Activity,
-  ActivityListResponse,
-  CRMSummary,
-} from '@/services/crmService';
+import crmService from '@/services/crmService';
 
 export const CRM_KEYS = {
   all: ['crm'] as const,
-  contacts: (params?: Record<string, unknown>) =>
-    ['crm', 'contacts', params] as const,
-  contact: (id: string) => ['crm', 'contact', id] as const,
-  deals: (params?: Record<string, unknown>) =>
-    ['crm', 'deals', params] as const,
-  deal: (id: string) => ['crm', 'deal', id] as const,
-  campaigns: (params?: Record<string, unknown>) =>
-    ['crm', 'campaigns', params] as const,
-  campaign: (id: string) => ['crm', 'campaign', id] as const,
-  activities: (params?: Record<string, unknown>) =>
-    ['crm', 'activities', params] as const,
-  activity: (id: string) => ['crm', 'activity', id] as const,
-  summary: () => ['crm', 'summary'] as const,
+  leads: () => ['crm', 'leads'] as const,
+  lead: (id: string) => ['crm', 'leads', id] as const,
+  opportunities: () => ['crm', 'opportunities'] as const,
 };
 
-// Contacts
-export function useContacts(params?: Record<string, unknown>) {
+// Leads
+export const useLeads = (params?: any) => {
   return useQuery({
-    queryKey: CRM_KEYS.contacts(params),
-    queryFn: async () => {
-      const { data } = await crmService.getContacts(params);
-      return data;
-    },
-    staleTime: 30_000,
+    queryKey: [...CRM_KEYS.leads(), params],
+    queryFn: () => crmService.leads.list(params),
   });
-}
+};
 
-export function useContact(id: string | null) {
+export const useLead = (id: string) => {
   return useQuery({
-    queryKey: CRM_KEYS.contact(id ?? ''),
-    queryFn: async () => {
-      const { data } = await crmService.getContact(id!);
-      return data;
-    },
+    queryKey: CRM_KEYS.lead(id),
+    queryFn: () => crmService.leads.get(id),
     enabled: !!id,
   });
-}
+};
 
-export function useCreateContact() {
+export const useCreateLead = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: crmService.createContact,
+    mutationFn: crmService.leads.create,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: CRM_KEYS.all });
+      queryClient.invalidateQueries({ queryKey: CRM_KEYS.leads() });
     },
   });
-}
+};
 
-export function useUpdateContact() {
+export const useUpdateLead = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<Contact> }) =>
-      crmService.updateContact(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: CRM_KEYS.all });
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
+      crmService.leads.update(id, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: CRM_KEYS.leads() });
+      queryClient.invalidateQueries({ queryKey: CRM_KEYS.lead(variables.id) });
     },
   });
-}
+};
 
-export function useDeleteContact() {
+export const useDeleteLead = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: crmService.deleteContact,
+    mutationFn: crmService.leads.delete,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: CRM_KEYS.all });
+      queryClient.invalidateQueries({ queryKey: CRM_KEYS.leads() });
     },
   });
-}
+};
 
-// Deals
-export function useDeals(params?: Record<string, unknown>) {
+export const useConvertLead = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data?: any }) =>
+      crmService.leads.convert(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: CRM_KEYS.leads() });
+      queryClient.invalidateQueries({ queryKey: CRM_KEYS.opportunities() });
+    },
+  });
+};
+
+// Opportunities
+export const useOpportunities = (params?: any) => {
   return useQuery({
-    queryKey: CRM_KEYS.deals(params),
-    queryFn: async () => {
-      const { data } = await crmService.getDeals(params);
-      return data;
-    },
-    staleTime: 30_000,
+    queryKey: [...CRM_KEYS.opportunities(), params],
+    queryFn: () => crmService.opportunities.list(params),
   });
-}
+};
 
-export function useDeal(id: string | null) {
-  return useQuery({
-    queryKey: CRM_KEYS.deal(id ?? ''),
-    queryFn: async () => {
-      const { data } = await crmService.getDeal(id!);
-      return data;
-    },
-    enabled: !!id,
-  });
-}
-
-export function useCreateDeal() {
+export const useUpdateOpportunityStage = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: crmService.createDeal,
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
+      crmService.opportunities.updateStage(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: CRM_KEYS.all });
+      queryClient.invalidateQueries({ queryKey: CRM_KEYS.opportunities() });
     },
   });
-}
-
-export function useUpdateDeal() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<Deal> }) =>
-      crmService.updateDeal(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: CRM_KEYS.all });
-    },
-  });
-}
-
-export function useDeleteDeal() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: crmService.deleteDeal,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: CRM_KEYS.all });
-    },
-  });
-}
-
-// Campaigns
-export function useCampaigns(params?: Record<string, unknown>) {
-  return useQuery({
-    queryKey: CRM_KEYS.campaigns(params),
-    queryFn: async () => {
-      const { data } = await crmService.getCampaigns(params);
-      return data;
-    },
-    staleTime: 30_000,
-  });
-}
-
-export function useCreateCampaign() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: crmService.createCampaign,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: CRM_KEYS.all });
-    },
-  });
-}
-
-export function useUpdateCampaign() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<Campaign> }) =>
-      crmService.updateCampaign(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: CRM_KEYS.all });
-    },
-  });
-}
-
-export function useDeleteCampaign() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: crmService.deleteCampaign,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: CRM_KEYS.all });
-    },
-  });
-}
-
-// Activities
-export function useActivities(params?: Record<string, unknown>) {
-  return useQuery({
-    queryKey: CRM_KEYS.activities(params),
-    queryFn: async () => {
-      const { data } = await crmService.getActivities(params);
-      return data;
-    },
-    staleTime: 30_000,
-  });
-}
-
-export function useCreateActivity() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: crmService.createActivity,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: CRM_KEYS.all });
-    },
-  });
-}
-
-// Summary
-export function useCRMSummary() {
-  return useQuery({
-    queryKey: CRM_KEYS.summary(),
-    queryFn: async () => {
-      const { data } = await crmService.getSummary();
-      return data;
-    },
-    staleTime: 60_000,
-  });
-}
-
-// Pipeline Stages
-export function usePipelineStages(params?: Record<string, unknown>) {
-  return useQuery({
-    queryKey: ['crm', 'pipeline-stages', params],
-    queryFn: async () => {
-      const { data } = await crmService.getPipelineStages(params);
-      return data;
-    },
-    staleTime: 60_000,
-  });
-}
+};

@@ -1,129 +1,94 @@
 /**
- * All billing calls go through the main gateway (/api/billing/*).
- * The gateway authenticates the user JWT and forwards to the billing
- * microservice using X-Service-Key — no direct frontend→billing calls.
+ * QuidPath ERP - Billing Service
+ * Handles subscription and payment operations
  */
 import { gatewayClient } from './apiClient';
 
-export interface BillingPlan {
+export interface Plan {
   id: string;
   name: string;
-  tier: string;
-  plan_type: string;
-  description: string;
-  price_monthly: number;
-  price_quarterly?: number;
-  price_yearly?: number;
-  included_users: number;
-  additional_user_price: number;
-  max_users?: number;
-  limits?: Record<string, unknown>;
+  code: string;
+  price: number;
+  currency: string;
+  billing_cycle: 'monthly' | 'quarterly' | 'annually';
+  max_users: number;
+  max_storage_gb: number;
+  features: Record<string, any>;
+  is_active: boolean;
 }
 
 export interface Subscription {
   id: string;
-  corporate_id: string;
-  plan_name: string;
-  plan_tier: string;
-  status: 'trial' | 'active' | 'suspended' | 'cancelled' | 'expired';
-  billing_cycle: string;
-  total_amount: number;
-  currency: string;
+  plan: {
+    name: string;
+    code: string;
+    price: number;
+    currency: string;
+    billing_cycle: string;
+  };
+  start_date: string;
   end_date: string;
-  next_billing_date?: string;
+  next_billing_date: string;
+  status: 'active' | 'past_due' | 'cancelled' | 'expired' | 'pending';
+  auto_renew: boolean;
 }
 
-export interface Invoice {
-  id: string;
-  corporate_id: string;
-  invoice_number: string;
-  status: 'draft' | 'pending' | 'paid' | 'overdue' | 'cancelled';
-  total_amount: number;
-  currency: string;
-  due_date: string;
-  paid_at?: string;
-  billing_period_start: string;
-  billing_period_end: string;
+export interface SubscriptionStatus {
+  has_subscription: boolean;
+  is_active: boolean;
+  is_trial: boolean;
+  days_remaining: number;
+  message: string;
+  subscription?: Subscription;
 }
 
 export interface Payment {
   id: string;
-  amount: string;
+  amount: number;
   currency: string;
-  method: 'mpesa' | 'card' | 'bank_transfer' | 'cash';
-  status: 'pending' | 'processing' | 'success' | 'failed' | 'refunded';
+  status: 'pending' | 'success' | 'failed' | 'refunded';
+  payment_method: string;
   reference: string;
+  payment_date: string | null;
   created_at: string;
 }
 
-export interface AccessCheckResponse {
+export interface PaymentInitResponse {
   success: boolean;
-  has_access: boolean;
-  access_type?: 'trial' | 'subscription' | null;
-  reason?: string;
-  message?: string;
-  trial?: { status: string; days_remaining: number; end_date: string; phone_number?: string };
-  subscription?: Subscription;
+  authorization_url: string;
+  access_code: string;
+  reference: string;
+  payment_id: string;
 }
 
-export interface PaymentInitiatePayload {
-  plan_id: string;
-  phone_number: string;
-  billing_cycle?: string;
-  subscription_type?: 'individual' | 'organization';
-  corporate_name?: string;
-}
-
-export interface PaginatedResponse<T> {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: T[];
+export interface PaymentVerifyResponse {
+  success: boolean;
+  message: string;
+  subscription_id?: string;
+  status?: string;
 }
 
 const billingService = {
-  // Plans — public GET
-  getPlans: (planType?: string) =>
-    gatewayClient.get('/api/billing/plans/', { params: planType ? { type: planType } : undefined }),
+  // Plans
+  getPlans: () =>
+    gatewayClient.get<{ success: boolean; data: Plan[] }>('/api/v1/billing/plans/'),
 
-  // Access check
-  checkAccess: () =>
-    gatewayClient.post<AccessCheckResponse>('/api/billing/access/check/', {}),
-
-  // Trials
-  createTrial: (payload: { corporate_name?: string; plan_tier?: string }) =>
-    gatewayClient.post('/api/billing/trials/create/', payload),
-
-  getTrialStatus: () =>
-    gatewayClient.post('/api/billing/trials/status/', {}),
-
-  // Subscriptions
+  // Subscription
   getSubscriptionStatus: () =>
-    gatewayClient.post<{ success: boolean; data: { subscription: Subscription | null } }>(
-      '/api/billing/subscriptions/status/',
-      {}
-    ),
+    gatewayClient.get<{ success: boolean; data: SubscriptionStatus }>('/api/v1/billing/subscription/status/'),
 
-  createSubscription: (payload: { plan_tier: string; billing_cycle?: string; promotion_code?: string }) =>
-    gatewayClient.post<Subscription>('/api/billing/subscriptions/create/', payload),
+  initializeSubscription: (payload: { plan_code: string; callback_url: string }) =>
+    gatewayClient.post<{ success: boolean; data: PaymentInitResponse }>('/api/v1/billing/subscription/initialize/', payload),
 
-  // Payments — plan_id based (creates subscription + invoice internally)
-  initiatePayment: (payload: PaymentInitiatePayload) =>
-    gatewayClient.post('/api/billing/payments/initiate/', payload),
+  cancelSubscription: (reason?: string) =>
+    gatewayClient.post<{ success: boolean; message: string }>('/api/v1/billing/subscription/cancel/', { reason }),
 
-  checkPaymentStatus: (paymentId: string) =>
-    gatewayClient.post('/api/billing/payments/status/', { payment_id: paymentId }),
+  // Payments
+  verifyPayment: (reference: string) =>
+    gatewayClient.get<PaymentVerifyResponse>(`/api/v1/billing/payment/verify/?reference=${reference}`),
 
   getPaymentHistory: () =>
-    gatewayClient.post<{ payments: Payment[] }>('/api/billing/payments/history/', {}),
-
-  // Invoices
-  getInvoices: () =>
-    gatewayClient.post<{ invoices: Invoice[]; corporate_id: string }>('/api/billing/invoices/', {}),
-
-  // Promotions — public
-  validatePromotion: (payload: { promotion_code: string; amount: number; plan_tier: string }) =>
-    gatewayClient.post('/api/billing/promotions/validate/', payload),
+    gatewayClient.get<{ success: boolean; data: Payment[] }>('/api/v1/billing/payments/history/'),
 };
 
 export default billingService;

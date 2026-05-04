@@ -1,65 +1,87 @@
 'use client';
 
-import { Box, Button, Card, CardContent, Typography } from '@mui/material';
-import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
-import authService from '@/auth/authService';
-import { useUserStore } from '@/store/userStore';
+import React from 'react';
 import { useRouter } from 'next/navigation';
+import {
+  Box,
+  Container,
+  Typography,
+  Button,
+  Card,
+  CardContent,
+  Alert,
+} from '@mui/material';
+import LockIcon from '@mui/icons-material/Lock';
+import { useSubscription } from '@/hooks/useBilling';
 
 export default function PaymentRequiredPage() {
   const router = useRouter();
-  const clearUser = useUserStore((s) => s.clearUser);
-
-  const handleLogout = () => {
-    authService.logout();
-    clearUser();
-    router.replace('/login');
-  };
+  const { data: subscriptionStatus } = useSubscription();
 
   return (
-    <Box sx={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      bgcolor: 'background.default',
-      p: 2,
-      backgroundImage: 'radial-gradient(ellipse at 60% 0%, rgba(67,160,71,0.08) 0%, transparent 60%)',
-    }}>
-      <Card sx={{ maxWidth: 480, width: '100%', borderRadius: 3, boxShadow: '0 8px 32px rgba(0,0,0,0.08)' }}>
-        <CardContent sx={{ p: { xs: 3, sm: 5 }, textAlign: 'center' }}>
-          <Box sx={{
-            width: 72, height: 72, borderRadius: '50%', mx: 'auto', mb: 3,
-            background: 'linear-gradient(135deg, #ef4444, #b91c1c)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <LockOutlinedIcon sx={{ fontSize: 36, color: '#fff' }} />
+    <Container maxWidth="md" sx={{ py: 8 }}>
+      <Card>
+        <CardContent sx={{ textAlign: 'center', py: 6 }}>
+          <LockIcon sx={{ fontSize: 100, color: 'warning.main', mb: 3 }} />
+          
+          <Typography variant="h3" gutterBottom fontWeight="bold">
+            Subscription Required
+          </Typography>
+          
+          <Typography variant="h6" color="text.secondary" paragraph>
+            Your subscription has expired or is inactive
+          </Typography>
+
+          {subscriptionStatus && !subscriptionStatus.is_active && (
+            <Alert severity="warning" sx={{ mt: 3, mb: 3, textAlign: 'left' }}>
+              <Typography variant="body2" gutterBottom>
+                <strong>Status:</strong> {subscriptionStatus.message}
+              </Typography>
+              {subscriptionStatus.subscription && (
+                <>
+                  <Typography variant="body2" gutterBottom>
+                    <strong>Plan:</strong> {subscriptionStatus.subscription.plan.name}
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>Expired:</strong> {new Date(subscriptionStatus.subscription.end_date).toLocaleDateString()}
+                  </Typography>
+                </>
+              )}
+            </Alert>
+          )}
+
+          <Typography variant="body1" paragraph>
+            To continue using QuidPath ERP, please renew your subscription or choose a new plan.
+          </Typography>
+
+          <Box sx={{ mt: 4, display: 'flex', gap: 2, justifyContent: 'center' }}>
+            <Button
+              variant="contained"
+              color="primary"
+              size="large"
+              onClick={() => router.push('/billing-setup')}
+            >
+              View Plans & Subscribe
+            </Button>
+            <Button
+              variant="outlined"
+              size="large"
+              onClick={() => router.push('/contact')}
+            >
+              Contact Support
+            </Button>
           </Box>
 
-          <Typography variant="h5" fontWeight={700} gutterBottom>
-            Access Suspended
-          </Typography>
-
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 1 }}>
-            Your organisation's subscription has expired or is inactive.
-          </Typography>
-
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>
-            Please contact your organisation administrator to renew the subscription.
-            Access will be restored immediately once payment is confirmed.
-          </Typography>
-
-          <Button
-            variant="outlined"
-            color="inherit"
-            fullWidth
-            onClick={handleLogout}
-            sx={{ py: 1.2, fontWeight: 600 }}
-          >
-            Sign Out
-          </Button>
+          <Box sx={{ mt: 4, pt: 3, borderTop: 1, borderColor: 'divider' }}>
+            <Typography variant="body2" color="text.secondary">
+              Need help? Our support team is here to assist you.
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Email: support@quidpath.com | Phone: +254 700 000 000
+            </Typography>
+          </Box>
         </CardContent>
       </Card>
-    </Box>
+    </Container>
   );
 }
